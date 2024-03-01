@@ -19,7 +19,7 @@ tikv-jemallocator = { version = "0.5.0", optional = true }
 
 [features]
 default = ["jemalloc"]
-# asm-keccak = ["reth-primitives/asm-keccak"]
+asm-keccak = []
 
 jemalloc = ["dep:tikv-jemallocator"]
 jemalloc-prof = ["jemalloc", "tikv-jemallocator?/profiling"]
