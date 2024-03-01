@@ -21,6 +21,7 @@ jobs:
     env:
       RUST_BACKTRACE: 1
     timeout-minutes: 60
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
