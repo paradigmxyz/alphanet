@@ -46,7 +46,6 @@ tracing = "0.1.0"
 
 # tokio
 tokio = { version = "1.21", default-features = false }
-tokio-util = { version = "0.7.4", features = ["codec"] }
 
 # revm
 revm = { version = "6.1.0", features = ["std", "secp256k1"], default-features = false }
