@@ -1,0 +1,2 @@
+msrv = "1.76"
+allow-dbg-in-tests = true

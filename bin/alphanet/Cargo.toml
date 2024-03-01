@@ -1,0 +1,35 @@
+[package]
+name = "alphanet"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Reth AlphaNet is a testnet OP Stack rollup aimed at enabling experimentation of bleeding edge Ethereum Research."
+default-run = "alphanet"
+
+[lints]
+workspace = true
+
+[dependencies]
+tracing = { workspace = true, optional = true }
+
+[target.'cfg(not(windows))'.dependencies]
+tikv-jemallocator = { version = "0.5.0", optional = true }
+
+[features]
+default = ["jemalloc"]
+# asm-keccak = ["reth-primitives/asm-keccak"]
+
+jemalloc = ["dep:tikv-jemallocator"]
+jemalloc-prof = ["jemalloc", "tikv-jemallocator?/profiling"]
+
+min-error-logs = ["tracing/release_max_level_error"]
+min-warn-logs = ["tracing/release_max_level_warn"]
+min-info-logs = ["tracing/release_max_level_info"]
+min-debug-logs = ["tracing/release_max_level_debug"]
+min-trace-logs = ["tracing/release_max_level_trace"]
+
+[[bin]]
+name = "alphanet"
+path = "src/main.rs"
