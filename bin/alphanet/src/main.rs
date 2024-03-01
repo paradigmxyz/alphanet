@@ -1,3 +1,8 @@
+//! # Reth Alphanet
+//!
+//! Reth AlphaNet is a testnet OP Stack rollup aimed at enabling experimentation of bleeding edge
+//! Ethereum Research.
+
 #![allow(missing_docs)]
 
 // We use jemalloc for performance reasons.
