@@ -35,7 +35,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-      - run: cargo clippy --workspace --lib --examples --tests --benches --all-features
+      - run: cargo clippy --workspace --examples --tests --benches --all-features
         env:
           RUSTFLAGS: -D warnings
 

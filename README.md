@@ -1,7 +1,7 @@
 # alphanet
 
-[![Crates.io][crates-badge]][crates-io]
-[![Downloads][downloads-badge]][crates-io]
+<!-- [![Crates.io][crates-badge]][crates-io] -->
+<!-- [![Downloads][downloads-badge]][crates-io] -->
 [![MIT License][mit-badge]][mit-url]
 [![Apache-2.0 License][apache-badge]][apache-url]
 [![CI Status][actions-badge]][actions-url]
@@ -23,12 +23,12 @@ for inclusion in these crates by you, as defined in the Apache-2.0 license,
 shall be dual licensed as above, without any additional terms or conditions.
 </sub>
 
-[crates-badge]: https://img.shields.io/crates/v/alphanet.svg
-[crates-io]: https://crates.io/crates/alphanet
-[downloads-badge]: https://img.shields.io/crates/d/alphanet
+<!-- [crates-badge]: https://img.shields.io/crates/v/alphanet.svg -->
+<!-- [crates-io]: https://crates.io/crates/alphanet -->
+<!-- [downloads-badge]: https://img.shields.io/crates/d/alphanet -->
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [apache-badge]: https://img.shields.io/badge/license-Apache--2.0-blue.svg
 [mit-url]: LICENSE-MIT
 [apache-url]: LICENSE-APACHE
-[actions-badge]: https://github.com/paradigmxyz/alphanet/workflows/CI/badge.svg
+[actions-badge]: https://github.com/paradigmxyz/alphanet/workflows/unit/badge.svg
 [actions-url]: https://github.com/paradigmxyz/alphanet/actions?query=workflow%3ACI+branch%3Amain
