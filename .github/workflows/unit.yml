@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   test:
-    name: test / ${{ matrix.network }} (${{ matrix.partition }}/2)
+    name: test
     env:
       RUST_BACKTRACE: 1
     timeout-minutes: 30
@@ -34,29 +34,29 @@ jobs:
           cargo nextest run \
             --locked \
             --workspace \
-            --partition hash:${{ matrix.partition }}/2 \
             -E "kind(lib) | kind(bin) | kind(proc-macro)"
 
-  doc:
-    name: doc tests (${{ matrix.network }})
-    env:
-      RUST_BACKTRACE: 1
-    timeout-minutes: 30
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
-      - name: Run doctests
-        run: cargo test --doc --workspace
+# TODO: uncomment when we have library a target
+#   doc:
+#     name: doc tests
+#     env:
+#       RUST_BACKTRACE: 1
+#     timeout-minutes: 30
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: dtolnay/rust-toolchain@stable
+#       - uses: Swatinem/rust-cache@v2
+#         with:
+#           cache-on-failure: true
+#       - name: Run doctests
+#         run: cargo test --doc --workspace
 
   unit-success:
     name: unit success
     runs-on: ubuntu-latest
     if: always()
-    needs: [test, state, doc]
+    needs: [test]
     timeout-minutes: 30
     steps:
       - name: Decide whether the needed jobs succeeded or failed

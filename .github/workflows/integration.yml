@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   test:
-    name: test / (${{ matrix.partition }}/2)
+    name: test
     env:
       RUST_BACKTRACE: 1
     timeout-minutes: 60
@@ -34,7 +34,6 @@ jobs:
           cargo nextest run \
             --locked \
             --workspace \
-            --partition hash:${{ matrix.partition }}/2 \
             -E 'kind(test)'
 
   integration-success:
