@@ -1,13 +1,13 @@
+use alphanet_precompile::secp256r1::P256VERIFY;
 use reth::{
     primitives::{
-        address,
         revm::{config::revm_spec, env::fill_op_tx_env},
-        revm_primitives::{AnalysisKind, CfgEnvWithHandlerCfg, Env, PrecompileResult, TxEnv},
+        revm_primitives::{AnalysisKind, CfgEnvWithHandlerCfg, TxEnv},
         Address, Bytes, ChainSpec, Head, Header, Transaction, U256,
     },
     revm::{
         handler::register::EvmHandler,
-        precompile::{Precompile, PrecompileSpecId, Precompiles},
+        precompile::{PrecompileSpecId, Precompiles},
         Database, Evm, EvmBuilder,
     },
 };
@@ -36,17 +36,9 @@ impl AlphaNetEvmConfig {
         // install the precompiles
         handler.pre_execution.load_precompiles = Arc::new(move || {
             let mut precompiles = Precompiles::new(PrecompileSpecId::from_spec_id(spec_id)).clone();
-            precompiles.inner.insert(
-                address!("0000000000000000000000000000000000000999"),
-                Precompile::Env(Self::alphanet_precompile),
-            );
+            precompiles.inner.insert(P256VERIFY.0, P256VERIFY.1);
             precompiles
         });
-    }
-
-    /// A custom precompile that does nothing
-    fn alphanet_precompile(_data: &Bytes, _gas: u64, _env: &Env) -> PrecompileResult {
-        Ok((0, Bytes::new()))
     }
 }
 

@@ -1,5 +1,5 @@
 [workspace]
-members = ["bin/alphanet/", "crates/node"]
+members = ["bin/alphanet/", "crates/node", "crates/precompile"]
 default-members = ["bin/alphanet/"]
 resolver = "2"
 
@@ -43,6 +43,7 @@ incremental = false
 [workspace.dependencies]
 # alphanet
 alphanet-node = { path = "crates/node" }
+alphanet-precompile = { path = "crates/precompile" }
 
 # tokio
 tokio = { version = "1.21", default-features = false }
