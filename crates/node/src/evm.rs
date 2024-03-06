@@ -107,15 +107,21 @@ impl ConfigureEvmEnv for AlphaNetEvmConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reth::primitives::revm_primitives::{BlockEnv, CfgEnv, SpecId};
+    use reth::primitives::{
+        revm_primitives::{BlockEnv, CfgEnv, SpecId},
+        Chain, ChainSpecBuilder, ForkCondition, Genesis, Hardfork,
+    };
 
     #[test]
-    #[ignore]
     fn test_fill_cfg_and_block_env() {
         let mut cfg_env = CfgEnvWithHandlerCfg::new_with_spec_id(CfgEnv::default(), SpecId::LATEST);
         let mut block_env = BlockEnv::default();
         let header = Header::default();
-        let chain_spec = ChainSpec::default();
+        let chain_spec = ChainSpecBuilder::default()
+            .chain(Chain::optimism_mainnet())
+            .genesis(Genesis::default())
+            .with_fork(Hardfork::Frontier, ForkCondition::Block(0))
+            .build();
         let total_difficulty = U256::ZERO;
 
         AlphaNetEvmConfig::fill_cfg_and_block_env(
