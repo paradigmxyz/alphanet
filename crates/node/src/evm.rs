@@ -8,10 +8,10 @@ use reth::{
     revm::{
         handler::register::EvmHandler,
         precompile::{Precompile, PrecompileSpecId, Precompiles},
-        Database,
+        Database, Evm, EvmBuilder,
     },
 };
-use reth_node_api::ConfigureEvmEnv;
+use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
 use std::sync::Arc;
 
 /// Custom EVM configuration
@@ -38,15 +38,34 @@ impl AlphaNetEvmConfig {
             let mut precompiles = Precompiles::new(PrecompileSpecId::from_spec_id(spec_id)).clone();
             precompiles.inner.insert(
                 address!("0000000000000000000000000000000000000999"),
-                Precompile::Env(Self::my_precompile),
+                Precompile::Env(Self::alphanet_precompile),
             );
             precompiles
         });
     }
 
     /// A custom precompile that does nothing
-    fn my_precompile(_data: &Bytes, _gas: u64, _env: &Env) -> PrecompileResult {
+    fn alphanet_precompile(_data: &Bytes, _gas: u64, _env: &Env) -> PrecompileResult {
         Ok((0, Bytes::new()))
+    }
+}
+
+impl ConfigureEvm for AlphaNetEvmConfig {
+    fn evm<'a, DB: Database + 'a>(&self, db: DB) -> Evm<'a, (), DB> {
+        EvmBuilder::default()
+            .with_db(db)
+            // add additional precompiles
+            .append_handler_register(Self::set_precompiles)
+            .build()
+    }
+
+    fn evm_with_inspector<'a, DB: Database + 'a, I>(&self, db: DB, inspector: I) -> Evm<'a, I, DB> {
+        EvmBuilder::default()
+            .with_db(db)
+            .with_external_context(inspector)
+            // add additional precompiles
+            .append_handler_register(Self::set_precompiles)
+            .build()
     }
 }
 
