@@ -2,9 +2,10 @@ use crate::evm::AlphaNetEvmConfig;
 use reth::builder::NodeTypes;
 use reth_node_optimism::OptimismEngineTypes;
 
+/// Type configuration for a regular AlphaNet node.
 #[derive(Debug, Clone, Default)]
 #[non_exhaustive]
-struct AlphaNetNode;
+pub struct AlphaNetNode;
 
 /// Configure the node types
 impl NodeTypes for AlphaNetNode {

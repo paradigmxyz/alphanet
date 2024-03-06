@@ -41,8 +41,8 @@ codegen-units = 1
 incremental = false
 
 [workspace.dependencies]
-# tracing
-tracing = "0.1.0"
+# alphanet
+alphanet-node = { path = "crates/node" }
 
 # tokio
 tokio = { version = "1.21", default-features = false }
@@ -51,11 +51,13 @@ tokio = { version = "1.21", default-features = false }
 reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "96fcdfb", features = ["optimism"] }
 reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "96fcdfb" }
 reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "96fcdfb" }
+reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "96fcdfb" }
 
 # revm
 revm = { version = "6.1.0", features = ["std", "secp256k1"], default-features = false }
-revm-primitives = { version = "2.1.0", features = ["std"], default-features = false }
 revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "7068d39" }
+revm-primitives = { version = "2.1.0", features = ["std"], default-features = false }
 
 # misc
 clap = "4"
+eyre = "0.6.12"

@@ -1,5 +1,5 @@
 [package]
-name = "node"
+name = "alphanet-node"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

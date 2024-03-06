@@ -333,8 +333,22 @@ dependencies = [
 name = "alphanet"
 version = "0.0.0"
 dependencies = [
+ "alphanet-node",
+ "eyre",
  "jemallocator",
- "tracing",
+ "reth",
+ "reth-node-optimism",
+ "reth-tracing",
+ "tokio",
+]
+
+[[package]]
+name = "alphanet-node"
+version = "0.0.0"
+dependencies = [
+ "reth",
+ "reth-node-api",
+ "reth-node-optimism",
 ]
 
 [[package]]
@@ -3586,15 +3600,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77a5d83df9f36fe23f0c3648c6bbb8b0298bb5f1939c8f2704431371f4b84d43"
 dependencies = [
  "smallvec",
-]
-
-[[package]]
-name = "node"
-version = "0.0.0"
-dependencies = [
- "reth",
- "reth-node-api",
- "reth-node-optimism",
 ]
 
 [[package]]
