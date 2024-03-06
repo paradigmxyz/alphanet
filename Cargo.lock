@@ -340,6 +340,7 @@ dependencies = [
  "reth-node-optimism",
  "reth-tracing",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

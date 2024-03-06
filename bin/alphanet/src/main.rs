@@ -45,7 +45,7 @@ async fn main() -> eyre::Result<()> {
         .await
         .unwrap();
 
-    println!("Node started");
+    tracing::info!("Node started");
 
     handle.node_exit_future.await
 }
