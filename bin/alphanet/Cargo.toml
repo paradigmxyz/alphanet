@@ -12,17 +12,23 @@ default-run = "alphanet"
 workspace = true
 
 [dependencies]
+alphanet-node.workspace = true
+eyre.workspace = true
+tokio.workspace = true
 tracing.workspace = true
+reth.workspace = true
+reth-node-optimism.workspace = true
+reth-tracing.workspace = true
 
 [target.'cfg(not(windows))'.dependencies]
-tikv-jemallocator = { version = "0.5.0", optional = true }
+jemallocator = { version = "0.5", optional = true }
 
 [features]
 default = ["jemalloc"]
 asm-keccak = []
 
-jemalloc = ["dep:tikv-jemallocator"]
-jemalloc-prof = ["jemalloc", "tikv-jemallocator?/profiling"]
+jemalloc = ["dep:jemallocator"]
+jemalloc-prof = ["jemalloc", "jemallocator?/profiling"]
 
 min-error-logs = ["tracing/release_max_level_error"]
 min-warn-logs = ["tracing/release_max_level_warn"]
