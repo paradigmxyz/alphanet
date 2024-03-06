@@ -1,4 +1,4 @@
-//! Standalone crate for Reth configuration and builder types.
+//! Standalone crate for AlphaNet's node configuration and builder types.
 
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
