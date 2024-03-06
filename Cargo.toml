@@ -50,6 +50,7 @@ tokio = { version = "1.21", default-features = false }
 # reth
 reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "96fcdfb", features = ["optimism"] }
 reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "96fcdfb" }
+reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "96fcdfb" }
 
 # revm
 revm = { version = "6.1.0", features = ["std", "secp256k1"], default-features = false }

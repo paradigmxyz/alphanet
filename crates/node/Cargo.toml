@@ -12,6 +12,7 @@ categories.workspace = true
 [dependencies]
 reth.workspace = true
 reth-node-api.workspace = true
+reth-node-optimism.workspace = true
 
 [lints]
 workspace = true
