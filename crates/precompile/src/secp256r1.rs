@@ -7,6 +7,9 @@ pub const P256VERIFY: PrecompileWithAddress = PrecompileWithAddress(
     Precompile::Standard(p256_verify as StandardPrecompileFn),
 );
 
+/// The input is encoded as follows:
+/// | signed msg hash |  r  |  s  | pk x | pk y |
+/// |        32       | 32  | 32  |  32  |  32  |
 fn p256_verify(input: &Bytes, target_gas: u64) -> PrecompileResult {
     use p256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
 
