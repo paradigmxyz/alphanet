@@ -1,5 +1,5 @@
 use reth::revm::precompile::{utilities::right_pad, Precompile, PrecompileWithAddress};
-use revm_primitives::{Bytes, PrecompileError, PrecompileResult, StandardPrecompileFn};
+use revm_primitives::{Bytes, PrecompileError, PrecompileResult, StandardPrecompileFn, B256};
 
 /// EIP-7212 secp256r1 precompile.
 pub const P256VERIFY: PrecompileWithAddress = PrecompileWithAddress(
@@ -31,15 +31,8 @@ fn p256_verify(i: &Bytes, target_gas: u64) -> PrecompileResult {
     let signature: Signature = Signature::from_slice(sig).unwrap();
     let public_key: VerifyingKey = VerifyingKey::from_sec1_bytes(&uncompressed_pk).unwrap();
 
-    let mut result = [0u8; 32];
-
-    // verify
-    if public_key.verify_prehash(msg, &signature).is_ok() {
-        result[31] = 0x01;
-        Ok((P256VERIFY_BASE, result.into()))
-    } else {
-        Ok((P256VERIFY_BASE, result.into()))
-    }
+    let result = public_key.verify_prehash(msg, &signature).is_ok();
+    Ok((P256VERIFY_BASE, B256::with_last_byte(result as u8).into()))
 }
 
 #[cfg(test)]
