@@ -20,23 +20,23 @@ fn p256_verify(i: &Bytes, target_gas: u64) -> PrecompileResult {
     input[..min(i.len(), 160)].copy_from_slice(&i[..min(i.len(), 160)]);
 
     // msg signed (msg is already the hash of the original message)
-    let msg: [u8; 32] = input[..32].try_into().unwrap();
+    let msg: &[u8; 32] = input[..32].try_into().unwrap();
     // r, s: signature
-    let sig: [u8; 64] = input[32..96].try_into().unwrap();
+    let sig: &[u8; 64] = input[32..96].try_into().unwrap();
     // x, y: public key
-    let pk: [u8; 64] = input[96..160].try_into().unwrap();
+    let pk: &[u8; 64] = input[96..160].try_into().unwrap();
     // append 0x04 to the public key: uncompressed form
     let mut uncompressed_pk = [0u8; 65];
     uncompressed_pk[0] = 0x04;
-    uncompressed_pk[1..].copy_from_slice(&pk);
+    uncompressed_pk[1..].copy_from_slice(pk);
 
-    let signature: Signature = Signature::from_slice(&sig).unwrap();
+    let signature: Signature = Signature::from_slice(sig).unwrap();
     let public_key: VerifyingKey = VerifyingKey::from_sec1_bytes(&uncompressed_pk).unwrap();
 
     let mut result = [0u8; 32];
 
     // verify
-    if public_key.verify_prehash(&msg, &signature).is_ok() {
+    if public_key.verify_prehash(msg, &signature).is_ok() {
         result[31] = 0x01;
         Ok((P256VERIFY_BASE, result.into()))
     } else {
