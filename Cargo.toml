@@ -63,3 +63,6 @@ revm-primitives = { version = "2.1.0", features = ["std"], default-features = fa
 clap = "4"
 eyre = "0.6.12"
 tracing = "0.1.0"
+
+# misc-testing
+rstest = "0.18.2"

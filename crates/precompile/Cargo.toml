@@ -14,5 +14,8 @@ p256 = { version = "0.13.2", features = ["ecdsa"] }
 reth.workspace = true
 revm-primitives.workspace = true
 
+[dev-dependencies]
+rstest.workspace = true
+
 [lints]
 workspace = true
