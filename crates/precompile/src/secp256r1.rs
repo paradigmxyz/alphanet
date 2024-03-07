@@ -3,7 +3,7 @@ use revm_primitives::{Bytes, PrecompileError, PrecompileResult, StandardPrecompi
 
 /// EIP-7212 secp256r1 precompile.
 pub const P256VERIFY: PrecompileWithAddress = PrecompileWithAddress(
-    crate::u64_to_address(10),
+    crate::u64_to_address(11), /* 0x0b according to https://eips.ethereum.org/EIPS/eip-7212#specification */
     Precompile::Standard(p256_verify as StandardPrecompileFn),
 );
 
