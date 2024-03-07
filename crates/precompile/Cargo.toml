@@ -1,5 +1,5 @@
 [package]
-name = "alphanet-node"
+name = "alphanet-precompile"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,10 +10,12 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
-alphanet-precompile.workspace = true
+p256 = { version = "0.13.2", features = ["ecdsa"] }
 reth.workspace = true
-reth-node-api.workspace = true
-reth-node-optimism.workspace = true
+revm-primitives.workspace = true
+
+[dev-dependencies]
+rstest.workspace = true
 
 [lints]
 workspace = true
