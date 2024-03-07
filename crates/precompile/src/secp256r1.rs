@@ -1,4 +1,4 @@
-use reth::revm::precompile::{Precompile, PrecompileWithAddress};
+use reth::revm::precompile::{utilities::right_pad, Precompile, PrecompileWithAddress};
 use revm_primitives::{Bytes, PrecompileError, PrecompileResult, StandardPrecompileFn};
 
 /// EIP-7212 secp256r1 precompile.
@@ -8,7 +8,6 @@ pub const P256VERIFY: PrecompileWithAddress = PrecompileWithAddress(
 );
 
 fn p256_verify(i: &Bytes, target_gas: u64) -> PrecompileResult {
-    use core::cmp::min;
     use p256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
 
     const P256VERIFY_BASE: u64 = 3_450;
@@ -16,8 +15,7 @@ fn p256_verify(i: &Bytes, target_gas: u64) -> PrecompileResult {
     if P256VERIFY_BASE > target_gas {
         return Err(PrecompileError::OutOfGas);
     }
-    let mut input = [0u8; 160];
-    input[..min(i.len(), 160)].copy_from_slice(&i[..min(i.len(), 160)]);
+    let input = right_pad::<160>(i);
 
     // msg signed (msg is already the hash of the original message)
     let msg: &[u8; 32] = input[..32].try_into().unwrap();
