@@ -36,6 +36,19 @@ jobs:
             --workspace \
             -E 'kind(test)'
 
+  eip3074-bytecode-generation:
+    name: eip3074-bytecode-generation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: fgimenez/eip-3074-tools@v1
+        with:
+          foundry-directory: testing/eip3074
+      - name: Check
+        run: |
+          pwd
+          ls -al testing/eip3074/out
+
   integration-success:
     name: integration success
     runs-on: ubuntu-latest
