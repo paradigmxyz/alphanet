@@ -11,7 +11,7 @@ categories.workspace = true
 
 [dependencies]
 p256 = { version = "0.13.2", features = ["ecdsa"] }
-reth.workspace = true
+revm-precompile.workspace = true
 revm-primitives.workspace = true
 
 [dev-dependencies]

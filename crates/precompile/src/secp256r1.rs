@@ -1,25 +1,27 @@
-use reth::revm::precompile::{Precompile, PrecompileWithAddress};
-use revm_primitives::{Bytes, PrecompileError, PrecompileResult, StandardPrecompileFn, B256};
+use p256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
+use revm_precompile::{Precompile, PrecompileWithAddress};
+use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
 
-/// EIP-7212 secp256r1 precompile.
-pub const P256VERIFY: PrecompileWithAddress = PrecompileWithAddress(
-    crate::u64_to_address(0x0b), /* 0x0b according to https://eips.ethereum.org/EIPS/eip-7212#specification */
-    Precompile::Standard(p256_verify as StandardPrecompileFn),
-);
+/// [EIP-7212](https://eips.ethereum.org/EIPS/eip-7212#specification) secp256r1 precompile.
+pub const P256VERIFY: PrecompileWithAddress =
+    PrecompileWithAddress(crate::u64_to_address(0x0b), Precompile::Standard(p256_verify));
 
 /// The input is encoded as follows:
 /// | signed msg hash |  r  |  s  | pk x | pk y |
 /// |        32       | 32  | 32  |  32  |  32  |
-fn p256_verify(input: &Bytes, target_gas: u64) -> PrecompileResult {
-    use p256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
-
+fn p256_verify(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     const P256VERIFY_BASE: u64 = 3_450;
-
-    if P256VERIFY_BASE > target_gas {
+    if P256VERIFY_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
     }
+    let result = verify_impl(input).is_some();
+    Ok((P256VERIFY_BASE, B256::with_last_byte(result as u8).into()))
+}
+
+/// Returns `Some(())` if the signature is valid, `None` otherwise.
+fn verify_impl(input: &[u8]) -> Option<()> {
     if input.len() < 160 {
-        return Ok((P256VERIFY_BASE, B256::ZERO.into()));
+        return None;
     }
 
     // msg signed (msg is already the hash of the original message)
@@ -28,22 +30,24 @@ fn p256_verify(input: &Bytes, target_gas: u64) -> PrecompileResult {
     let sig: &[u8; 64] = input[32..96].try_into().unwrap();
     // x, y: public key
     let pk: &[u8; 64] = input[96..160].try_into().unwrap();
+
     // append 0x04 to the public key: uncompressed form
     let mut uncompressed_pk = [0u8; 65];
     uncompressed_pk[0] = 0x04;
     uncompressed_pk[1..].copy_from_slice(pk);
 
-    let signature: Signature = Signature::from_slice(sig).unwrap();
-    let public_key: VerifyingKey = VerifyingKey::from_sec1_bytes(&uncompressed_pk).unwrap();
+    // Can fail only if the input is not exact length.
+    let signature = Signature::from_slice(sig).unwrap();
+    // Can fail if the input is not valid, so we have to propagate the error.
+    let public_key = VerifyingKey::from_sec1_bytes(&uncompressed_pk).ok()?;
 
-    let result = public_key.verify_prehash(msg, &signature).is_ok();
-    Ok((P256VERIFY_BASE, B256::with_last_byte(result as u8).into()))
+    public_key.verify_prehash(msg, &signature).ok()
 }
 
 #[cfg(test)]
 mod test {
-    use super::p256_verify;
-    use revm_primitives::{hex::FromHex, Bytes, PrecompileError, B256};
+    use super::*;
+    use revm_primitives::hex::FromHex;
     use rstest::rstest;
 
     #[rstest]
@@ -85,5 +89,15 @@ mod test {
 
         assert!(result.is_ok());
         assert_eq!(result.ok(), Some((3_450u64, B256::ZERO.into())));
+    }
+
+    #[rstest]
+    #[case::ok_1("b5a77e7a90aa14e0bf5f337f06f597148676424fae26e175c6e5621c34351955289f319789da424845c9eac935245fcddd805950e2f02506d09be7e411199556d262144475b1fa46ad85250728c600c53dfd10f8b3f4adf140e27241aec3c2da3a81046703fccf468b48b145f939efdbb96c3786db712b3113bb2488ef286cdcef8afe82d200a5bb36b5462166e8ce77f2d831a52ef2135b2af188110beaefb1", true)]
+    #[case::fail_1("b5a77e7a90aa14e0bf5f337f06f597148676424fae26e175c6e5621c34351955289f319789da424845c9eac935245fcddd805950e2f02506d09be7e411199556d262144475b1fa46ad85250728c600c53dfd10f8b3f4adf140e27241aec3c2daaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaef8afe82d200a5bb36b5462166e8ce77f2d831a52ef2135b2af188110beaefb1", false)]
+    fn test_verify_impl(#[case] input: &str, #[case] expect_success: bool) {
+        let input = Bytes::from_hex(input).unwrap();
+        let result = verify_impl(&input);
+
+        assert_eq!(result.is_some(), expect_success);
     }
 }

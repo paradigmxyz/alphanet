@@ -57,6 +57,7 @@ reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "96fcdfb
 # revm
 revm = { version = "6.1.0", features = ["std", "secp256k1"], default-features = false }
 revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "7068d39" }
+revm-precompile = { version = "4.1.0", features = ["std"], default-features = false }
 revm-primitives = { version = "2.1.0", features = ["std"], default-features = false }
 
 # misc
