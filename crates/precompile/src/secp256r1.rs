@@ -46,8 +46,8 @@ fn verify_impl(input: &[u8]) -> Option<()> {
 
 #[cfg(test)]
 mod test {
-    use super::p256_verify;
-    use revm_primitives::{hex::FromHex, Bytes, PrecompileError, B256};
+    use super::*;
+    use revm_primitives::hex::FromHex;
     use rstest::rstest;
 
     #[rstest]
@@ -89,5 +89,15 @@ mod test {
 
         assert!(result.is_ok());
         assert_eq!(result.ok(), Some((3_450u64, B256::ZERO.into())));
+    }
+
+    #[rstest]
+    #[case::ok_1("b5a77e7a90aa14e0bf5f337f06f597148676424fae26e175c6e5621c34351955289f319789da424845c9eac935245fcddd805950e2f02506d09be7e411199556d262144475b1fa46ad85250728c600c53dfd10f8b3f4adf140e27241aec3c2da3a81046703fccf468b48b145f939efdbb96c3786db712b3113bb2488ef286cdcef8afe82d200a5bb36b5462166e8ce77f2d831a52ef2135b2af188110beaefb1", true)]
+    #[case::fail_1("b5a77e7a90aa14e0bf5f337f06f597148676424fae26e175c6e5621c34351955289f319789da424845c9eac935245fcddd805950e2f02506d09be7e411199556d262144475b1fa46ad85250728c600c53dfd10f8b3f4adf140e27241aec3c2daaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaef8afe82d200a5bb36b5462166e8ce77f2d831a52ef2135b2af188110beaefb1", false)]
+    fn test_verify_impl(#[case] input: &str, #[case] expect_success: bool) {
+        let input = Bytes::from_hex(input).unwrap();
+        let result = verify_impl(&input);
+
+        assert_eq!(result.is_some(), expect_success);
     }
 }
