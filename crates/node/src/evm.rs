@@ -37,7 +37,7 @@ impl AlphaNetEvmConfig {
         handler.pre_execution.load_precompiles = Arc::new(move || {
             let mut precompiles = Precompiles::new(PrecompileSpecId::from_spec_id(spec_id)).clone();
             precompiles.inner.insert(P256VERIFY.0, P256VERIFY.1);
-            precompiles
+            precompiles.into()
         });
     }
 }

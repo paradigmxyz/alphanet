@@ -29,6 +29,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
+      - name: Check bytecode is up to date with source
+        run: |
+          make check-eip3074-bytecode
       - name: Run tests
         run: |
           cargo nextest run \
