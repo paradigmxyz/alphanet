@@ -1,7 +1,7 @@
 .PHONY: build-eip3074-bytecode
 build-eip3074-bytecode:
 	docker run --rm \
-		-v $$(pwd)/testing/eip3074:/app/foundry \
+		-v $$(pwd)/crates/testing/resources/eip3074:/app/foundry \
 		-u $$(id -u):$$(id -g) \
 		ghcr.io/fgimenez/eip3074-tools:latest \
 		--foundry-directory /app/foundry \

@@ -1,5 +1,5 @@
 [workspace]
-members = ["bin/alphanet/", "crates/node", "crates/precompile"]
+members = ["bin/alphanet/", "crates/node", "crates/precompile", "crates/testing"]
 default-members = ["bin/alphanet/"]
 resolver = "2"
 
