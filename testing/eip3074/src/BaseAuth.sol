@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 /// @title BaseAuth
 /// @author Anna Carroll <https://github.com/anna-carroll/3074>
-abstract contract BaseAuth {
+contract BaseAuth {
     /// @notice magic byte to disambiguate EIP-3074 signature payloads
     uint8 constant MAGIC = 0x04;
 
@@ -23,7 +23,7 @@ abstract contract BaseAuth {
 
     function authSimple(address authority, bytes32 commit, uint8 v, bytes32 r, bytes32 s)
         pure
-        internal
+        external
         returns (bool success)
     {
         bytes memory authArgs = abi.encodePacked(yParity(v), r, s, commit);
@@ -34,7 +34,7 @@ abstract contract BaseAuth {
 
     function authCallSimple(address to, bytes memory data, uint256 value, uint256 gasLimit)
         pure
-        internal
+        external
         returns (bool success)
     {
         assembly {
