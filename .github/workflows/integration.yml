@@ -29,25 +29,15 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
+      - name: Check bytecode is up to date with source
+        run: |
+          make check-eip3074-bytecode
       - name: Run tests
         run: |
           cargo nextest run \
             --locked \
             --workspace \
             -E 'kind(test)'
-
-  eip3074-bytecode-generation:
-    name: eip3074-bytecode-generation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: fgimenez/eip-3074-tools@v1
-        with:
-          foundry-directory: testing/eip3074
-      - name: Check
-        run: |
-          pwd
-          ls -al testing/eip3074/out
 
   integration-success:
     name: integration success
