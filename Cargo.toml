@@ -49,16 +49,16 @@ alphanet-precompile = { path = "crates/precompile" }
 tokio = { version = "1.21", default-features = false }
 
 # reth
-reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "96fcdfb", features = ["optimism"] }
-reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "96fcdfb" }
-reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "96fcdfb" }
-reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "96fcdfb" }
+reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "82b6504", features = ["optimism"] }
+reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "82b6504" }
+reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "82b6504" }
+reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "82b6504" }
 
 # revm
-revm = { version = "6.1.0", features = ["std", "secp256k1"], default-features = false }
-revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "7068d39" }
-revm-precompile = { version = "4.1.0", features = ["std"], default-features = false }
-revm-primitives = { version = "2.1.0", features = ["std"], default-features = false }
+revm = { version = "7.1.0", features = ["std", "secp256k1"], default-features = false }
+revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "1f935e7" }
+revm-precompile = { version = "5.0.0", features = ["std"], default-features = false }
+revm-primitives = { version = "3.0.0", features = ["std"], default-features = false }
 
 # misc
 clap = "4"
