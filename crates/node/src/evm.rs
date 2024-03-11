@@ -40,6 +40,23 @@ impl AlphaNetEvmConfig {
             precompiles.into()
         });
     }
+
+    /// Appends custom instructions to the EVM handler
+    ///
+    /// This will be invoked when the EVM is created via [ConfigureEvm::evm] or
+    /// [ConfigureEvm::evm_with_inspector]
+    ///
+    /// This will use the default mainnet instructions and append additional instructions.
+    pub fn append_custom_instructions<EXT, DB>(handler: &mut EvmHandler<'_, EXT, DB>)
+    where
+        DB: Database,
+    {
+        let mut instruction_table = handler.take_instruction_table().unwrap();
+
+        // TODO: add new instructions
+
+        handler.set_instruction_table(instruction_table);
+    }
 }
 
 impl ConfigureEvm for AlphaNetEvmConfig {
@@ -48,6 +65,8 @@ impl ConfigureEvm for AlphaNetEvmConfig {
             .with_db(db)
             // add additional precompiles
             .append_handler_register(Self::set_precompiles)
+            // add custom instructions
+            .append_handler_register(Self::append_custom_instructions)
             .build()
     }
 
@@ -57,6 +76,8 @@ impl ConfigureEvm for AlphaNetEvmConfig {
             .with_external_context(inspector)
             // add additional precompiles
             .append_handler_register(Self::set_precompiles)
+            // add custom instructions
+            .append_handler_register(Self::append_custom_instructions)
             .build()
     }
 }
