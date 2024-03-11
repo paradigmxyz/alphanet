@@ -29,3 +29,5 @@ lcov.info
 
 # Rust bug report
 rustc-ice-*
+
+testing/eip3074/cache/*
