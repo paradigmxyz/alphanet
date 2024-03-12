@@ -1,5 +1,5 @@
 use revm::{Database, Evm};
-use revm_interpreter::{Instruction, Interpreter};
+use revm_interpreter::{Instruction, InstructionResult, Interpreter};
 
 const CUSTOM_INSTRUCTION_COST: u64 = 133;
 const AUTH_OPCODE: u8 = 0xF6;
@@ -23,7 +23,12 @@ pub struct InstructionWithOpCode<H> {
 }
 
 fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, _evm: &mut Evm<'_, EXT, DB>) {
-    interp.gas.record_cost(CUSTOM_INSTRUCTION_COST);
+    if interp.stack.len() < 3 {
+        interp.instruction_result = InstructionResult::StackUnderflow;
+        return;
+    }
+    // SAFETY: length checked above
+    let (_authority, _offset, _length) = unsafe { interp.stack.pop3_unsafe() };
 }
 
 /// AUTH's opcode and instruction.
@@ -43,11 +48,15 @@ pub fn authcall<'a, EXT, DB: Database>() -> InstructionWithOpCode<Evm<'a, EXT, D
 #[cfg(test)]
 mod tests {
     use super::*;
+    use revm::{
+        db::{CacheDB, EmptyDBTyped},
+        InMemoryDB,
+    };
     use revm_interpreter::Contract;
     use revm_primitives::{Address, Bytecode, Bytes, B256};
+    use std::convert::Infallible;
 
-    #[test]
-    fn test_auth_instruction() {
+    fn test_interpreter() -> Interpreter {
         let code = Bytecode::new_raw([AUTH_OPCODE, 0x00].into());
         let code_hash = code.hash_slow();
         let contract = Contract::new(
@@ -59,18 +68,29 @@ mod tests {
             B256::ZERO.into(),
         );
 
-        let mut interpreter = Interpreter::new(Box::new(contract), 3000000, true);
+        let interpreter = Interpreter::new(Box::new(contract), 3000000, true);
         assert_eq!(interpreter.gas.spend(), 0);
 
-        let mut evm = Evm::builder()
+        interpreter
+    }
+
+    fn test_evm() -> Evm<'static, (), CacheDB<EmptyDBTyped<Infallible>>> {
+        Evm::builder()
+            .with_db(InMemoryDB::default())
             .append_handler_register(|handler| {
                 if let Some(ref mut table) = handler.instruction_table {
-                    table.insert(AUTH_OPCODE, auth_instruction)
+                    table.insert(AUTH_OPCODE, auth_instruction);
                 }
             })
-            .build();
+            .build()
+    }
+
+    #[test]
+    fn test_auth_instruction_stack_underflow() {
+        let mut interpreter = test_interpreter();
+        let mut evm = test_evm();
 
         auth_instruction(&mut interpreter, &mut evm);
-        assert_eq!(interpreter.gas.spend(), CUSTOM_INSTRUCTION_COST);
+        assert_eq!(interpreter.instruction_result, InstructionResult::StackUnderflow);
     }
 }
