@@ -1,3 +1,4 @@
+use alphanet_instructions::eip3074;
 use alphanet_precompile::secp256r1::P256VERIFY;
 use reth::{
     primitives::{
@@ -26,7 +27,7 @@ impl AlphaNetEvmConfig {
     /// [ConfigureEvm::evm_with_inspector]
     ///
     /// This will use the default mainnet precompiles and add additional precompiles.
-    pub fn set_precompiles<EXT, DB>(handler: &mut EvmHandler<'_, EXT, DB>)
+    fn set_precompiles<EXT, DB>(handler: &mut EvmHandler<'_, EXT, DB>)
     where
         DB: Database,
     {
@@ -47,15 +48,16 @@ impl AlphaNetEvmConfig {
     /// [ConfigureEvm::evm_with_inspector]
     ///
     /// This will use the default mainnet instructions and append additional instructions.
-    pub fn append_custom_instructions<EXT, DB>(handler: &mut EvmHandler<'_, EXT, DB>)
+    fn append_custom_instructions<EXT, DB>(handler: &mut EvmHandler<'_, EXT, DB>)
     where
         DB: Database,
     {
-        let mut instruction_table = handler.take_instruction_table().unwrap();
-
-        // TODO: add new instructions
-
-        handler.set_instruction_table(instruction_table);
+        if let Some(ref mut table) = handler.instruction_table {
+            let auth = eip3074::auth();
+            table.insert(auth.opcode, auth.instruction);
+            let authcall = eip3074::authcall();
+            table.insert(authcall.opcode, authcall.instruction);
+        }
     }
 }
 
