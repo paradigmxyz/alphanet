@@ -344,9 +344,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "alphanet-instructions"
+version = "0.0.0"
+dependencies = [
+ "revm",
+ "revm-interpreter",
+]
+
+[[package]]
 name = "alphanet-node"
 version = "0.0.0"
 dependencies = [
+ "alphanet-instructions",
  "alphanet-precompile",
  "reth",
  "reth-node-api",
