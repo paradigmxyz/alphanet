@@ -36,21 +36,20 @@ jobs:
             --workspace \
             -E "kind(lib) | kind(bin) | kind(proc-macro)"
 
-# TODO: uncomment when we have library a target
-#   doc:
-#     name: doc tests
-#     env:
-#       RUST_BACKTRACE: 1
-#     timeout-minutes: 30
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@v4
-#       - uses: dtolnay/rust-toolchain@stable
-#       - uses: Swatinem/rust-cache@v2
-#         with:
-#           cache-on-failure: true
-#       - name: Run doctests
-#         run: cargo test --doc --workspace
+  doc:
+    name: doc tests
+    env:
+      RUST_BACKTRACE: 1
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Run doctests
+        run: cargo test --doc --workspace
 
   unit-success:
     name: unit success
