@@ -2,6 +2,8 @@ use revm::{Database, Evm};
 use revm_interpreter::{Instruction, Interpreter};
 
 const CUSTOM_INSTRUCTION_COST: u64 = 133;
+const AUTH_OPCODE: u8 = 0xF6;
+const AUTHCALL_OPCODE: u8 = 0xF7;
 
 /// Type alias for a function pointer that initializes instruction objects.
 pub type InstructionInitializer<'a, EXT, DB> = fn() -> InstructionWithOpCode<Evm<'a, EXT, DB>>;
@@ -26,7 +28,7 @@ fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, _evm: &mut Evm<
 
 /// AUTH's opcode and instruction.
 pub fn auth<'a, EXT, DB: Database>() -> InstructionWithOpCode<Evm<'a, EXT, DB>> {
-    InstructionWithOpCode { opcode: 0xF6, instruction: auth_instruction::<EXT, DB> }
+    InstructionWithOpCode { opcode: AUTH_OPCODE, instruction: auth_instruction::<EXT, DB> }
 }
 
 fn authcall_instruction<EXT, DB: Database>(interp: &mut Interpreter, _evm: &mut Evm<'_, EXT, DB>) {
@@ -35,7 +37,7 @@ fn authcall_instruction<EXT, DB: Database>(interp: &mut Interpreter, _evm: &mut 
 
 /// AUTHCALL's opcode and instruction.
 pub fn authcall<'a, EXT, DB: Database>() -> InstructionWithOpCode<Evm<'a, EXT, DB>> {
-    InstructionWithOpCode { opcode: 0xF7, instruction: authcall_instruction::<EXT, DB> }
+    InstructionWithOpCode { opcode: AUTHCALL_OPCODE, instruction: authcall_instruction::<EXT, DB> }
 }
 
 #[cfg(test)]
@@ -46,7 +48,7 @@ mod tests {
 
     #[test]
     fn test_auth_instruction() {
-        let code = Bytecode::new_raw([0xF6, 0x00].into());
+        let code = Bytecode::new_raw([AUTH_OPCODE, 0x00].into());
         let code_hash = code.hash_slow();
         let contract = Contract::new(
             Bytes::new(),
@@ -63,7 +65,7 @@ mod tests {
         let mut evm = Evm::builder()
             .append_handler_register(|handler| {
                 if let Some(ref mut table) = handler.instruction_table {
-                    table.insert(0xEF, auth_instruction)
+                    table.insert(AUTH_OPCODE, auth_instruction)
                 }
             })
             .build();
