@@ -3,6 +3,14 @@ use revm_interpreter::{Instruction, Interpreter};
 
 const CUSTOM_INSTRUCTION_COST: u64 = 133;
 
+/// Type alias for a function pointer that initializes instruction objects.
+pub type InstructionInitializer<'a, EXT, DB> = fn() -> InstructionWithOpCode<Evm<'a, EXT, DB>>;
+
+/// Constructs and returns a collection of instruction initializers.
+pub fn initializers<'a, EXT, DB: Database>() -> Vec<InstructionInitializer<'a, EXT, DB>> {
+    vec![auth::<EXT, DB>, authcall::<EXT, DB>]
+}
+
 /// Association of OpCode and correspondent instruction.
 #[derive(Clone, Debug)]
 pub struct InstructionWithOpCode<H> {

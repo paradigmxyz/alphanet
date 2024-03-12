@@ -53,10 +53,12 @@ impl AlphaNetEvmConfig {
         DB: Database,
     {
         if let Some(ref mut table) = handler.instruction_table {
-            let auth = eip3074::auth();
-            table.insert(auth.opcode, auth.instruction);
-            let authcall = eip3074::authcall();
-            table.insert(authcall.opcode, authcall.instruction);
+            let eip3074_initializers = eip3074::initializers::<EXT, DB>();
+
+            for init in eip3074_initializers {
+                let instruction_with_opcode = init();
+                table.insert(instruction_with_opcode.opcode, instruction_with_opcode.instruction);
+            }
         }
     }
 }
