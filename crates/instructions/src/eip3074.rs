@@ -37,3 +37,38 @@ fn authcall_instruction<EXT, DB: Database>(interp: &mut Interpreter, _evm: &mut 
 pub fn authcall<'a, EXT, DB: Database>() -> InstructionWithOpCode<Evm<'a, EXT, DB>> {
     InstructionWithOpCode { opcode: 0xF7, instruction: authcall_instruction::<EXT, DB> }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use revm_interpreter::Contract;
+    use revm_primitives::{Address, Bytecode, Bytes, B256};
+
+    #[test]
+    fn test_auth_instruction() {
+        let code = Bytecode::new_raw([0xF6, 0x00].into());
+        let code_hash = code.hash_slow();
+        let contract = Contract::new(
+            Bytes::new(),
+            code,
+            code_hash,
+            Address::default(),
+            Address::default(),
+            B256::ZERO.into(),
+        );
+
+        let mut interpreter = Interpreter::new(Box::new(contract), 3000000, true);
+        assert_eq!(interpreter.gas.spend(), 0);
+
+        let mut evm = Evm::builder()
+            .append_handler_register(|handler| {
+                if let Some(ref mut table) = handler.instruction_table {
+                    table.insert(0xEF, auth_instruction)
+                }
+            })
+            .build();
+
+        auth_instruction(&mut interpreter, &mut evm);
+        assert_eq!(interpreter.gas.spend(), CUSTOM_INSTRUCTION_COST);
+    }
+}

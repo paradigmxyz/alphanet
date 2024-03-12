@@ -13,5 +13,8 @@ categories.workspace = true
 revm.workspace = true
 revm-interpreter.workspace = true
 
+[dev-dependencies]
+revm-primitives = { version = "3.0.0", features = ["std"], default-features = false }
+
 [lints]
 workspace = true
