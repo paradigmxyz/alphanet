@@ -186,7 +186,7 @@ mod tests {
         interpreter.stack.push_b256(B256::left_padding_from(authority.as_slice())).unwrap();
 
         let commit = B256::ZERO;
-        let msg = compose_msg(1, 1, Address::default(), commit);
+        let msg = compose_msg(1, 0, Address::default(), commit);
 
         let sig = secp.sign_ecdsa_recoverable(
             &Message::from_digest_slice(msg.as_slice()).unwrap(),
