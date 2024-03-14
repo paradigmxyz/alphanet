@@ -1,5 +1,7 @@
 use revm::{Database, Evm};
-use revm_interpreter::{Instruction, InstructionResult, Interpreter};
+use revm_interpreter::{
+    gas::memory_gas, next_multiple_of_32, Instruction, InstructionResult, Interpreter,
+};
 use revm_primitives::{alloy_primitives::B512, keccak256, Address, B256};
 use secp256k1::{
     ecdsa::{RecoverableSignature, RecoveryId},
@@ -56,12 +58,14 @@ fn compose_msg(chain_id: u64, nonce: u64, invoker_address: Address, commit: B256
 fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'_, EXT, DB>) {
     interp.gas.record_cost(3100); // fixed fee
 
+    // TODO: use pop_ret! from revm-interpreter
     if interp.stack.len() < 3 {
         interp.instruction_result = InstructionResult::StackUnderflow;
         return;
     }
     // SAFETY: length checked above
-    let (authority, offset, _length) = unsafe { interp.stack.pop3_unsafe() };
+    let (authority, offset, length) = unsafe { interp.stack.pop3_unsafe() };
+
     let authority = Address::from_slice(&authority.to_be_bytes::<32>()[12..]);
 
     interp.gas.record_cost(if evm.context.evm.journaled_state.state.contains_key(&authority) {
@@ -70,8 +74,24 @@ fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'
         2600
     }); // authority state fee
 
-    // read yParity, r, s and commit from memory using offset and length
+    // TODO: use shared_memory_resize! from revm-interpreter
+    let length = length.saturating_to::<usize>();
     let offset = offset.saturating_to::<usize>();
+    if length != 0 {
+        let size = offset.saturating_add(length);
+        if size > interp.shared_memory.len() {
+            let rounded_size = next_multiple_of_32(size);
+
+            let words_num = rounded_size / 32;
+            if !interp.gas.record_memory(memory_gas(words_num)) {
+                interp.instruction_result = InstructionResult::MemoryLimitOOG;
+                return;
+            }
+            interp.shared_memory.resize(rounded_size);
+        }
+    }
+
+    // read yParity, r, s and commit from memory using offset and length
     let y_parity = interp.shared_memory.get_byte(offset);
     let r = interp.shared_memory.get_word(offset + 1);
     let s = interp.shared_memory.get_word(offset + 33);
@@ -173,6 +193,10 @@ mod tests {
 
         auth_instruction(&mut interpreter, &mut evm);
         assert_eq!(interpreter.instruction_result, InstructionResult::StackUnderflow);
+
+        // check gas
+        let expected_gas = 3100; // fixed_fee
+        assert_eq!(expected_gas, interpreter.gas.spend());
     }
 
     #[test]
@@ -202,6 +226,7 @@ mod tests {
         let y_parity = recid.to_i32();
         let r = B256::from_slice(&ret[..32]);
         let s = B256::from_slice(&ret[32..]);
+
         interpreter.shared_memory.resize(100);
         interpreter.shared_memory.set_byte(offset, y_parity.try_into().unwrap());
         interpreter.shared_memory.set_word(offset + 1, &r);
