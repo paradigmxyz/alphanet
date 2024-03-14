@@ -3,7 +3,7 @@ use revm_interpreter::{Instruction, InstructionResult, Interpreter};
 use revm_primitives::{alloy_primitives::B512, keccak256, Address, B256};
 use secp256k1::{
     ecdsa::{RecoverableSignature, RecoveryId},
-    Message, PublicKey, Secp256k1,
+    Message, Secp256k1,
 };
 
 const CUSTOM_INSTRUCTION_COST: u64 = 133;
@@ -27,11 +27,6 @@ pub struct InstructionWithOpCode<H> {
     pub instruction: Instruction<H>,
 }
 
-fn pk_to_address(pk: PublicKey) -> Address {
-    let hash = keccak256(&pk.serialize_uncompressed()[1..]);
-    Address::from_slice(&hash[12..])
-}
-
 /// secp256k1-based ecrecover implementation.
 fn ecrecover(sig: &B512, recid: u8, msg: &B256) -> Result<Address, secp256k1::Error> {
     let recid = RecoveryId::from_i32(recid as i32).expect("recovery ID is valid");
@@ -41,7 +36,8 @@ fn ecrecover(sig: &B512, recid: u8, msg: &B256) -> Result<Address, secp256k1::Er
     let msg = Message::from_digest_slice(msg.as_slice())?;
     let public = secp.recover_ecdsa(&msg, &sig)?;
 
-    Ok(pk_to_address(public))
+    let hash = keccak256(&public.serialize_uncompressed()[1..]);
+    Ok(Address::from_slice(&hash[12..]))
 }
 
 // keccak256(MAGIC || chainId || nonce || invokerAddress || commit)
@@ -58,12 +54,21 @@ fn compose_msg(chain_id: u64, nonce: u64, invoker_address: Address, commit: B256
 }
 
 fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'_, EXT, DB>) {
+    interp.gas.record_cost(3100); // fixed fee
+
     if interp.stack.len() < 3 {
         interp.instruction_result = InstructionResult::StackUnderflow;
         return;
     }
     // SAFETY: length checked above
     let (authority, offset, _length) = unsafe { interp.stack.pop3_unsafe() };
+    let authority = Address::from_slice(&authority.to_be_bytes::<32>()[12..]);
+
+    interp.gas.record_cost(if evm.context.evm.journaled_state.state.contains_key(&authority) {
+        100
+    } else {
+        2600
+    }); // authority state fee
 
     // read yParity, r, s and commit from memory using offset and length
     let offset = offset.saturating_to::<usize>();
@@ -91,7 +96,7 @@ fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'
         }
     };
 
-    let result = if signer == Address::from_slice(&authority.to_be_bytes::<32>()[12..]) {
+    let result = if signer == authority {
         // set authorized context variable to authority
 
         B256::with_last_byte(1)
@@ -129,7 +134,7 @@ mod tests {
     };
     use revm_interpreter::Contract;
     use revm_primitives::{Bytecode, Bytes, U256};
-    use secp256k1::{rand, SecretKey};
+    use secp256k1::{rand, PublicKey, SecretKey};
     use std::convert::Infallible;
 
     fn test_interpreter() -> Interpreter {
@@ -178,7 +183,8 @@ mod tests {
         let secret_key = SecretKey::new(&mut rand::thread_rng());
         let public_key = PublicKey::from_secret_key(&secp, &secret_key);
 
-        let authority = pk_to_address(public_key);
+        let hash = keccak256(&public_key.serialize_uncompressed()[1..]);
+        let authority = Address::from_slice(&hash[12..]);
         let offset = 0;
         let lenght = 97;
         interpreter.stack.push(U256::from(lenght)).unwrap();
@@ -209,5 +215,11 @@ mod tests {
         assert_eq!(interpreter.instruction_result, InstructionResult::Continue);
         let result = interpreter.stack.pop().unwrap();
         assert_eq!(result.saturating_to::<usize>(), 1);
+
+        // check gas
+        let expected_gas = 3100 + 2600; // fixed_fee + cold authority
+        assert_eq!(expected_gas, interpreter.gas.spend());
+
+        // TODO: check authorized context variable set
     }
 }
