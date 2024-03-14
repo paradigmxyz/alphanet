@@ -1,11 +1,14 @@
 use revm::{Database, Evm};
 use revm_interpreter::{Instruction, InstructionResult, Interpreter};
-use revm_primitives::{keccak256, B256};
+use revm_primitives::{alloy_primitives::B512, keccak256, Address, B256};
+use secp256k1::{
+    ecdsa::{RecoverableSignature, RecoveryId},
+    Message, PublicKey, Secp256k1,
+};
 
 const CUSTOM_INSTRUCTION_COST: u64 = 133;
 const AUTH_OPCODE: u8 = 0xF6;
 const AUTHCALL_OPCODE: u8 = 0xF7;
-const MAGIC: u8 = 0x04;
 
 /// Type alias for a function pointer that initializes instruction objects.
 pub type InstructionInitializer<'a, EXT, DB> = fn() -> InstructionWithOpCode<Evm<'a, EXT, DB>>;
@@ -24,6 +27,36 @@ pub struct InstructionWithOpCode<H> {
     pub instruction: Instruction<H>,
 }
 
+fn pk_to_address(pk: PublicKey) -> Address {
+    let hash = keccak256(&pk.serialize_uncompressed()[1..]);
+    Address::from_slice(&hash[12..])
+}
+
+/// secp256k1-based ecrecover implementation.
+fn ecrecover(sig: &B512, recid: u8, msg: &B256) -> Result<Address, secp256k1::Error> {
+    let recid = RecoveryId::from_i32(recid as i32).expect("recovery ID is valid");
+    let sig = RecoverableSignature::from_compact(sig.as_slice(), recid)?;
+
+    let secp = Secp256k1::new();
+    let msg = Message::from_digest_slice(msg.as_slice())?;
+    let public = secp.recover_ecdsa(&msg, &sig)?;
+
+    Ok(pk_to_address(public))
+}
+
+// keccak256(MAGIC || chainId || nonce || invokerAddress || commit)
+fn compose_msg(chain_id: u64, nonce: u64, invoker_address: Address, commit: B256) -> B256 {
+    const MAGIC: u8 = 0x04;
+
+    let mut msg = Vec::<u8>::with_capacity(129);
+    msg.push(MAGIC);
+    msg.extend_from_slice(B256::left_padding_from(&chain_id.to_be_bytes()).as_slice());
+    msg.extend_from_slice(B256::left_padding_from(&nonce.to_be_bytes()).as_slice());
+    msg.extend_from_slice(B256::left_padding_from(invoker_address.as_slice()).as_slice());
+    msg.extend_from_slice(commit.as_slice());
+    keccak256(msg.as_slice())
+}
+
 fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'_, EXT, DB>) {
     if interp.stack.len() < 3 {
         interp.instruction_result = InstructionResult::StackUnderflow;
@@ -33,29 +66,32 @@ fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'
     let (authority, offset, _length) = unsafe { interp.stack.pop3_unsafe() };
 
     // read yParity, r, s and commit from memory using offset and length
-    let _y_parity = interp.shared_memory.get_byte(offset.saturating_to::<usize>());
-    let _r = interp.shared_memory.get_word(offset.saturating_to::<usize>() + 1);
-    let _s = interp.shared_memory.get_word(offset.saturating_to::<usize>() + 33);
-    let commit = interp.shared_memory.get_word(offset.saturating_to::<usize>() + 65);
+    let offset = offset.saturating_to::<usize>();
+    let y_parity = interp.shared_memory.get_byte(offset);
+    let r = interp.shared_memory.get_word(offset + 1);
+    let s = interp.shared_memory.get_word(offset + 33);
+    let commit = interp.shared_memory.get_word(offset + 65);
 
-    // compose message keccak256(MAGIC || chainId || nonce || invokerAddress || commit)
-    let mut _msg = Vec::<u8>::with_capacity(129);
-    _msg.push(MAGIC);
-    _msg.extend_from_slice(B256::left_padding_from(&evm.cfg().chain_id.to_be_bytes()).as_slice());
-    _msg.extend_from_slice(
-        B256::left_padding_from(&evm.tx().nonce.unwrap_or(0).to_be_bytes()).as_slice(),
+    let msg = compose_msg(
+        evm.cfg().chain_id,
+        evm.tx().nonce.unwrap_or(0),
+        interp.contract.address,
+        commit,
     );
-    _msg.extend_from_slice(B256::left_padding_from(interp.contract.address.as_slice()).as_slice());
-    _msg.extend_from_slice(commit.as_slice());
-    let _msg = keccak256(_msg.as_slice());
 
     // check valid signature
-    let valid_signature = true;
+    let mut sig = Vec::<u8>::with_capacity(64);
+    sig.extend_from_slice(r.as_slice());
+    sig.extend_from_slice(s.as_slice());
+    let signer = match ecrecover(&B512::from_slice(&sig), y_parity, &msg) {
+        Ok(sig) => sig,
+        Err(_) => {
+            interp.instruction_result = InstructionResult::Stop;
+            return;
+        }
+    };
 
-    // extract signer
-    let signer = authority;
-
-    let result = if valid_signature && signer == authority {
+    let result = if signer == Address::from_slice(&authority.to_be_bytes::<32>()[12..]) {
         // set authorized context variable to authority
 
         B256::with_last_byte(1)
@@ -64,6 +100,7 @@ fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'
 
         B256::ZERO
     };
+
     if let Err(e) = interp.stack.push_b256(result) {
         interp.instruction_result = e;
     }
@@ -91,7 +128,8 @@ mod tests {
         InMemoryDB,
     };
     use revm_interpreter::Contract;
-    use revm_primitives::{Address, Bytecode, Bytes, U256};
+    use revm_primitives::{Bytecode, Bytes, U256};
+    use secp256k1::{rand, SecretKey};
     use std::convert::Infallible;
 
     fn test_interpreter() -> Interpreter {
@@ -136,19 +174,30 @@ mod tests {
     fn test_auth_instruction_happy_path() {
         let mut interpreter = test_interpreter();
 
-        let authority = Address::default();
+        let secp = Secp256k1::new();
+        let secret_key = SecretKey::new(&mut rand::thread_rng());
+        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+
+        let authority = pk_to_address(public_key);
         let offset = 0;
         let lenght = 97;
         interpreter.stack.push(U256::from(lenght)).unwrap();
         interpreter.stack.push(U256::from(offset)).unwrap();
-        interpreter.stack.push_slice(authority.as_slice()).unwrap();
+        interpreter.stack.push_b256(B256::left_padding_from(authority.as_slice())).unwrap();
 
-        let y_parity = 1;
-        let r = B256::ZERO;
-        let s = B256::ZERO;
         let commit = B256::ZERO;
-        interpreter.shared_memory.resize(4000);
-        interpreter.shared_memory.set_byte(offset, y_parity);
+        let msg = compose_msg(1, 1, Address::default(), commit);
+
+        let sig = secp.sign_ecdsa_recoverable(
+            &Message::from_digest_slice(msg.as_slice()).unwrap(),
+            &secret_key,
+        );
+        let (recid, ret) = sig.serialize_compact();
+        let y_parity = recid.to_i32();
+        let r = B256::from_slice(&ret[..32]);
+        let s = B256::from_slice(&ret[32..]);
+        interpreter.shared_memory.resize(100);
+        interpreter.shared_memory.set_byte(offset, y_parity.try_into().unwrap());
         interpreter.shared_memory.set_word(offset + 1, &r);
         interpreter.shared_memory.set_word(offset + 33, &s);
         interpreter.shared_memory.set_word(offset + 65, &commit);
