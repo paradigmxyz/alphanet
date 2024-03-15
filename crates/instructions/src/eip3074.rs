@@ -34,7 +34,7 @@ fn ecrecover(sig: &B512, recid: u8, msg: &B256) -> Result<B256, secp256k1::Error
     let sig = RecoverableSignature::from_compact(sig.as_slice(), recid)?;
 
     let secp = Secp256k1::new();
-    let msg = Message::from_digest_slice(msg.as_slice())?;
+    let msg = Message::from_digest(msg.0);
     let public = secp.recover_ecdsa(&msg, &sig)?;
 
     let mut hash = keccak256(&public.serialize_uncompressed()[1..]);
@@ -219,10 +219,7 @@ mod tests {
         let commit = B256::ZERO;
         let msg = compose_msg(1, 0, Address::default(), commit);
 
-        let sig = secp.sign_ecdsa_recoverable(
-            &Message::from_digest_slice(msg.as_slice()).unwrap(),
-            &secret_key,
-        );
+        let sig = secp.sign_ecdsa_recoverable(&Message::from_digest(msg.0), &secret_key);
         let (recid, ret) = sig.serialize_compact();
         let y_parity = recid.to_i32();
         let r = B256::from_slice(&ret[..32]);
@@ -299,10 +296,7 @@ mod tests {
         let commit = B256::ZERO;
         let msg = compose_msg(1, 0, Address::default(), commit);
 
-        let sig = secp.sign_ecdsa_recoverable(
-            &Message::from_digest_slice(msg.as_slice()).unwrap(),
-            &secret_key,
-        );
+        let sig = secp.sign_ecdsa_recoverable(&Message::from_digest(msg.0), &secret_key);
         let (recid, ret) = sig.serialize_compact();
         let y_parity = recid.to_i32();
         let r = B256::from_slice(&ret[..32]);
@@ -343,10 +337,7 @@ mod tests {
         let commit = B256::ZERO;
         let msg = compose_msg(1, 0, Address::default(), commit);
 
-        let sig = secp.sign_ecdsa_recoverable(
-            &Message::from_digest_slice(msg.as_slice()).unwrap(),
-            &secret_key,
-        );
+        let sig = secp.sign_ecdsa_recoverable(&Message::from_digest(msg.0), &secret_key);
         let (recid, ret) = sig.serialize_compact();
         let y_parity = recid.to_i32();
         let r = B256::from_slice(&ret[..32]);
