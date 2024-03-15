@@ -1,5 +1,5 @@
 use alphanet_instructions::eip3074;
-use alphanet_precompile::secp256r1::P256VERIFY;
+use alphanet_precompile::{bls12_381::BLS12_G1ADD, secp256r1::P256VERIFY};
 use reth::{
     primitives::{
         revm::{config::revm_spec, env::fill_op_tx_env},
@@ -38,6 +38,7 @@ impl AlphaNetEvmConfig {
         handler.pre_execution.load_precompiles = Arc::new(move || {
             let mut precompiles = Precompiles::new(PrecompileSpecId::from_spec_id(spec_id)).clone();
             precompiles.inner.insert(P256VERIFY.0, P256VERIFY.1);
+            precompiles.inner.insert(BLS12_G1ADD.0, BLS12_G1ADD.1);
             precompiles.into()
         });
     }
