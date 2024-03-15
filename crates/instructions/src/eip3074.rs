@@ -247,4 +247,31 @@ mod tests {
 
         // TODO: check authorized context variable set
     }
+
+    #[test]
+    fn test_auth_instruction_memory_expansion_gas_recorded() {
+        let mut interpreter = test_interpreter();
+
+        let secp = Secp256k1::new();
+        let secret_key = SecretKey::new(&mut rand::thread_rng());
+        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+
+        let hash = keccak256(&public_key.serialize_uncompressed()[1..]);
+        let authority = Address::from_slice(&hash[12..]);
+        let offset = 0;
+        let lenght = 97;
+        interpreter.stack.push(U256::from(lenght)).unwrap();
+        interpreter.stack.push(U256::from(offset)).unwrap();
+        interpreter.stack.push_b256(B256::left_padding_from(authority.as_slice())).unwrap();
+
+        let mut evm = test_evm();
+
+        auth_instruction(&mut interpreter, &mut evm);
+
+        assert_eq!(interpreter.instruction_result, InstructionResult::Stop);
+
+        // check gas
+        let expected_gas = 3100 + 2600 + 12; // fixed_fee + cold authority + memory expansion
+        assert_eq!(expected_gas, interpreter.gas.spend());
+    }
 }
