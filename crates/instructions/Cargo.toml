@@ -16,7 +16,6 @@ revm-primitives.workspace = true
 secp256k1.workspace = true
 
 [dev-dependencies]
-revm.workspace = true
 secp256k1 = { version = "0.28.2", default-features = false, features = [
     "alloc",
     "recovery",
