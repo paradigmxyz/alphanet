@@ -1,10 +1,13 @@
+use crate::addresses::P256VERIFY_ADDRESS;
 use p256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
 use revm_precompile::{Precompile, PrecompileWithAddress};
 use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
 
 /// [EIP-7212](https://eips.ethereum.org/EIPS/eip-7212#specification) secp256r1 precompile.
-pub const P256VERIFY: PrecompileWithAddress =
-    PrecompileWithAddress(crate::u64_to_address(0x0b), Precompile::Standard(p256_verify));
+pub const P256VERIFY: PrecompileWithAddress = PrecompileWithAddress(
+    crate::u64_to_address(P256VERIFY_ADDRESS),
+    Precompile::Standard(p256_verify),
+);
 
 /// The input is encoded as follows:
 /// | signed msg hash |  r  |  s  | pk x | pk y |
