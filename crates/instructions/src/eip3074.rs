@@ -204,11 +204,12 @@ mod tests {
         let mut interpreter = test_interpreter();
 
         let secp = Secp256k1::new();
+
         let secret_key = SecretKey::new(&mut rand::thread_rng());
         let public_key = PublicKey::from_secret_key(&secp, &secret_key);
-
         let hash = keccak256(&public_key.serialize_uncompressed()[1..]);
         let authority = Address::from_slice(&hash[12..]);
+
         let offset = 0;
         let lenght = 97;
         interpreter.stack.push(U256::from(lenght)).unwrap();
@@ -253,11 +254,12 @@ mod tests {
         let mut interpreter = test_interpreter();
 
         let secp = Secp256k1::new();
+
         let secret_key = SecretKey::new(&mut rand::thread_rng());
         let public_key = PublicKey::from_secret_key(&secp, &secret_key);
-
         let hash = keccak256(&public_key.serialize_uncompressed()[1..]);
         let authority = Address::from_slice(&hash[12..]);
+
         let offset = 0;
         let lenght = 97;
         interpreter.stack.push(U256::from(lenght)).unwrap();
@@ -273,5 +275,51 @@ mod tests {
         // check gas
         let expected_gas = 3100 + 2600 + 12; // fixed_fee + cold authority + memory expansion
         assert_eq!(expected_gas, interpreter.gas.spend());
+    }
+
+    #[test]
+    fn test_auth_instruction_invalid_authority() {
+        let mut interpreter = test_interpreter();
+
+        let secp = Secp256k1::new();
+
+        let secret_key = SecretKey::new(&mut rand::thread_rng());
+
+        let non_authority_secret_key = SecretKey::new(&mut rand::thread_rng());
+        let non_authority_public_key = PublicKey::from_secret_key(&secp, &non_authority_secret_key);
+        let non_authority_hash = keccak256(&non_authority_public_key.serialize_uncompressed()[1..]);
+        let non_authority = Address::from_slice(&non_authority_hash[12..]);
+
+        let offset = 0;
+        let lenght = 97;
+        interpreter.stack.push(U256::from(lenght)).unwrap();
+        interpreter.stack.push(U256::from(offset)).unwrap();
+        interpreter.stack.push_b256(B256::left_padding_from(non_authority.as_slice())).unwrap();
+
+        let commit = B256::ZERO;
+        let msg = compose_msg(1, 0, Address::default(), commit);
+
+        let sig = secp.sign_ecdsa_recoverable(
+            &Message::from_digest_slice(msg.as_slice()).unwrap(),
+            &secret_key,
+        );
+        let (recid, ret) = sig.serialize_compact();
+        let y_parity = recid.to_i32();
+        let r = B256::from_slice(&ret[..32]);
+        let s = B256::from_slice(&ret[32..]);
+
+        interpreter.shared_memory.resize(100);
+        interpreter.shared_memory.set_byte(offset, y_parity.try_into().unwrap());
+        interpreter.shared_memory.set_word(offset + 1, &r);
+        interpreter.shared_memory.set_word(offset + 33, &s);
+        interpreter.shared_memory.set_word(offset + 65, &commit);
+
+        let mut evm = test_evm();
+
+        auth_instruction(&mut interpreter, &mut evm);
+
+        assert_eq!(interpreter.instruction_result, InstructionResult::Continue);
+        let result = interpreter.stack.pop().unwrap();
+        assert_eq!(result.saturating_to::<usize>(), 0);
     }
 }
