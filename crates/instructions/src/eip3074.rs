@@ -28,7 +28,7 @@ pub struct InstructionWithOpCode<H> {
     pub instruction: Instruction<H>,
 }
 
-/// secp256k1-based ecrecover implementation.
+// TODO: use ecrecover from revm-precompile::secp256k1.
 fn ecrecover(sig: &B512, recid: u8, msg: &B256) -> Result<B256, secp256k1::Error> {
     let recid = RecoveryId::from_i32(recid as i32).expect("recovery ID is valid");
     let sig = RecoverableSignature::from_compact(sig.as_slice(), recid)?;
@@ -117,11 +117,11 @@ fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'
     };
 
     let result = if Address::from_slice(&signer[12..]) == authority {
-        // set authorized context variable to authority
+        // TODO: set authorized context variable to authority
 
         B256::with_last_byte(1)
     } else {
-        // authorized context variable is reset to unset value
+        // TODO: authorized context variable is reset to unset value
 
         B256::ZERO
     };
