@@ -29,7 +29,7 @@ pub struct InstructionWithOpCode<H> {
 }
 
 /// secp256k1-based ecrecover implementation.
-fn ecrecover(sig: &B512, recid: u8, msg: &B256) -> Result<Address, secp256k1::Error> {
+fn ecrecover(sig: &B512, recid: u8, msg: &B256) -> Result<B256, secp256k1::Error> {
     let recid = RecoveryId::from_i32(recid as i32).expect("recovery ID is valid");
     let sig = RecoverableSignature::from_compact(sig.as_slice(), recid)?;
 
@@ -37,8 +37,9 @@ fn ecrecover(sig: &B512, recid: u8, msg: &B256) -> Result<Address, secp256k1::Er
     let msg = Message::from_digest_slice(msg.as_slice())?;
     let public = secp.recover_ecdsa(&msg, &sig)?;
 
-    let hash = keccak256(&public.serialize_uncompressed()[1..]);
-    Ok(Address::from_slice(&hash[12..]))
+    let mut hash = keccak256(&public.serialize_uncompressed()[1..]);
+    hash[..12].fill(0);
+    Ok(hash)
 }
 
 // keccak256(MAGIC || chainId || nonce || invokerAddress || commit)
@@ -115,7 +116,7 @@ fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'
         }
     };
 
-    let result = if signer == authority {
+    let result = if Address::from_slice(&signer[12..]) == authority {
         // set authorized context variable to authority
 
         B256::with_last_byte(1)
