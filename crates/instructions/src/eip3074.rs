@@ -8,7 +8,6 @@ use secp256k1::{
     Message, Secp256k1,
 };
 
-const CUSTOM_INSTRUCTION_COST: u64 = 133;
 const AUTH_OPCODE: u8 = 0xF6;
 const AUTHCALL_OPCODE: u8 = 0xF7;
 
@@ -137,7 +136,7 @@ pub fn auth<'a, EXT, DB: Database>() -> InstructionWithOpCode<Evm<'a, EXT, DB>> 
 }
 
 fn authcall_instruction<EXT, DB: Database>(interp: &mut Interpreter, _evm: &mut Evm<'_, EXT, DB>) {
-    interp.gas.record_cost(CUSTOM_INSTRUCTION_COST);
+    interp.gas.record_cost(133);
 }
 
 /// AUTHCALL's opcode and instruction.
