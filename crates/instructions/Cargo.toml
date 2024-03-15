@@ -13,10 +13,7 @@ categories.workspace = true
 revm.workspace = true
 revm-interpreter.workspace = true
 revm-primitives.workspace = true
-secp256k1 = { version = "0.28.2", default-features = false, features = [
-    "alloc",
-    "recovery",
-] }
+secp256k1.workspace = true
 
 [dev-dependencies]
 revm.workspace = true
