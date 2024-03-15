@@ -157,7 +157,7 @@ mod tests {
     use secp256k1::{rand, Context, PublicKey, SecretKey, Signing};
     use std::convert::Infallible;
 
-    fn test_interpreter() -> Interpreter {
+    fn setup_interpreter() -> Interpreter {
         let code = Bytecode::new_raw([AUTH_OPCODE, 0x00].into());
         let code_hash = code.hash_slow();
         let contract = Contract::new(
@@ -175,7 +175,7 @@ mod tests {
         interpreter
     }
 
-    fn test_evm() -> Evm<'static, (), CacheDB<EmptyDBTyped<Infallible>>> {
+    fn setup_evm() -> Evm<'static, (), CacheDB<EmptyDBTyped<Infallible>>> {
         Evm::builder()
             .with_db(InMemoryDB::default())
             .append_handler_register(|handler| {
@@ -186,14 +186,14 @@ mod tests {
             .build()
     }
 
-    fn test_authority<T: Context + Signing>(secp: Secp256k1<T>) -> (SecretKey, Address) {
+    fn setup_authority<T: Context + Signing>(secp: Secp256k1<T>) -> (SecretKey, Address) {
         let secret_key = SecretKey::new(&mut rand::thread_rng());
         let public_key = PublicKey::from_secret_key(&secp, &secret_key);
         let hash = keccak256(&public_key.serialize_uncompressed()[1..]);
         (secret_key, Address::from_slice(&hash[12..]))
     }
 
-    fn test_setup_stack(stack: &mut Stack, authority: Address) {
+    fn setup_stack(stack: &mut Stack, authority: Address) {
         let offset = 0;
         let lenght = 97;
         stack.push(U256::from(lenght)).unwrap();
@@ -201,7 +201,7 @@ mod tests {
         stack.push_b256(B256::left_padding_from(authority.as_slice())).unwrap();
     }
 
-    fn test_setup_shared_memory(
+    fn setup_shared_memory(
         shared_memory: &mut SharedMemory,
         y_parity: i32,
         r: &B256,
@@ -215,7 +215,7 @@ mod tests {
         shared_memory.set_word(65, commit);
     }
 
-    fn test_generate_signature<T: Context + Signing>(
+    fn generate_signature<T: Context + Signing>(
         secp: Secp256k1<T>,
         secret_key: SecretKey,
         msg: B256,
@@ -230,8 +230,8 @@ mod tests {
 
     #[test]
     fn test_auth_instruction_stack_underflow() {
-        let mut interpreter = test_interpreter();
-        let mut evm = test_evm();
+        let mut interpreter = setup_interpreter();
+        let mut evm = setup_evm();
 
         auth_instruction(&mut interpreter, &mut evm);
         assert_eq!(interpreter.instruction_result, InstructionResult::StackUnderflow);
@@ -243,21 +243,21 @@ mod tests {
 
     #[test]
     fn test_auth_instruction_happy_path() {
-        let mut interpreter = test_interpreter();
+        let mut interpreter = setup_interpreter();
 
         let secp = Secp256k1::new();
-        let (secret_key, authority) = test_authority(secp.clone());
+        let (secret_key, authority) = setup_authority(secp.clone());
 
-        test_setup_stack(&mut interpreter.stack, authority);
+        setup_stack(&mut interpreter.stack, authority);
 
         let commit = B256::ZERO;
         let msg = compose_msg(1, 0, Address::default(), commit);
 
-        let (y_parity, r, s) = test_generate_signature(secp, secret_key, msg);
+        let (y_parity, r, s) = generate_signature(secp, secret_key, msg);
 
-        test_setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s, &commit);
+        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s, &commit);
 
-        let mut evm = test_evm();
+        let mut evm = setup_evm();
 
         auth_instruction(&mut interpreter, &mut evm);
 
@@ -274,14 +274,14 @@ mod tests {
 
     #[test]
     fn test_auth_instruction_memory_expansion_gas_recorded() {
-        let mut interpreter = test_interpreter();
+        let mut interpreter = setup_interpreter();
 
         let secp = Secp256k1::new();
-        let (_, authority) = test_authority(secp.clone());
+        let (_, authority) = setup_authority(secp.clone());
 
-        test_setup_stack(&mut interpreter.stack, authority);
+        setup_stack(&mut interpreter.stack, authority);
 
-        let mut evm = test_evm();
+        let mut evm = setup_evm();
 
         auth_instruction(&mut interpreter, &mut evm);
 
@@ -294,22 +294,22 @@ mod tests {
 
     #[test]
     fn test_auth_instruction_invalid_authority() {
-        let mut interpreter = test_interpreter();
+        let mut interpreter = setup_interpreter();
 
         let secp = Secp256k1::new();
-        let (secret_key, _) = test_authority(secp.clone());
-        let (_, non_authority) = test_authority(secp.clone());
+        let (secret_key, _) = setup_authority(secp.clone());
+        let (_, non_authority) = setup_authority(secp.clone());
 
-        test_setup_stack(&mut interpreter.stack, non_authority);
+        setup_stack(&mut interpreter.stack, non_authority);
 
         let commit = B256::ZERO;
         let msg = compose_msg(1, 0, Address::default(), commit);
 
-        let (y_parity, r, s) = test_generate_signature(secp, secret_key, msg);
+        let (y_parity, r, s) = generate_signature(secp, secret_key, msg);
 
-        test_setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s, &commit);
+        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s, &commit);
 
-        let mut evm = test_evm();
+        let mut evm = setup_evm();
 
         auth_instruction(&mut interpreter, &mut evm);
 
@@ -320,21 +320,21 @@ mod tests {
 
     #[test]
     fn test_auth_instruction_warm_authority() {
-        let mut interpreter = test_interpreter();
+        let mut interpreter = setup_interpreter();
 
         let secp = Secp256k1::new();
-        let (secret_key, authority) = test_authority(secp.clone());
+        let (secret_key, authority) = setup_authority(secp.clone());
 
-        test_setup_stack(&mut interpreter.stack, authority);
+        setup_stack(&mut interpreter.stack, authority);
 
         let commit = B256::ZERO;
         let msg = compose_msg(1, 0, Address::default(), commit);
 
-        let (y_parity, r, s) = test_generate_signature(secp, secret_key, msg);
+        let (y_parity, r, s) = generate_signature(secp, secret_key, msg);
 
-        test_setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s, &commit);
+        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s, &commit);
 
-        let mut evm = test_evm();
+        let mut evm = setup_evm();
         evm.context.evm.journaled_state.state.insert(authority, Account::default());
 
         auth_instruction(&mut interpreter, &mut evm);
@@ -350,27 +350,21 @@ mod tests {
 
     #[test]
     fn test_auth_instruction_invalid_signature() {
-        let mut interpreter = test_interpreter();
+        let mut interpreter = setup_interpreter();
 
         let secp = Secp256k1::new();
-        let (secret_key, authority) = test_authority(secp.clone());
+        let (secret_key, authority) = setup_authority(secp.clone());
 
-        test_setup_stack(&mut interpreter.stack, authority);
+        setup_stack(&mut interpreter.stack, authority);
 
         let commit = B256::ZERO;
         let msg = compose_msg(1, 0, Address::default(), commit);
 
-        let (y_parity, r, _) = test_generate_signature(secp, secret_key, msg);
+        let (y_parity, r, _) = generate_signature(secp, secret_key, msg);
 
-        test_setup_shared_memory(
-            &mut interpreter.shared_memory,
-            y_parity,
-            &r,
-            &B256::ZERO,
-            &commit,
-        );
+        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &B256::ZERO, &commit);
 
-        let mut evm = test_evm();
+        let mut evm = setup_evm();
 
         auth_instruction(&mut interpreter, &mut evm);
 
