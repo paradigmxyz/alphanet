@@ -201,18 +201,12 @@ mod tests {
         stack.push_b256(B256::left_padding_from(authority.as_slice())).unwrap();
     }
 
-    fn setup_shared_memory(
-        shared_memory: &mut SharedMemory,
-        y_parity: i32,
-        r: &B256,
-        s: &B256,
-        commit: &B256,
-    ) {
+    fn setup_shared_memory(shared_memory: &mut SharedMemory, y_parity: i32, r: &B256, s: &B256) {
         shared_memory.resize(100);
         shared_memory.set_byte(0, y_parity.try_into().unwrap());
         shared_memory.set_word(1, r);
         shared_memory.set_word(33, s);
-        shared_memory.set_word(65, commit);
+        shared_memory.set_word(65, &B256::ZERO);
     }
 
     fn generate_signature<T: Context + Signing>(
@@ -226,6 +220,10 @@ mod tests {
         let r = B256::from_slice(&ret[..32]);
         let s = B256::from_slice(&ret[32..]);
         (y_parity, r, s)
+    }
+
+    fn default_msg() -> B256 {
+        compose_msg(1, 0, Address::default(), B256::ZERO)
     }
 
     #[test]
@@ -250,12 +248,11 @@ mod tests {
 
         setup_stack(&mut interpreter.stack, authority);
 
-        let commit = B256::ZERO;
-        let msg = compose_msg(1, 0, Address::default(), commit);
+        let msg = default_msg();
 
         let (y_parity, r, s) = generate_signature(secp, secret_key, msg);
 
-        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s, &commit);
+        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s);
 
         let mut evm = setup_evm();
 
@@ -302,12 +299,11 @@ mod tests {
 
         setup_stack(&mut interpreter.stack, non_authority);
 
-        let commit = B256::ZERO;
-        let msg = compose_msg(1, 0, Address::default(), commit);
+        let msg = default_msg();
 
         let (y_parity, r, s) = generate_signature(secp, secret_key, msg);
 
-        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s, &commit);
+        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s);
 
         let mut evm = setup_evm();
 
@@ -327,12 +323,11 @@ mod tests {
 
         setup_stack(&mut interpreter.stack, authority);
 
-        let commit = B256::ZERO;
-        let msg = compose_msg(1, 0, Address::default(), commit);
+        let msg = default_msg();
 
         let (y_parity, r, s) = generate_signature(secp, secret_key, msg);
 
-        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s, &commit);
+        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s);
 
         let mut evm = setup_evm();
         evm.context.evm.journaled_state.state.insert(authority, Account::default());
@@ -357,12 +352,11 @@ mod tests {
 
         setup_stack(&mut interpreter.stack, authority);
 
-        let commit = B256::ZERO;
-        let msg = compose_msg(1, 0, Address::default(), commit);
+        let msg = default_msg();
 
         let (y_parity, r, _) = generate_signature(secp, secret_key, msg);
 
-        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &B256::ZERO, &commit);
+        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &B256::ZERO);
 
         let mut evm = setup_evm();
 
