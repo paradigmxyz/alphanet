@@ -153,7 +153,7 @@ mod tests {
         InMemoryDB,
     };
     use revm_interpreter::Contract;
-    use revm_primitives::{Bytecode, Bytes, U256};
+    use revm_primitives::{Account, Bytecode, Bytes, U256};
     use secp256k1::{rand, PublicKey, SecretKey};
     use std::convert::Infallible;
 
@@ -321,5 +321,54 @@ mod tests {
         assert_eq!(interpreter.instruction_result, InstructionResult::Continue);
         let result = interpreter.stack.pop().unwrap();
         assert_eq!(result.saturating_to::<usize>(), 0);
+    }
+
+    #[test]
+    fn test_auth_instruction_warm_authority() {
+        let mut interpreter = test_interpreter();
+
+        let secp = Secp256k1::new();
+
+        let secret_key = SecretKey::new(&mut rand::thread_rng());
+        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+        let hash = keccak256(&public_key.serialize_uncompressed()[1..]);
+        let authority = Address::from_slice(&hash[12..]);
+
+        let offset = 0;
+        let lenght = 97;
+        interpreter.stack.push(U256::from(lenght)).unwrap();
+        interpreter.stack.push(U256::from(offset)).unwrap();
+        interpreter.stack.push_b256(B256::left_padding_from(authority.as_slice())).unwrap();
+
+        let commit = B256::ZERO;
+        let msg = compose_msg(1, 0, Address::default(), commit);
+
+        let sig = secp.sign_ecdsa_recoverable(
+            &Message::from_digest_slice(msg.as_slice()).unwrap(),
+            &secret_key,
+        );
+        let (recid, ret) = sig.serialize_compact();
+        let y_parity = recid.to_i32();
+        let r = B256::from_slice(&ret[..32]);
+        let s = B256::from_slice(&ret[32..]);
+
+        interpreter.shared_memory.resize(100);
+        interpreter.shared_memory.set_byte(offset, y_parity.try_into().unwrap());
+        interpreter.shared_memory.set_word(offset + 1, &r);
+        interpreter.shared_memory.set_word(offset + 33, &s);
+        interpreter.shared_memory.set_word(offset + 65, &commit);
+
+        let mut evm = test_evm();
+        evm.context.evm.journaled_state.state.insert(authority, Account::default());
+
+        auth_instruction(&mut interpreter, &mut evm);
+
+        assert_eq!(interpreter.instruction_result, InstructionResult::Continue);
+        let result = interpreter.stack.pop().unwrap();
+        assert_eq!(result.saturating_to::<usize>(), 1);
+
+        // check gas
+        let expected_gas = 3100 + 100; // fixed_fee + warm authority
+        assert_eq!(expected_gas, interpreter.gas.spend());
     }
 }
