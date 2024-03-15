@@ -152,9 +152,9 @@ mod tests {
         db::{CacheDB, EmptyDBTyped},
         InMemoryDB,
     };
-    use revm_interpreter::Contract;
+    use revm_interpreter::{Contract, SharedMemory, Stack};
     use revm_primitives::{Account, Bytecode, Bytes, U256};
-    use secp256k1::{rand, PublicKey, SecretKey};
+    use secp256k1::{rand, Context, PublicKey, SecretKey, Signing};
     use std::convert::Infallible;
 
     fn test_interpreter() -> Interpreter {
@@ -186,6 +186,48 @@ mod tests {
             .build()
     }
 
+    fn test_authority<T: Context + Signing>(secp: Secp256k1<T>) -> (SecretKey, Address) {
+        let secret_key = SecretKey::new(&mut rand::thread_rng());
+        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+        let hash = keccak256(&public_key.serialize_uncompressed()[1..]);
+        (secret_key, Address::from_slice(&hash[12..]))
+    }
+
+    fn test_setup_stack(stack: &mut Stack, authority: Address) {
+        let offset = 0;
+        let lenght = 97;
+        stack.push(U256::from(lenght)).unwrap();
+        stack.push(U256::from(offset)).unwrap();
+        stack.push_b256(B256::left_padding_from(authority.as_slice())).unwrap();
+    }
+
+    fn test_setup_shared_memory(
+        shared_memory: &mut SharedMemory,
+        y_parity: i32,
+        r: &B256,
+        s: &B256,
+        commit: &B256,
+    ) {
+        shared_memory.resize(100);
+        shared_memory.set_byte(0, y_parity.try_into().unwrap());
+        shared_memory.set_word(1, r);
+        shared_memory.set_word(33, s);
+        shared_memory.set_word(65, commit);
+    }
+
+    fn test_generate_signature<T: Context + Signing>(
+        secp: Secp256k1<T>,
+        secret_key: SecretKey,
+        msg: B256,
+    ) -> (i32, B256, B256) {
+        let sig = secp.sign_ecdsa_recoverable(&Message::from_digest(msg.0), &secret_key);
+        let (recid, ret) = sig.serialize_compact();
+        let y_parity = recid.to_i32();
+        let r = B256::from_slice(&ret[..32]);
+        let s = B256::from_slice(&ret[32..]);
+        (y_parity, r, s)
+    }
+
     #[test]
     fn test_auth_instruction_stack_underflow() {
         let mut interpreter = test_interpreter();
@@ -204,32 +246,16 @@ mod tests {
         let mut interpreter = test_interpreter();
 
         let secp = Secp256k1::new();
+        let (secret_key, authority) = test_authority(secp.clone());
 
-        let secret_key = SecretKey::new(&mut rand::thread_rng());
-        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
-        let hash = keccak256(&public_key.serialize_uncompressed()[1..]);
-        let authority = Address::from_slice(&hash[12..]);
-
-        let offset = 0;
-        let lenght = 97;
-        interpreter.stack.push(U256::from(lenght)).unwrap();
-        interpreter.stack.push(U256::from(offset)).unwrap();
-        interpreter.stack.push_b256(B256::left_padding_from(authority.as_slice())).unwrap();
+        test_setup_stack(&mut interpreter.stack, authority);
 
         let commit = B256::ZERO;
         let msg = compose_msg(1, 0, Address::default(), commit);
 
-        let sig = secp.sign_ecdsa_recoverable(&Message::from_digest(msg.0), &secret_key);
-        let (recid, ret) = sig.serialize_compact();
-        let y_parity = recid.to_i32();
-        let r = B256::from_slice(&ret[..32]);
-        let s = B256::from_slice(&ret[32..]);
+        let (y_parity, r, s) = test_generate_signature(secp, secret_key, msg);
 
-        interpreter.shared_memory.resize(100);
-        interpreter.shared_memory.set_byte(offset, y_parity.try_into().unwrap());
-        interpreter.shared_memory.set_word(offset + 1, &r);
-        interpreter.shared_memory.set_word(offset + 33, &s);
-        interpreter.shared_memory.set_word(offset + 65, &commit);
+        test_setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s, &commit);
 
         let mut evm = test_evm();
 
@@ -251,17 +277,9 @@ mod tests {
         let mut interpreter = test_interpreter();
 
         let secp = Secp256k1::new();
+        let (_, authority) = test_authority(secp.clone());
 
-        let secret_key = SecretKey::new(&mut rand::thread_rng());
-        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
-        let hash = keccak256(&public_key.serialize_uncompressed()[1..]);
-        let authority = Address::from_slice(&hash[12..]);
-
-        let offset = 0;
-        let lenght = 97;
-        interpreter.stack.push(U256::from(lenght)).unwrap();
-        interpreter.stack.push(U256::from(offset)).unwrap();
-        interpreter.stack.push_b256(B256::left_padding_from(authority.as_slice())).unwrap();
+        test_setup_stack(&mut interpreter.stack, authority);
 
         let mut evm = test_evm();
 
@@ -279,34 +297,17 @@ mod tests {
         let mut interpreter = test_interpreter();
 
         let secp = Secp256k1::new();
+        let (secret_key, _) = test_authority(secp.clone());
+        let (_, non_authority) = test_authority(secp.clone());
 
-        let secret_key = SecretKey::new(&mut rand::thread_rng());
-
-        let non_authority_secret_key = SecretKey::new(&mut rand::thread_rng());
-        let non_authority_public_key = PublicKey::from_secret_key(&secp, &non_authority_secret_key);
-        let non_authority_hash = keccak256(&non_authority_public_key.serialize_uncompressed()[1..]);
-        let non_authority = Address::from_slice(&non_authority_hash[12..]);
-
-        let offset = 0;
-        let lenght = 97;
-        interpreter.stack.push(U256::from(lenght)).unwrap();
-        interpreter.stack.push(U256::from(offset)).unwrap();
-        interpreter.stack.push_b256(B256::left_padding_from(non_authority.as_slice())).unwrap();
+        test_setup_stack(&mut interpreter.stack, non_authority);
 
         let commit = B256::ZERO;
         let msg = compose_msg(1, 0, Address::default(), commit);
 
-        let sig = secp.sign_ecdsa_recoverable(&Message::from_digest(msg.0), &secret_key);
-        let (recid, ret) = sig.serialize_compact();
-        let y_parity = recid.to_i32();
-        let r = B256::from_slice(&ret[..32]);
-        let s = B256::from_slice(&ret[32..]);
+        let (y_parity, r, s) = test_generate_signature(secp, secret_key, msg);
 
-        interpreter.shared_memory.resize(100);
-        interpreter.shared_memory.set_byte(offset, y_parity.try_into().unwrap());
-        interpreter.shared_memory.set_word(offset + 1, &r);
-        interpreter.shared_memory.set_word(offset + 33, &s);
-        interpreter.shared_memory.set_word(offset + 65, &commit);
+        test_setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s, &commit);
 
         let mut evm = test_evm();
 
@@ -322,32 +323,16 @@ mod tests {
         let mut interpreter = test_interpreter();
 
         let secp = Secp256k1::new();
+        let (secret_key, authority) = test_authority(secp.clone());
 
-        let secret_key = SecretKey::new(&mut rand::thread_rng());
-        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
-        let hash = keccak256(&public_key.serialize_uncompressed()[1..]);
-        let authority = Address::from_slice(&hash[12..]);
-
-        let offset = 0;
-        let lenght = 97;
-        interpreter.stack.push(U256::from(lenght)).unwrap();
-        interpreter.stack.push(U256::from(offset)).unwrap();
-        interpreter.stack.push_b256(B256::left_padding_from(authority.as_slice())).unwrap();
+        test_setup_stack(&mut interpreter.stack, authority);
 
         let commit = B256::ZERO;
         let msg = compose_msg(1, 0, Address::default(), commit);
 
-        let sig = secp.sign_ecdsa_recoverable(&Message::from_digest(msg.0), &secret_key);
-        let (recid, ret) = sig.serialize_compact();
-        let y_parity = recid.to_i32();
-        let r = B256::from_slice(&ret[..32]);
-        let s = B256::from_slice(&ret[32..]);
+        let (y_parity, r, s) = test_generate_signature(secp, secret_key, msg);
 
-        interpreter.shared_memory.resize(100);
-        interpreter.shared_memory.set_byte(offset, y_parity.try_into().unwrap());
-        interpreter.shared_memory.set_word(offset + 1, &r);
-        interpreter.shared_memory.set_word(offset + 33, &s);
-        interpreter.shared_memory.set_word(offset + 65, &commit);
+        test_setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s, &commit);
 
         let mut evm = test_evm();
         evm.context.evm.journaled_state.state.insert(authority, Account::default());
@@ -368,32 +353,22 @@ mod tests {
         let mut interpreter = test_interpreter();
 
         let secp = Secp256k1::new();
+        let (secret_key, authority) = test_authority(secp.clone());
 
-        let secret_key = SecretKey::new(&mut rand::thread_rng());
-        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
-        let hash = keccak256(&public_key.serialize_uncompressed()[1..]);
-        let authority = Address::from_slice(&hash[12..]);
-
-        let offset = 0;
-        let lenght = 97;
-        interpreter.stack.push(U256::from(lenght)).unwrap();
-        interpreter.stack.push(U256::from(offset)).unwrap();
-        interpreter.stack.push_b256(B256::left_padding_from(authority.as_slice())).unwrap();
+        test_setup_stack(&mut interpreter.stack, authority);
 
         let commit = B256::ZERO;
         let msg = compose_msg(1, 0, Address::default(), commit);
 
-        let sig = secp.sign_ecdsa_recoverable(&Message::from_digest(msg.0), &secret_key);
-        let (recid, ret) = sig.serialize_compact();
-        let y_parity = recid.to_i32();
-        let r = B256::from_slice(&ret[..32]);
-        let s = B256::ZERO;
+        let (y_parity, r, _) = test_generate_signature(secp, secret_key, msg);
 
-        interpreter.shared_memory.resize(100);
-        interpreter.shared_memory.set_byte(offset, y_parity.try_into().unwrap());
-        interpreter.shared_memory.set_word(offset + 1, &r);
-        interpreter.shared_memory.set_word(offset + 33, &s);
-        interpreter.shared_memory.set_word(offset + 65, &commit);
+        test_setup_shared_memory(
+            &mut interpreter.shared_memory,
+            y_parity,
+            &r,
+            &B256::ZERO,
+            &commit,
+        );
 
         let mut evm = test_evm();
 
