@@ -109,7 +109,7 @@ fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'
     sig.extend_from_slice(r.as_slice());
     sig.extend_from_slice(s.as_slice());
     let signer = match ecrecover(&B512::from_slice(&sig), y_parity, &msg) {
-        Ok(sig) => sig,
+        Ok(signer) => signer,
         Err(_) => {
             interp.instruction_result = InstructionResult::Stop;
             return;
