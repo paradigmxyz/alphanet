@@ -13,6 +13,7 @@ const AUTHCALL_OPCODE: u8 = 0xF7;
 const MAGIC: u8 = 0x04;
 const WARM_AUTHORITY_GAS: u64 = 100;
 const COLD_AUTHORITY_GAS: u64 = 2600;
+const FIXED_FEE_GAS: u64 = 3100;
 
 /// Type alias for a function pointer that initializes instruction objects.
 pub type InstructionInitializer<'a, EXT, DB> = fn() -> InstructionWithOpCode<Evm<'a, EXT, DB>>;
@@ -57,7 +58,7 @@ fn compose_msg(chain_id: u64, nonce: u64, invoker_address: Address, commit: B256
 }
 
 fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'_, EXT, DB>) {
-    interp.gas.record_cost(3100); // fixed fee
+    interp.gas.record_cost(FIXED_FEE_GAS);
 
     // TODO: use pop_ret! from revm-interpreter
     if interp.stack.len() < 3 {
@@ -241,7 +242,7 @@ mod tests {
         assert_eq!(interpreter.instruction_result, InstructionResult::StackUnderflow);
 
         // check gas
-        let expected_gas = 3100; // fixed_fee
+        let expected_gas = FIXED_FEE_GAS;
         assert_eq!(expected_gas, interpreter.gas.spend());
     }
 
@@ -269,7 +270,7 @@ mod tests {
         assert_eq!(result.saturating_to::<usize>(), 1);
 
         // check gas
-        let expected_gas = 3100 + 2600; // fixed_fee + cold authority
+        let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS;
         assert_eq!(expected_gas, interpreter.gas.spend());
 
         // TODO: check authorized context variable set
@@ -291,7 +292,7 @@ mod tests {
         assert_eq!(interpreter.instruction_result, InstructionResult::Stop);
 
         // check gas
-        let expected_gas = 3100 + 2600 + 12; // fixed_fee + cold authority + memory expansion
+        let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS + 12; // fixed_fee + cold authority + memory expansion
         assert_eq!(expected_gas, interpreter.gas.spend());
     }
 
@@ -345,7 +346,7 @@ mod tests {
         assert_eq!(result.saturating_to::<usize>(), 1);
 
         // check gas
-        let expected_gas = 3100 + 100; // fixed_fee + warm authority
+        let expected_gas = FIXED_FEE_GAS + WARM_AUTHORITY_GAS;
         assert_eq!(expected_gas, interpreter.gas.spend());
     }
 
@@ -371,7 +372,7 @@ mod tests {
         assert_eq!(interpreter.instruction_result, InstructionResult::Stop);
 
         // check gas
-        let expected_gas = 3100 + 2600; // fixed_fee + cold authority
+        let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS;
         assert_eq!(expected_gas, interpreter.gas.spend());
     }
 }
