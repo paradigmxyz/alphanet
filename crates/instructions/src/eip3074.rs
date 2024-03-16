@@ -195,8 +195,8 @@ mod tests {
 
     fn setup_stack(stack: &mut Stack, authority: Address) {
         let offset = 0;
-        let lenght = 97;
-        stack.push(U256::from(lenght)).unwrap();
+        let length = 97;
+        stack.push(U256::from(length)).unwrap();
         stack.push(U256::from(offset)).unwrap();
         stack.push_b256(B256::left_padding_from(authority.as_slice())).unwrap();
     }
