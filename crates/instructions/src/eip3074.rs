@@ -47,12 +47,12 @@ fn ecrecover(sig: &B512, recid: u8, msg: &B256) -> Result<B256, secp256k1::Error
 
 // keccak256(MAGIC || chainId || nonce || invokerAddress || commit)
 fn compose_msg(chain_id: u64, nonce: u64, invoker_address: Address, commit: B256) -> B256 {
-    let mut msg = Vec::<u8>::with_capacity(129);
-    msg.push(MAGIC);
-    msg.extend_from_slice(B256::left_padding_from(&chain_id.to_be_bytes()).as_slice());
-    msg.extend_from_slice(B256::left_padding_from(&nonce.to_be_bytes()).as_slice());
-    msg.extend_from_slice(B256::left_padding_from(invoker_address.as_slice()).as_slice());
-    msg.extend_from_slice(commit.as_slice());
+    let mut msg = [0u8; 129];
+    msg[0] = MAGIC;
+    msg[1..33].copy_from_slice(B256::left_padding_from(&chain_id.to_be_bytes()).as_slice());
+    msg[33..65].copy_from_slice(B256::left_padding_from(&nonce.to_be_bytes()).as_slice());
+    msg[65..97].copy_from_slice(B256::left_padding_from(invoker_address.as_slice()).as_slice());
+    msg[97..].copy_from_slice(commit.as_slice());
     keccak256(msg.as_slice())
 }
 
