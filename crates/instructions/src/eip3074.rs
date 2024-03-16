@@ -98,12 +98,17 @@ fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'
     let s = interp.shared_memory.get_word(offset + 33);
     let commit = interp.shared_memory.get_word(offset + 65);
 
-    let msg = compose_msg(
-        evm.cfg().chain_id,
-        evm.tx().nonce.unwrap_or(0),
-        interp.contract.address,
-        commit,
-    );
+    let caller_address = evm.context.evm.env.tx.caller;
+    let caller_account = match evm.context.evm.load_account(caller_address) {
+        Ok(caller) => caller,
+        Err(_) => {
+            interp.instruction_result = InstructionResult::Stop;
+            return;
+        }
+    };
+    let nonce = caller_account.0.info.nonce;
+    let chain_id = evm.context.evm.env.cfg.chain_id;
+    let msg = compose_msg(chain_id, nonce, interp.contract.address, commit);
 
     // check valid signature
     let mut sig = [0u8; 64];
