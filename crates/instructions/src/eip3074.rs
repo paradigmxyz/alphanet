@@ -10,6 +10,9 @@ use secp256k1::{
 
 const AUTH_OPCODE: u8 = 0xF6;
 const AUTHCALL_OPCODE: u8 = 0xF7;
+const MAGIC: u8 = 0x04;
+const WARM_AUTHORITY_GAS: u64 = 100;
+const COLD_AUTHORITY_GAS: u64 = 2600;
 
 /// Type alias for a function pointer that initializes instruction objects.
 pub type InstructionInitializer<'a, EXT, DB> = fn() -> InstructionWithOpCode<Evm<'a, EXT, DB>>;
@@ -44,8 +47,6 @@ fn ecrecover(sig: &B512, recid: u8, msg: &B256) -> Result<B256, secp256k1::Error
 
 // keccak256(MAGIC || chainId || nonce || invokerAddress || commit)
 fn compose_msg(chain_id: u64, nonce: u64, invoker_address: Address, commit: B256) -> B256 {
-    const MAGIC: u8 = 0x04;
-
     let mut msg = Vec::<u8>::with_capacity(129);
     msg.push(MAGIC);
     msg.extend_from_slice(B256::left_padding_from(&chain_id.to_be_bytes()).as_slice());
@@ -69,9 +70,9 @@ fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'
     let authority = Address::from_slice(&authority.to_be_bytes::<32>()[12..]);
 
     interp.gas.record_cost(if evm.context.evm.journaled_state.state.contains_key(&authority) {
-        100
+        WARM_AUTHORITY_GAS
     } else {
-        2600
+        COLD_AUTHORITY_GAS
     }); // authority state fee
 
     // TODO: use shared_memory_resize! from revm-interpreter
@@ -105,9 +106,9 @@ fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'
     );
 
     // check valid signature
-    let mut sig = Vec::<u8>::with_capacity(64);
-    sig.extend_from_slice(r.as_slice());
-    sig.extend_from_slice(s.as_slice());
+    let mut sig = [0u8; 64];
+    sig[..32].copy_from_slice(r.as_slice());
+    sig[32..].copy_from_slice(s.as_slice());
     let signer = match ecrecover(&B512::from_slice(&sig), y_parity, &msg) {
         Ok(signer) => signer,
         Err(_) => {
