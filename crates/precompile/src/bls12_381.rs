@@ -33,6 +33,10 @@ pub fn precompiles() -> impl Iterator<Item = PrecompileWithAddress> {
     .into_iter()
 }
 
+const G1ADD_BASE: u64 = 500;
+const INPUT_LENGTH: usize = 256;
+const OUTPUT_LENGTH: usize = 128;
+
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G1ADD precompile.
 const BLS12_G1ADD: PrecompileWithAddress =
     PrecompileWithAddress(crate::u64_to_address(BLS12_G1ADD_ADDRESS), Precompile::Standard(g1_add));
