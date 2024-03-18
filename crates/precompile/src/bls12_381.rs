@@ -3,24 +3,83 @@ use crate::addresses::{
     BLS12_G2MULTIEXP_ADDRESS, BLS12_G2MUL_ADDRESS, BLS12_MAP_FP2_TO_G2_ADDRESS,
     BLS12_MAP_FP_TO_G1_ADDRESS, BLS12_PAIRING_ADDRESS,
 };
+use blst::{
+    blst_bendian_from_fp, blst_fp, blst_fp_from_bendian, blst_p1, blst_p1_add_or_double_affine,
+    blst_p1_affine, blst_p1_from_affine, blst_p1_to_affine,
+};
 use revm_precompile::{Precompile, PrecompileWithAddress};
 use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
+
+const G1ADD_BASE: u64 = 500;
+const INPUT_LENGTH: usize = 256;
+const OUTPUT_LENGTH: usize = 128;
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G1ADD precompile.
 pub const BLS12_G1ADD: PrecompileWithAddress =
     PrecompileWithAddress(crate::u64_to_address(BLS12_G1ADD_ADDRESS), Precompile::Standard(g1_add));
 
+unsafe fn decode_g1_point(out: *mut blst_p1_affine, input: *const u8) {
+    blst_fp_from_bendian(&mut (*out).x, input);
+    blst_fp_from_bendian(&mut (*out).y, input.add(64));
+}
+
+unsafe fn encode_g1_point(out: &mut [u8], input: *const blst_p1_affine) {
+    fp_to_bytes(&mut out[..64], &(*input).x);
+    fp_to_bytes(&mut out[64..], &(*input).y);
+}
+
+fn fp_to_bytes(out: &mut [u8], input: *const blst_fp) {
+    if out.len() != 64 {
+        return;
+    }
+    for i in 0..16 {
+        out[i] = 0;
+    }
+    unsafe {
+        blst_bendian_from_fp(out[16..].as_mut_ptr(), input);
+    }
+}
+
 fn g1_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
-    const G1ADD_BASE: u64 = 500;
     if G1ADD_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
     }
-    let result = g1_add_impl(input).is_some();
-    Ok((G1ADD_BASE, B256::with_last_byte(result as u8).into()))
-}
 
-fn g1_add_impl(_input: &[u8]) -> Option<()> {
-    None
+    if input.len() != INPUT_LENGTH {
+        return Err(PrecompileError::Other(format!(
+            "G1ADD Input should be {INPUT_LENGTH} bits, was {}",
+            input.len()
+        )));
+    }
+    let mut a_aff: blst_p1_affine = Default::default();
+    unsafe {
+        decode_g1_point(&mut a_aff, input[..128].as_ptr());
+    }
+    let mut b_aff: blst_p1_affine = Default::default();
+    unsafe {
+        decode_g1_point(&mut b_aff, input[128..].as_ptr());
+    }
+    let mut b: blst_p1 = Default::default();
+    unsafe {
+        blst_p1_from_affine(&mut b, &b_aff);
+    }
+
+    let mut p: blst_p1 = Default::default();
+    unsafe {
+        blst_p1_add_or_double_affine(&mut p, &b, &a_aff);
+    }
+
+    let mut p_aff: blst_p1_affine = Default::default();
+    unsafe {
+        blst_p1_to_affine(&mut p_aff, &p);
+    }
+
+    let mut out = [0u8; OUTPUT_LENGTH];
+    unsafe {
+        encode_g1_point(&mut out, &p_aff);
+    }
+
+    Ok((G1ADD_BASE, out.into()))
 }
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G1MUL precompile.
@@ -182,7 +241,8 @@ mod test {
 
     #[rstest]
     // test vectors from https://github.com/ethereum/go-ethereum/blob/master/core/vm/testdata/precompiles/blsG1Add.json and https://github.com/ethereum/go-ethereum/blob/master/core/vm/testdata/precompiles/fail-blsG1Add.json
-    #[case::g1_add_g1_plus_g1_equals_2_times_g1("0000000000000000000000000000000017f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb0000000000000000000000000000000008b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e10000000000000000000000000000000017f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb0000000000000000000000000000000008b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1", "000000000000000000000000000000000572cbea904d67468808c8eb50a9450c9721db309128012543902d0ac358a62ae28f75bb8f1c7c42c39a8c5529bf0f4e00000000000000000000000000000000166a9d8cabc673a322fda673779d8e3822ba3ecb8670e461f73bb9021d5fd76a4c56d9d4cd16bd1bba86881979749d28", false, 500)]
+    #[case::g1_plus_g1_equals_two_times_g1("0000000000000000000000000000000017f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb0000000000000000000000000000000008b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e10000000000000000000000000000000017f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb0000000000000000000000000000000008b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1", "000000000000000000000000000000000572cbea904d67468808c8eb50a9450c9721db309128012543902d0ac358a62ae28f75bb8f1c7c42c39a8c5529bf0f4e00000000000000000000000000000000166a9d8cabc673a322fda673779d8e3822ba3ecb8670e461f73bb9021d5fd76a4c56d9d4cd16bd1bba86881979749d28", false, 500)]
+    #[case::two_times_g1_plus_three_times_g1_equals_five_times_g1("000000000000000000000000000000000572cbea904d67468808c8eb50a9450c9721db309128012543902d0ac358a62ae28f75bb8f1c7c42c39a8c5529bf0f4e00000000000000000000000000000000166a9d8cabc673a322fda673779d8e3822ba3ecb8670e461f73bb9021d5fd76a4c56d9d4cd16bd1bba86881979749d280000000000000000000000000000000009ece308f9d1f0131765212deca99697b112d61f9be9a5f1f3780a51335b3ff981747a0b2ca2179b96d2c0c9024e522400000000000000000000000000000000032b80d3a6f5b09f8a84623389c5f80ca69a0cddabc3097f9d9c27310fd43be6e745256c634af45ca3473b0590ae30d1", "0000000000000000000000000000000010e7791fb972fe014159aa33a98622da3cdc98ff707965e536d8636b5fcc5ac7a91a8c46e59a00dca575af0f18fb13dc0000000000000000000000000000000016ba437edcc6551e30c10512367494bfb6b01cc6681e8a4c3cd2501832ab5c4abc40b4578b85cbaffbf0bcd70d67c6e2", false, 500)]
     fn test_g1_add(
         #[case] input: &str,
         #[case] expected_output: &str,

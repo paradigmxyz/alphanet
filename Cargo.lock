@@ -368,6 +368,7 @@ dependencies = [
 name = "alphanet-precompile"
 version = "0.0.0"
 dependencies = [
+ "blst",
  "p256",
  "revm-precompile",
  "revm-primitives",
