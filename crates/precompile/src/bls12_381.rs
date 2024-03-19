@@ -115,6 +115,20 @@ fn extract_g1_input(input: &[u8]) -> Result<G1Affine, PrecompileError> {
         }
         Ok(output.unwrap())
     }
+
+    let input_p0_x = match remove_padding(&input[..64]) {
+        Ok(input_p0_x) => input_p0_x,
+        Err(e) => return Err(e),
+    };
+    let input_p0_y = match remove_padding(&input[64..128]) {
+        Ok(input_p0_y) => input_p0_y,
+        Err(e) => return Err(e),
+    };
+    let mut input_p0: [u8; 96] = [0; 96];
+    input_p0[..48].copy_from_slice(&input_p0_x);
+    input_p0[48..].copy_from_slice(&input_p0_y);
+
+    Ok(input_p0)
 }
 
 // G1 addition call expects `256` bytes as an input that is interpreted as byte
