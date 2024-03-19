@@ -10,10 +10,12 @@ use std::ops::Add;
 
 const G1ADD_BASE: u64 = 500;
 const INPUT_LENGTH: usize = 256;
+const INPUT_ITEM_LENGTH: usize = 128;
 const OUTPUT_LENGTH: usize = 128;
 const FP_LEGTH: usize = 48;
 const PADDED_INPUT_LENGTH: usize = 64;
 const PADDING_LEGTH: usize = 16;
+const FP_CONCAT_LENGTH: usize = 96;
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G1ADD precompile.
 pub const BLS12_G1ADD: PrecompileWithAddress =
@@ -33,7 +35,7 @@ fn remove_padding(input: &[u8]) -> Result<[u8; FP_LEGTH], PrecompileError> {
 
 // Adds left pad with zeros to each FP element so that the output lenght matches
 // 128 bytes.
-fn add_padding(input: [u8; 96]) -> [u8; OUTPUT_LENGTH] {
+fn set_padding(input: [u8; FP_CONCAT_LENGTH]) -> [u8; OUTPUT_LENGTH] {
     let mut output = [0u8; OUTPUT_LENGTH];
 
     output[PADDING_LEGTH..PADDED_INPUT_LENGTH].copy_from_slice(&input[..FP_LEGTH]);
@@ -44,9 +46,9 @@ fn add_padding(input: [u8; 96]) -> [u8; OUTPUT_LENGTH] {
 
 // Wrapper around G1Affine::from_uncompressed to handle the case in which all
 // the input bytes are zero, which should represent the infinity point in the
-// curve.
-fn g1_affine_from_uncompressed(input: [u8; 96]) -> Result<G1Affine, PrecompileError> {
-    if input == [0; 96] {
+// curve https://eips.ethereum.org/EIPS/eip-2537#point-of-infinity-encoding
+fn g1_affine_from_uncompressed(input: [u8; FP_CONCAT_LENGTH]) -> Result<G1Affine, PrecompileError> {
+    if input == [0; FP_CONCAT_LENGTH] {
         Ok(G1Affine::identity())
     } else {
         let output = G1Affine::from_uncompressed(&input);
@@ -59,25 +61,37 @@ fn g1_affine_from_uncompressed(input: [u8; 96]) -> Result<G1Affine, PrecompileEr
     }
 }
 
-fn extract_input(input: &[u8]) -> Result<[u8; 96], PrecompileError> {
-    if input.len() != INPUT_LENGTH / 2 {
+// Adds a G1 pont in projective format to another one in affine format. If any
+// of the inputs is the identity, the other is returned.
+fn add_g1_affine_projective(p0: G1Affine, p1_projective: G1Projective) -> G1Projective {
+    if p0.is_identity().into() {
+        return p1_projective;
+    }
+    if p1_projective.is_identity().into() {
+        return p0.into();
+    }
+    p0.add(p1_projective)
+}
+
+fn extract_input(input: &[u8]) -> Result<[u8; FP_CONCAT_LENGTH], PrecompileError> {
+    if input.len() != INPUT_ITEM_LENGTH {
         return Err(PrecompileError::Other(format!(
-            "Padded Input should be {PADDED_INPUT_LENGTH} bits, was {}",
+            "Input should be {INPUT_ITEM_LENGTH} bits, was {}",
             input.len()
         )));
     }
 
-    let input_p0_x = match remove_padding(&input[..64]) {
+    let input_p0_x = match remove_padding(&input[..PADDED_INPUT_LENGTH]) {
         Ok(input_p0_x) => input_p0_x,
         Err(e) => return Err(e),
     };
-    let input_p0_y = match remove_padding(&input[64..128]) {
+    let input_p0_y = match remove_padding(&input[PADDED_INPUT_LENGTH..INPUT_ITEM_LENGTH]) {
         Ok(input_p0_y) => input_p0_y,
         Err(e) => return Err(e),
     };
-    let mut input_p0: [u8; 96] = [0; 96];
-    input_p0[..48].copy_from_slice(&input_p0_x);
-    input_p0[48..].copy_from_slice(&input_p0_y);
+    let mut input_p0: [u8; FP_CONCAT_LENGTH] = [0; FP_CONCAT_LENGTH];
+    input_p0[..FP_LEGTH].copy_from_slice(&input_p0_x);
+    input_p0[FP_LEGTH..].copy_from_slice(&input_p0_y);
 
     Ok(input_p0)
 }
@@ -94,16 +108,23 @@ fn g1_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
         )));
     }
 
-    let input_p0 = extract_input(&input[..128])?;
-    let p0 = g1_affine_from_uncompressed(input_p0)?;
+    let input_p0 = extract_input(&input[..INPUT_ITEM_LENGTH])?;
+    let p0: G1Affine = g1_affine_from_uncompressed(input_p0)?;
 
-    let input_p1 = extract_input(&input[128..])?;
+    let input_p1 = extract_input(&input[INPUT_ITEM_LENGTH..])?;
     let p1 = g1_affine_from_uncompressed(input_p1)?;
-
     let p1_projective: G1Projective = p1.into();
-    let out = p0.add(p1_projective);
+
+    let out = add_g1_affine_projective(p0, p1_projective);
     let out: G1Affine = out.into();
-    let out_bytes = add_padding(out.to_uncompressed());
+
+    // take into account point of infinity encoding
+    // https://eips.ethereum.org/EIPS/eip-2537#point-of-infinity-encoding
+    let out_bytes = if out.is_identity().into() {
+        [0u8; OUTPUT_LENGTH]
+    } else {
+        set_padding(out.to_uncompressed())
+    };
 
     Ok((G1ADD_BASE, out_bytes.into()))
 }
@@ -238,6 +259,7 @@ mod test {
     #[case::g1_plus_g1_equals_two_times_g1("0000000000000000000000000000000017f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb0000000000000000000000000000000008b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e10000000000000000000000000000000017f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb0000000000000000000000000000000008b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1", "000000000000000000000000000000000572cbea904d67468808c8eb50a9450c9721db309128012543902d0ac358a62ae28f75bb8f1c7c42c39a8c5529bf0f4e00000000000000000000000000000000166a9d8cabc673a322fda673779d8e3822ba3ecb8670e461f73bb9021d5fd76a4c56d9d4cd16bd1bba86881979749d28", false, 500)]
     #[case::two_times_g1_plus_three_times_g1_equals_five_times_g1("000000000000000000000000000000000572cbea904d67468808c8eb50a9450c9721db309128012543902d0ac358a62ae28f75bb8f1c7c42c39a8c5529bf0f4e00000000000000000000000000000000166a9d8cabc673a322fda673779d8e3822ba3ecb8670e461f73bb9021d5fd76a4c56d9d4cd16bd1bba86881979749d280000000000000000000000000000000009ece308f9d1f0131765212deca99697b112d61f9be9a5f1f3780a51335b3ff981747a0b2ca2179b96d2c0c9024e522400000000000000000000000000000000032b80d3a6f5b09f8a84623389c5f80ca69a0cddabc3097f9d9c27310fd43be6e745256c634af45ca3473b0590ae30d1", "0000000000000000000000000000000010e7791fb972fe014159aa33a98622da3cdc98ff707965e536d8636b5fcc5ac7a91a8c46e59a00dca575af0f18fb13dc0000000000000000000000000000000016ba437edcc6551e30c10512367494bfb6b01cc6681e8a4c3cd2501832ab5c4abc40b4578b85cbaffbf0bcd70d67c6e2", false, 500)]
     #[case::inf_plus_g1_equals_g1("0000000000000000000000000000000017f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb0000000000000000000000000000000008b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "0000000000000000000000000000000017f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb0000000000000000000000000000000008b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1", false, 500)]
+    #[case::inf_plus_inf_equals_inf("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", false, 500)]
     #[case::matter_g1_add_47("0000000000000000000000000000000001ea88d0f329135df49893406b4f9aee0abfd74b62e7eb5576d3ddb329fc4b1649b7c228ec39c6577a069c0811c952f100000000000000000000000000000000033f481fc62ab0a249561d180da39ff641a540c9c109cde41946a0e85d18c9d60b41dbcdec370c5c9f22a9ee9de00ccd0000000000000000000000000000000014b78c66c4acecdd913ba73cc4ab573c64b404a9494d29d4a2ba02393d9b8fdaba47bb7e76d32586df3a00e03ae2896700000000000000000000000000000000025c371cd8b72592a45dc521336a891202c5f96954812b1095ba2ea6bb11aad7b6941a44d68fe9b44e4e5fd06bd541d4", "0000000000000000000000000000000015b164c854a2277658f5d08e04887d896a082c6c20895c8809ed4b349da8492d6fa0333ace6059a1f0d37e92ae9bad30000000000000000000000000000000001510d176ddba09ab60bb452188c2705ef154f449bed26abf0255897673a625637b5761355b17676748f67844a61d4e9f", false, 500)]
     fn test_g1_add(
         #[case] input: &str,
