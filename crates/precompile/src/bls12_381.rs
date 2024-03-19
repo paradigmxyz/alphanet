@@ -3,41 +3,64 @@ use crate::addresses::{
     BLS12_G2MULTIEXP_ADDRESS, BLS12_G2MUL_ADDRESS, BLS12_MAP_FP2_TO_G2_ADDRESS,
     BLS12_MAP_FP_TO_G1_ADDRESS, BLS12_PAIRING_ADDRESS,
 };
-use blst::{
-    blst_bendian_from_fp, blst_fp, blst_fp_from_bendian, blst_p1, blst_p1_add_or_double_affine,
-    blst_p1_affine, blst_p1_from_affine, blst_p1_to_affine,
-};
+use bls12_381::{G1Affine, G1Projective};
 use revm_precompile::{Precompile, PrecompileWithAddress};
 use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
+use std::ops::Add;
 
 const G1ADD_BASE: u64 = 500;
 const INPUT_LENGTH: usize = 256;
 const OUTPUT_LENGTH: usize = 128;
+const FP_LEGTH: usize = 48;
+const PADDED_INPUT_LENGTH: usize = 64;
+const PADDING_LEGTH: usize = 16;
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G1ADD precompile.
 pub const BLS12_G1ADD: PrecompileWithAddress =
     PrecompileWithAddress(crate::u64_to_address(BLS12_G1ADD_ADDRESS), Precompile::Standard(g1_add));
 
-unsafe fn decode_g1_point(out: *mut blst_p1_affine, input: *const u8) {
-    blst_fp_from_bendian(&mut (*out).x, input);
-    blst_fp_from_bendian(&mut (*out).y, input.add(64));
+// precompile inputs are left padded to 64 bytes with 0s.
+fn remove_padding(input: &[u8]) -> Result<[u8; FP_LEGTH], PrecompileError> {
+    if input.len() != PADDED_INPUT_LENGTH {
+        return Err(PrecompileError::Other(format!(
+            "Padded Input should be {PADDED_INPUT_LENGTH} bits, was {}",
+            input.len()
+        )));
+    }
+    let sliced = &input[PADDING_LEGTH..PADDED_INPUT_LENGTH];
+    <[u8; FP_LEGTH]>::try_from(sliced).map_err(|e| PrecompileError::Other(format!("{e}")))
 }
 
-unsafe fn encode_g1_point(out: &mut [u8], input: *const blst_p1_affine) {
-    fp_to_bytes(&mut out[..64], &(*input).x);
-    fp_to_bytes(&mut out[64..], &(*input).y);
+fn add_padding(input: [u8; 96]) -> [u8; OUTPUT_LENGTH] {
+    let mut output = [0u8; OUTPUT_LENGTH];
+
+    output[PADDING_LEGTH..PADDED_INPUT_LENGTH].copy_from_slice(&input[..FP_LEGTH]);
+    output[(PADDED_INPUT_LENGTH + PADDING_LEGTH)..].copy_from_slice(&input[FP_LEGTH..]);
+
+    output
 }
 
-fn fp_to_bytes(out: &mut [u8], input: *const blst_fp) {
-    if out.len() != 64 {
-        return;
+fn extract_input(input: &[u8]) -> Result<[u8; 96], PrecompileError> {
+    if input.len() != INPUT_LENGTH / 2 {
+        return Err(PrecompileError::Other(format!(
+            "Padded Input should be {PADDED_INPUT_LENGTH} bits, was {}",
+            input.len()
+        )));
     }
-    for i in 0..16 {
-        out[i] = 0;
-    }
-    unsafe {
-        blst_bendian_from_fp(out[16..].as_mut_ptr(), input);
-    }
+
+    let input_p0_x = match remove_padding(&input[..64]) {
+        Ok(input_p0_x) => input_p0_x,
+        Err(e) => return Err(e),
+    };
+    let input_p0_y = match remove_padding(&input[64..128]) {
+        Ok(input_p0_y) => input_p0_y,
+        Err(e) => return Err(e),
+    };
+    let mut input_p0: [u8; 96] = [0; 96];
+    input_p0[..48].copy_from_slice(&input_p0_x);
+    input_p0[48..].copy_from_slice(&input_p0_y);
+
+    Ok(input_p0)
 }
 
 fn g1_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
@@ -51,35 +74,25 @@ fn g1_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
             input.len()
         )));
     }
-    let mut a_aff: blst_p1_affine = Default::default();
-    unsafe {
-        decode_g1_point(&mut a_aff, input[..128].as_ptr());
-    }
-    let mut b_aff: blst_p1_affine = Default::default();
-    unsafe {
-        decode_g1_point(&mut b_aff, input[128..].as_ptr());
-    }
-    let mut b: blst_p1 = Default::default();
-    unsafe {
-        blst_p1_from_affine(&mut b, &b_aff);
+
+    let input_p0 = extract_input(&input[..128])?;
+    let p0 = G1Affine::from_uncompressed(&input_p0);
+    if (!p0.is_some()).into() {
+        return Err(PrecompileError::Other("p0 was not a valid elliptic curve point".to_string()));
     }
 
-    let mut p: blst_p1 = Default::default();
-    unsafe {
-        blst_p1_add_or_double_affine(&mut p, &b, &a_aff);
+    let input_p1 = extract_input(&input[128..])?;
+    let p1 = G1Affine::from_uncompressed(&input_p1);
+    if (!p1.is_some()).into() {
+        return Err(PrecompileError::Other("p1 was not a valid elliptic curve point".to_string()));
     }
 
-    let mut p_aff: blst_p1_affine = Default::default();
-    unsafe {
-        blst_p1_to_affine(&mut p_aff, &p);
-    }
+    let p1_projective: G1Projective = p1.unwrap().into();
+    let out = p0.unwrap().add(p1_projective);
+    let out: G1Affine = out.into();
+    let out_bytes = add_padding(out.to_uncompressed());
 
-    let mut out = [0u8; OUTPUT_LENGTH];
-    unsafe {
-        encode_g1_point(&mut out, &p_aff);
-    }
-
-    Ok((G1ADD_BASE, out.into()))
+    Ok((G1ADD_BASE, out_bytes.into()))
 }
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G1MUL precompile.

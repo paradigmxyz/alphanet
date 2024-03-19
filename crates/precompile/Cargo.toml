@@ -10,7 +10,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
-blst = "0.3.11"
+bls12_381 = "0.8.0"
 p256 = { version = "0.13.2", features = ["ecdsa"] }
 revm-precompile.workspace = true
 revm-primitives.workspace = true
