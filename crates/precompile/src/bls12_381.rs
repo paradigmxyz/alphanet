@@ -19,7 +19,7 @@ const PADDING_LEGTH: usize = 16;
 pub const BLS12_G1ADD: PrecompileWithAddress =
     PrecompileWithAddress(crate::u64_to_address(BLS12_G1ADD_ADDRESS), Precompile::Standard(g1_add));
 
-// precompile inputs are left padded to 64 bytes with 0s.
+// Removes zeros with which the precompile inputs are left padded to 64 bytes.
 fn remove_padding(input: &[u8]) -> Result<[u8; FP_LEGTH], PrecompileError> {
     if input.len() != PADDED_INPUT_LENGTH {
         return Err(PrecompileError::Other(format!(
@@ -31,6 +31,8 @@ fn remove_padding(input: &[u8]) -> Result<[u8; FP_LEGTH], PrecompileError> {
     <[u8; FP_LEGTH]>::try_from(sliced).map_err(|e| PrecompileError::Other(format!("{e}")))
 }
 
+// Adds left pad with zeros to each FP element so that the output lenght matches
+// 128 bytes.
 fn add_padding(input: [u8; 96]) -> [u8; OUTPUT_LENGTH] {
     let mut output = [0u8; OUTPUT_LENGTH];
 
