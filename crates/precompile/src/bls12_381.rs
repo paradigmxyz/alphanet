@@ -52,7 +52,9 @@ fn set_padding(input: [u8; FP_CONCAT_LENGTH]) -> [u8; OUTPUT_LENGTH] {
 
 // Wrapper around G1Affine::from_uncompressed to handle the case in which all
 // the input bytes are zero, which should represent the infinity point in the
-// curve https://eips.ethereum.org/EIPS/eip-2537#point-of-infinity-encoding
+// curve, see EIP-2537:
+//
+// <https://eips.ethereum.org/EIPS/eip-2537#point-of-infinity-encoding>
 fn g1_affine_from_uncompressed(input: [u8; FP_CONCAT_LENGTH]) -> Result<G1Affine, PrecompileError> {
     if input == [0; FP_CONCAT_LENGTH] {
         Ok(G1Affine::identity())
