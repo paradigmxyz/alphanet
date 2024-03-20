@@ -1,11 +1,5 @@
 use alphanet_instructions::eip3074;
-use alphanet_precompile::{
-    bls12_381::{
-        BLS12_G1ADD, BLS12_G1MUL, BLS12_G1MULTIEXP, BLS12_G2ADD, BLS12_G2MUL, BLS12_G2MULTIEXP,
-        BLS12_MAP_FP2_TO_G2, BLS12_MAP_FP_TO_G1, BLS12_PAIRING,
-    },
-    secp256r1::P256VERIFY,
-};
+use alphanet_precompile::{bls12_381, secp256r1};
 use reth::{
     primitives::{
         revm::{config::revm_spec, env::fill_op_tx_env},
@@ -19,12 +13,22 @@ use reth::{
     },
 };
 use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
+use revm_precompile::PrecompileWithAddress;
 use std::sync::Arc;
 
 /// Custom EVM configuration
 #[derive(Debug, Clone, Copy, Default)]
 #[non_exhaustive]
 pub struct AlphaNetEvmConfig;
+
+fn insert_precompiles<I>(precompiles: &mut Precompiles, precompiles_with_address: I)
+where
+    I: Iterator<Item = PrecompileWithAddress>,
+{
+    for precompile_with_address in precompiles_with_address {
+        precompiles.inner.insert(precompile_with_address.0, precompile_with_address.1);
+    }
+}
 
 impl AlphaNetEvmConfig {
     /// Sets the precompiles to the EVM handler
@@ -43,16 +47,9 @@ impl AlphaNetEvmConfig {
         // install the precompiles
         handler.pre_execution.load_precompiles = Arc::new(move || {
             let mut precompiles = Precompiles::new(PrecompileSpecId::from_spec_id(spec_id)).clone();
-            precompiles.inner.insert(P256VERIFY.0, P256VERIFY.1);
-            precompiles.inner.insert(BLS12_G1ADD.0, BLS12_G1ADD.1);
-            precompiles.inner.insert(BLS12_G1MUL.0, BLS12_G1MUL.1);
-            precompiles.inner.insert(BLS12_G1MULTIEXP.0, BLS12_G1MULTIEXP.1);
-            precompiles.inner.insert(BLS12_G2ADD.0, BLS12_G2ADD.1);
-            precompiles.inner.insert(BLS12_G2MUL.0, BLS12_G2MUL.1);
-            precompiles.inner.insert(BLS12_G2MULTIEXP.0, BLS12_G2MULTIEXP.1);
-            precompiles.inner.insert(BLS12_PAIRING.0, BLS12_PAIRING.1);
-            precompiles.inner.insert(BLS12_MAP_FP_TO_G1.0, BLS12_MAP_FP_TO_G1.1);
-            precompiles.inner.insert(BLS12_MAP_FP2_TO_G2.0, BLS12_MAP_FP2_TO_G2.1);
+            insert_precompiles(&mut precompiles, secp256r1::precompiles());
+            insert_precompiles(&mut precompiles, bls12_381::precompiles());
+
             precompiles.into()
         });
     }

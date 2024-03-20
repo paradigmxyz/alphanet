@@ -362,6 +362,7 @@ dependencies = [
  "reth",
  "reth-node-api",
  "reth-node-optimism",
+ "revm-precompile",
 ]
 
 [[package]]
