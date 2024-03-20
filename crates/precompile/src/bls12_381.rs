@@ -12,7 +12,7 @@ const G1ADD_BASE: u64 = 500;
 const INPUT_LENGTH: usize = 256;
 const INPUT_ITEM_LENGTH: usize = 128;
 const OUTPUT_LENGTH: usize = 128;
-const FP_LEGTH: usize = 48;
+const FP_LENGTH: usize = 48;
 const PADDED_INPUT_LENGTH: usize = 64;
 const PADDING_LEGTH: usize = 16;
 const FP_CONCAT_LENGTH: usize = 96;
@@ -22,7 +22,7 @@ pub const BLS12_G1ADD: PrecompileWithAddress =
     PrecompileWithAddress(crate::u64_to_address(BLS12_G1ADD_ADDRESS), Precompile::Standard(g1_add));
 
 // Removes zeros with which the precompile inputs are left padded to 64 bytes.
-fn remove_padding(input: &[u8]) -> Result<[u8; FP_LEGTH], PrecompileError> {
+fn remove_padding(input: &[u8]) -> Result<[u8; FP_LENGTH], PrecompileError> {
     if input.len() != PADDED_INPUT_LENGTH {
         return Err(PrecompileError::Other(format!(
             "Padded Input should be {PADDED_INPUT_LENGTH} bits, was {}",
@@ -36,7 +36,7 @@ fn remove_padding(input: &[u8]) -> Result<[u8; FP_LEGTH], PrecompileError> {
     }
 
     let sliced = &input[PADDING_LEGTH..PADDED_INPUT_LENGTH];
-    <[u8; FP_LEGTH]>::try_from(sliced).map_err(|e| PrecompileError::Other(format!("{e}")))
+    <[u8; FP_LENGTH]>::try_from(sliced).map_err(|e| PrecompileError::Other(format!("{e}")))
 }
 
 // Adds left pad with zeros to each FP element so that the output lenght matches
@@ -44,8 +44,8 @@ fn remove_padding(input: &[u8]) -> Result<[u8; FP_LEGTH], PrecompileError> {
 fn set_padding(input: [u8; FP_CONCAT_LENGTH]) -> [u8; OUTPUT_LENGTH] {
     let mut output = [0u8; OUTPUT_LENGTH];
 
-    output[PADDING_LEGTH..PADDED_INPUT_LENGTH].copy_from_slice(&input[..FP_LEGTH]);
-    output[(PADDED_INPUT_LENGTH + PADDING_LEGTH)..].copy_from_slice(&input[FP_LEGTH..]);
+    output[PADDING_LEGTH..PADDED_INPUT_LENGTH].copy_from_slice(&input[..FP_LENGTH]);
+    output[(PADDED_INPUT_LENGTH + PADDING_LEGTH)..].copy_from_slice(&input[FP_LENGTH..]);
 
     output
 }
@@ -96,8 +96,8 @@ fn extract_input(input: &[u8]) -> Result<[u8; FP_CONCAT_LENGTH], PrecompileError
         Err(e) => return Err(e),
     };
     let mut input_p0: [u8; FP_CONCAT_LENGTH] = [0; FP_CONCAT_LENGTH];
-    input_p0[..FP_LEGTH].copy_from_slice(&input_p0_x);
-    input_p0[FP_LEGTH..].copy_from_slice(&input_p0_y);
+    input_p0[..FP_LENGTH].copy_from_slice(&input_p0_x);
+    input_p0[FP_LENGTH..].copy_from_slice(&input_p0_y);
 
     Ok(input_p0)
 }
