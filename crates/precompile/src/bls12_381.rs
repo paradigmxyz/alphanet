@@ -3,19 +3,22 @@ use crate::addresses::{
     BLS12_G2MULTIEXP_ADDRESS, BLS12_G2MUL_ADDRESS, BLS12_MAP_FP2_TO_G2_ADDRESS,
     BLS12_MAP_FP_TO_G1_ADDRESS, BLS12_PAIRING_ADDRESS,
 };
-use bls12_381::{G1Affine, G1Projective};
+use bls12_381::{G1Affine, G1Projective, Scalar};
 use revm_precompile::{Precompile, PrecompileWithAddress};
 use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
-use std::ops::Add;
+use std::ops::{Add, Mul};
 
 const G1ADD_BASE: u64 = 500;
+const G1MUL_BASE: u64 = 12000;
 const G1ADD_INPUT_LENGTH: usize = 256;
+const G1MUL_INPUT_LENGTH: usize = 160;
 const INPUT_ITEM_LENGTH: usize = 128;
 const OUTPUT_LENGTH: usize = 128;
 const FP_LENGTH: usize = 48;
 const PADDED_INPUT_LENGTH: usize = 64;
 const PADDING_LENGTH: usize = 16;
 const FP_CONCAT_LENGTH: usize = 96;
+const SCALAR_LENGTH: usize = 32;
 
 /// bls12381 precompiles
 pub fn precompiles() -> impl Iterator<Item = PrecompileWithAddress> {
@@ -76,6 +79,28 @@ fn add_g1_affine_projective(p0: G1Affine, p1_projective: G1Projective) -> G1Proj
         return p0.into();
     }
     p0.add(p1_projective)
+}
+
+// Multiplies a G1 pont in projective format by a scalar.
+fn mul_g1_affine_scalar(p0: G1Affine, scalar0: Scalar) -> G1Projective {
+    p0.mul(scalar0)
+}
+
+// Extracts an Scalar from a 32 byte slice representation.
+fn extract_scalar_input(input: &[u8]) -> Result<Scalar, PrecompileError> {
+    if input.len() != INPUT_ITEM_LENGTH {
+        return Err(PrecompileError::Other(format!(
+            "Input should be {SCALAR_LENGTH} bits, was {}",
+            input.len()
+        )));
+    }
+    let input: [u8; SCALAR_LENGTH] = input.try_into().unwrap();
+    let output = Scalar::from_bytes(&input);
+    if output.is_some().into() {
+        Ok(output.unwrap())
+    } else {
+        Err(PrecompileError::Other("could not convert input in Scalar".to_string()))
+    }
 }
 
 // Extracts a G1 point in Affine format from a 128 byte slice representation.
@@ -156,13 +181,38 @@ fn g1_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
 const BLS12_G1MUL: PrecompileWithAddress =
     PrecompileWithAddress(crate::u64_to_address(BLS12_G1MUL_ADDRESS), Precompile::Standard(g1_mul));
 
-fn g1_mul(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
-    const G1MUL_BASE: u64 = 12000;
+// G1 multiplication call expects `160` bytes as an input that is interpreted as
+// byte concatenation of encoding of G1 point (`128` bytes) and encoding of a
+// scalar value (`32` bytes).
+// Output is an encoding of multiplication operation result - single G1 point
+// (`128` bytes).
+fn g1_mul(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     if G1MUL_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
     }
-    let result = 1;
-    Ok((G1MUL_BASE, B256::with_last_byte(result as u8).into()))
+    if input.len() != G1MUL_INPUT_LENGTH {
+        return Err(PrecompileError::Other(format!(
+            "G1MUL Input should be {G1MUL_INPUT_LENGTH} bits, was {}",
+            input.len()
+        )));
+    }
+
+    let p0 = extract_g1_input(&input[..INPUT_ITEM_LENGTH])?;
+
+    let input_scalar0 = extract_scalar_input(&input[INPUT_ITEM_LENGTH..])?;
+
+    let out = mul_g1_affine_scalar(p0, input_scalar0);
+    let out: G1Affine = out.into();
+
+    // take into account point of infinity encoding
+    // https://eips.ethereum.org/EIPS/eip-2537#point-of-infinity-encoding
+    let out_bytes = if out.is_identity().into() {
+        [0u8; OUTPUT_LENGTH]
+    } else {
+        set_padding(out.to_uncompressed())
+    };
+
+    Ok((G1MUL_BASE, out_bytes.into()))
 }
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G1MULTIEXP precompile.
