@@ -1,3 +1,4 @@
+use alphanet_instructions::eip3074;
 use alphanet_precompile::secp256r1::P256VERIFY;
 use reth::{
     primitives::{
@@ -26,7 +27,7 @@ impl AlphaNetEvmConfig {
     /// [ConfigureEvm::evm_with_inspector]
     ///
     /// This will use the default mainnet precompiles and add additional precompiles.
-    pub fn set_precompiles<EXT, DB>(handler: &mut EvmHandler<'_, EXT, DB>)
+    fn set_precompiles<EXT, DB>(handler: &mut EvmHandler<'_, EXT, DB>)
     where
         DB: Database,
     {
@@ -40,6 +41,26 @@ impl AlphaNetEvmConfig {
             precompiles.into()
         });
     }
+
+    /// Appends custom instructions to the EVM handler
+    ///
+    /// This will be invoked when the EVM is created via [ConfigureEvm::evm] or
+    /// [ConfigureEvm::evm_with_inspector]
+    ///
+    /// This will use the default mainnet instructions and append additional instructions.
+    fn append_custom_instructions<EXT, DB>(handler: &mut EvmHandler<'_, EXT, DB>)
+    where
+        DB: Database,
+    {
+        if let Some(ref mut table) = handler.instruction_table {
+            let eip3074_initializers = eip3074::initializers::<EXT, DB>();
+
+            for init in eip3074_initializers {
+                let instruction_with_opcode = init();
+                table.insert(instruction_with_opcode.opcode, instruction_with_opcode.instruction);
+            }
+        }
+    }
 }
 
 impl ConfigureEvm for AlphaNetEvmConfig {
@@ -48,6 +69,8 @@ impl ConfigureEvm for AlphaNetEvmConfig {
             .with_db(db)
             // add additional precompiles
             .append_handler_register(Self::set_precompiles)
+            // add custom instructions
+            .append_handler_register(Self::append_custom_instructions)
             .build()
     }
 
@@ -57,6 +80,8 @@ impl ConfigureEvm for AlphaNetEvmConfig {
             .with_external_context(inspector)
             // add additional precompiles
             .append_handler_register(Self::set_precompiles)
+            // add custom instructions
+            .append_handler_register(Self::append_custom_instructions)
             .build()
     }
 }

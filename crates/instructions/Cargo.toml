@@ -1,0 +1,26 @@
+[package]
+name = "alphanet-instructions"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+revm.workspace = true
+revm-interpreter.workspace = true
+revm-primitives.workspace = true
+secp256k1.workspace = true
+
+[dev-dependencies]
+secp256k1 = { version = "0.28.2", default-features = false, features = [
+    "alloc",
+    "recovery",
+    "rand-std"
+] }
+
+[lints]
+workspace = true
