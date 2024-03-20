@@ -1,3 +1,5 @@
+//! Constants for the addresses used for each of the precompiled contracts.
+
 pub(crate) const BLS12_G1ADD_ADDRESS: u64 = 0x0b;
 pub(crate) const BLS12_G1MUL_ADDRESS: u64 = 0x0c;
 pub(crate) const BLS12_G1MULTIEXP_ADDRESS: u64 = 0x0d;
