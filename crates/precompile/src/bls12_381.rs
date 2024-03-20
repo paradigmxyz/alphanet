@@ -9,7 +9,7 @@ use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
 use std::ops::Add;
 
 const G1ADD_BASE: u64 = 500;
-const INPUT_LENGTH: usize = 256;
+const G1ADD_INPUT_LENGTH: usize = 256;
 const INPUT_ITEM_LENGTH: usize = 128;
 const OUTPUT_LENGTH: usize = 128;
 const FP_LENGTH: usize = 48;
@@ -50,25 +50,6 @@ fn set_padding(input: [u8; FP_CONCAT_LENGTH]) -> [u8; OUTPUT_LENGTH] {
     output
 }
 
-// Wrapper around G1Affine::from_uncompressed to handle the case in which all
-// the input bytes are zero, which should represent the infinity point in the
-// curve, see EIP-2537:
-//
-// <https://eips.ethereum.org/EIPS/eip-2537#point-of-infinity-encoding>
-fn g1_affine_from_uncompressed(input: [u8; FP_CONCAT_LENGTH]) -> Result<G1Affine, PrecompileError> {
-    if input == [0; FP_CONCAT_LENGTH] {
-        Ok(G1Affine::identity())
-    } else {
-        let output = G1Affine::from_uncompressed(&input);
-        if (!output.is_some()).into() {
-            return Err(PrecompileError::Other(
-                "The given input did not represent a valid elliptic curve point".to_string(),
-            ));
-        }
-        Ok(output.unwrap())
-    }
-}
-
 // Adds a G1 pont in projective format to another one in affine format. If any
 // of the inputs is the identity, the other is returned.
 fn add_g1_affine_projective(p0: G1Affine, p1_projective: G1Projective) -> G1Projective {
@@ -81,7 +62,8 @@ fn add_g1_affine_projective(p0: G1Affine, p1_projective: G1Projective) -> G1Proj
     p0.add(p1_projective)
 }
 
-fn extract_input(input: &[u8]) -> Result<[u8; FP_CONCAT_LENGTH], PrecompileError> {
+// Extracts a G1 point in Affine format from a 128 byte slice representation.
+fn extract_g1_input(input: &[u8]) -> Result<G1Affine, PrecompileError> {
     if input.len() != INPUT_ITEM_LENGTH {
         return Err(PrecompileError::Other(format!(
             "Input should be {INPUT_ITEM_LENGTH} bits, was {}",
@@ -101,26 +83,43 @@ fn extract_input(input: &[u8]) -> Result<[u8; FP_CONCAT_LENGTH], PrecompileError
     input_p0[..FP_LENGTH].copy_from_slice(&input_p0_x);
     input_p0[FP_LENGTH..].copy_from_slice(&input_p0_y);
 
-    Ok(input_p0)
+    // handle the case in which all
+    // the input bytes are zero, which should represent the infinity point in the
+    // curve, see EIP-2537:
+    //
+    // <https://eips.ethereum.org/EIPS/eip-2537#point-of-infinity-encoding>
+    if input_p0 == [0; FP_CONCAT_LENGTH] {
+        Ok(G1Affine::identity())
+    } else {
+        let output = G1Affine::from_uncompressed(&input_p0);
+        if (!output.is_some()).into() {
+            return Err(PrecompileError::Other(
+                "The given input did not represent a valid elliptic curve point".to_string(),
+            ));
+        }
+        Ok(output.unwrap())
+    }
 }
 
+// G1 addition call expects `256` bytes as an input that is interpreted as byte
+// concatenation of two G1 points (`128` bytes each).
+// Output is an encoding of addition operation result - single G1 point (`128`
+// bytes).
 fn g1_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     if G1ADD_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
     }
 
-    if input.len() != INPUT_LENGTH {
+    if input.len() != G1ADD_INPUT_LENGTH {
         return Err(PrecompileError::Other(format!(
-            "G1ADD Input should be {INPUT_LENGTH} bits, was {}",
+            "G1ADD Input should be {G1ADD_INPUT_LENGTH} bits, was {}",
             input.len()
         )));
     }
 
-    let input_p0 = extract_input(&input[..INPUT_ITEM_LENGTH])?;
-    let p0: G1Affine = g1_affine_from_uncompressed(input_p0)?;
+    let p0 = extract_g1_input(&input[..INPUT_ITEM_LENGTH])?;
 
-    let input_p1 = extract_input(&input[INPUT_ITEM_LENGTH..])?;
-    let p1 = g1_affine_from_uncompressed(input_p1)?;
+    let p1 = extract_g1_input(&input[INPUT_ITEM_LENGTH..])?;
     let p1_projective: G1Projective = p1.into();
 
     let out = add_g1_affine_projective(p0, p1_projective);
