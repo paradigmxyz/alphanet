@@ -1,11 +1,8 @@
 use crate::InstructionWithOpCode;
 use revm::{Database, Evm};
 use revm_interpreter::{gas::memory_gas, next_multiple_of_32, InstructionResult, Interpreter};
+use revm_precompile::secp256k1::ecrecover;
 use revm_primitives::{alloy_primitives::B512, keccak256, Address, B256};
-use secp256k1::{
-    ecdsa::{RecoverableSignature, RecoveryId},
-    Message, Secp256k1,
-};
 
 const AUTH_OPCODE: u8 = 0xF6;
 const AUTHCALL_OPCODE: u8 = 0xF7;
@@ -25,20 +22,6 @@ pub fn instructions<'a, EXT: 'a, DB: Database + 'a>(
         },
     ]
     .into_iter()
-}
-
-// TODO: use ecrecover from revm-precompile::secp256k1.
-fn ecrecover(sig: &B512, recid: u8, msg: &B256) -> Result<B256, secp256k1::Error> {
-    let recid = RecoveryId::from_i32(recid as i32).expect("recovery ID is valid");
-    let sig = RecoverableSignature::from_compact(sig.as_slice(), recid)?;
-
-    let secp = Secp256k1::new();
-    let msg = Message::from_digest(msg.0);
-    let public = secp.recover_ecdsa(&msg, &sig)?;
-
-    let mut hash = keccak256(&public.serialize_uncompressed()[1..]);
-    hash[..12].fill(0);
-    Ok(hash)
 }
 
 // keccak256(MAGIC || chainId || nonce || invokerAddress || commit)
@@ -146,7 +129,7 @@ mod tests {
     };
     use revm_interpreter::{Contract, SharedMemory, Stack};
     use revm_primitives::{Account, Bytecode, Bytes, U256};
-    use secp256k1::{rand, Context, PublicKey, SecretKey, Signing};
+    use secp256k1::{rand, Context, Message, PublicKey, Secp256k1, SecretKey, Signing};
     use std::convert::Infallible;
 
     fn setup_interpreter() -> Interpreter {
