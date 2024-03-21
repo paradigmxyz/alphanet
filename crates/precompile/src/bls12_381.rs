@@ -3,10 +3,10 @@ use crate::addresses::{
     BLS12_G2MULTIEXP_ADDRESS, BLS12_G2MUL_ADDRESS, BLS12_MAP_FP2_TO_G2_ADDRESS,
     BLS12_MAP_FP_TO_G1_ADDRESS, BLS12_PAIRING_ADDRESS,
 };
-use bls12_381::{G1Affine, G1Projective, Scalar};
+use bls12_381::{G1Affine, G1Projective};
 use revm_precompile::{Precompile, PrecompileWithAddress};
 use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
-use std::ops::{Add, Mul};
+use std::ops::Add;
 
 const G1ADD_BASE: u64 = 500;
 const G1MUL_BASE: u64 = 12000;
@@ -81,29 +81,33 @@ fn add_g1_affine_projective(p0: G1Affine, p1_projective: G1Projective) -> G1Proj
     p0.add(p1_projective)
 }
 
-// Multiplies a G1 pont in projective format by a scalar.
-fn mul_g1_affine_scalar(p0: G1Affine, scalar0: Scalar) -> G1Projective {
-    p0.mul(scalar0)
+// Multiplies a G1 point in projective format by scalar.
+fn mul_g1_projective_scalar(p0: G1Projective, scalar0: [u8; SCALAR_LENGTH]) -> G1Projective {
+    let mut q = G1Projective::default();
+    let mut n = p0;
+
+    for byte in scalar0.into_iter().rev() {
+        for bit_index in 0..8 {
+            let bit = (byte >> bit_index) & 1;
+            if bit == 0x01 {
+                q = q.add(n);
+            }
+            n = n.double();
+        }
+    }
+    q
 }
 
 // Extracts an Scalar from a 32 byte slice representation.
-fn extract_scalar_input(input: &[u8]) -> Result<Scalar, PrecompileError> {
+fn extract_scalar_input(input: &[u8]) -> Result<[u8; SCALAR_LENGTH], PrecompileError> {
     if input.len() != SCALAR_LENGTH {
         return Err(PrecompileError::Other(format!(
             "Input should be {SCALAR_LENGTH} bits, was {}",
             input.len()
         )));
     }
-    let input: [u8; SCALAR_LENGTH] = input.try_into().unwrap();
-    // Scalar::from_bytes requires little endian input.
-    let mut input = input.to_vec();
-    input.reverse();
-    let output = Scalar::from_bytes(&input.try_into().unwrap());
-    if output.is_some().into() {
-        Ok(output.unwrap())
-    } else {
-        Err(PrecompileError::Other("could not convert input in Scalar".to_string()))
-    }
+
+    Ok(input.try_into().unwrap())
 }
 
 // Extracts a G1 point in Affine format from a 128 byte slice representation.
@@ -201,10 +205,11 @@ fn g1_mul(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     }
 
     let p0 = extract_g1_input(&input[..INPUT_ITEM_LENGTH])?;
+    let p0_projective: G1Projective = p0.into();
 
     let input_scalar0 = extract_scalar_input(&input[INPUT_ITEM_LENGTH..])?;
 
-    let out = mul_g1_affine_scalar(p0, input_scalar0);
+    let out = mul_g1_projective_scalar(p0_projective, input_scalar0);
     let out: G1Affine = out.into();
 
     // take into account point of infinity encoding
@@ -533,7 +538,9 @@ mod test {
     #[case::matter_g1_mul_zero("0000000000000000000000000000000012196c5a43d69224d8713389285f26b98f86ee910ab3dd668e413738282003cc5b7357af9a7af54bb713d62255e80f560000000000000000000000000000000006ba8102bfbeea4416b710c73e8cce3032c31c6269c44906f8ac4f7874ce99fb17559992486528963884ce429a992feeb3c940fe79b6966489b527955de7599194a9ac69a6ff58b8d99e7b1084f0464e", "000000000000000000000000000000000f1f230329be03ac700ba718bc43c8ee59a4b2d1e20c7de95b22df14e7867eae4658ed2f2dfed4f775d4dcedb4235cf00000000000000000000000000000000012924104fdb82fb074cfc868bdd22012694b5bae2c0141851a5d6a97d8bc6f22ecb2f6ddec18cba6483f2e73faa5b942", false, 12000)]
     #[case::matter_g1_mul_one("00000000000000000000000000000000117dbe419018f67844f6a5e1b78a1e597283ad7b8ee7ac5e58846f5a5fd68d0da99ce235a91db3ec1cf340fe6b7afcdb0000000000000000000000000000000013316f23de032d25e912ae8dc9b54c8dba1be7cecdbb9d2228d7e8f652011d46be79089dd0a6080a73c82256ce5e4ed24d0e25bf3f6fc9f4da25d21fdc71773f1947b7a8a775b8177f7eca990b05b71d", "00000000000000000000000000000000195592b927f3f1783a0c7b5117702cb09fa4f95bb2d35aa2a70fe89ba84aa4f385bdb2bfd4e1aaffbb0bfa002ac0e51b000000000000000000000000000000000607f070f4ae567633d019a63d0411a07d767bd7b6fe258c3ba1e720279e94c31f23166b806eabdb830bb632b003ca8b", false, 12000)]
     #[case::matter_g1_mul_two("0000000000000000000000000000000008ab7b556c672db7883ec47efa6d98bb08cec7902ebb421aac1c31506b177ac444ffa2d9b400a6f1cbdc6240c607ee110000000000000000000000000000000016b7fa9adf4addc2192271ce7ad3c8d8f902d061c43b7d2e8e26922009b777855bffabe7ed1a09155819eabfa87f276f973f40c12c92b703d7b7848ef8b4466d40823aad3943a312b57432b91ff68be1", "0000000000000000000000000000000014f9bc24d65e3a2d046dbae935781596fb277359ba785808fd9ff7fd135ba8c1ddc27d97a16cc844427afbf4f8fc75a60000000000000000000000000000000017e3a485f84e2f2bdcf3255fe939945abe60dca5e0ae55eae9675dcc8d73e06d00b440a27ab4dc21c37f0bd492d70cf4", false, 12000)]
-
+    #[case::matter_g1_mul_three("0000000000000000000000000000000015ff9a232d9b5a8020a85d5fe08a1dcfb73ece434258fe0e2fddf10ddef0906c42dcb5f5d62fc97f934ba900f17beb330000000000000000000000000000000009cfe4ee2241d9413c616462d7bac035a6766aeaab69c81e094d75b840df45d7e0dfac0265608b93efefb9a8728b98e44c51f97bcdda93904ae26991b471e9ea942e2b5b8ed26055da11c58bc7b5002a", "000000000000000000000000000000000827517654873d535010e589eaf22f646cf7626144ca04738286de1f1d345342d5ae0eab9cd37ced9a3db90e569301720000000000000000000000000000000002a474c2443d71b0231d2b2b874a6aeac0452dd75da88e6f27949edafc7d094cb1577a79f4e643db42edcaecc17d66da", false, 12000)]
+    #[case::matter_g1_mul_four("0000000000000000000000000000000017a17b82e3bfadf3250210d8ef572c02c3610d65ab4d7366e0b748768a28ee6a1b51f77ed686a64f087f36f641e7dca900000000000000000000000000000000077ea73d233ccea51dc4d5acecf6d9332bf17ae51598f4b394a5f62fb387e9c9aa1d6823b64a074f5873422ca57545d38964d5867927bc3e35a0b4c457482373969bff5edff8a781d65573e07fd87b89", "000000000000000000000000000000000d7e5794c88c549970383454d98f9b7cebb7fdf8545256f1a5e42a61aa1d61193f02075dc6314b650da14f3776da6ead0000000000000000000000000000000002054faff236d38d2307aa6cbbc696d50f5b3ffead1be2df97a05ebbcbc9e02eaf153f311a1e141eb95d411c0ec6e981", false, 12000)]
+    #[case::matter_g1_mul_five("000000000000000000000000000000000c1243478f4fbdc21ea9b241655947a28accd058d0cdb4f9f0576d32f09dddaf0850464550ff07cab5927b3e4c863ce90000000000000000000000000000000015fb54db10ffac0b6cd374eb7168a8cb3df0a7d5f872d8e98c1f623deb66df5dd08ff4c3658f2905ec8bd02598bd4f90787c38b944eadbd03fd3187f450571740f6cd00e5b2e560165846eb800e5c944", "000000000000000000000000000000000ff16ff83b45eae09d858f8fe443c3f0e0b7418a87ac27bb00f7eea343d20a4a7f5c0fcc56da9b792fe12bd38d0d43c600000000000000000000000000000000042a815a4a5dca00bd1791889491c882a21f0fe0a53809d83740407455cf9c980c5547961f9ebe61871a4896dace7fbd", false, 12000)]
     fn test_g1_mul(
         #[case] input: &str,
         #[case] expected_output: &str,
