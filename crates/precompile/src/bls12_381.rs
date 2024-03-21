@@ -14,7 +14,7 @@ const INPUT_ITEM_LENGTH: usize = 128;
 const OUTPUT_LENGTH: usize = 128;
 const FP_LENGTH: usize = 48;
 const PADDED_INPUT_LENGTH: usize = 64;
-const PADDING_LEGTH: usize = 16;
+const PADDING_LENGTH: usize = 16;
 const FP_CONCAT_LENGTH: usize = 96;
 
 /// bls12381 precompiles
@@ -45,13 +45,13 @@ fn remove_padding(input: &[u8]) -> Result<[u8; FP_LENGTH], PrecompileError> {
             input.len()
         )));
     }
-    if !input.iter().take(PADDING_LEGTH).all(|&x| x == 0) {
+    if !input.iter().take(PADDING_LENGTH).all(|&x| x == 0) {
         return Err(PrecompileError::Other(format!(
-            "{PADDING_LEGTH} top bytes of input are not zero",
+            "{PADDING_LENGTH} top bytes of input are not zero",
         )));
     }
 
-    let sliced = &input[PADDING_LEGTH..PADDED_INPUT_LENGTH];
+    let sliced = &input[PADDING_LENGTH..PADDED_INPUT_LENGTH];
     <[u8; FP_LENGTH]>::try_from(sliced).map_err(|e| PrecompileError::Other(format!("{e}")))
 }
 
@@ -60,8 +60,8 @@ fn remove_padding(input: &[u8]) -> Result<[u8; FP_LENGTH], PrecompileError> {
 fn set_padding(input: [u8; FP_CONCAT_LENGTH]) -> [u8; OUTPUT_LENGTH] {
     let mut output = [0u8; OUTPUT_LENGTH];
 
-    output[PADDING_LEGTH..PADDED_INPUT_LENGTH].copy_from_slice(&input[..FP_LENGTH]);
-    output[(PADDED_INPUT_LENGTH + PADDING_LEGTH)..].copy_from_slice(&input[FP_LENGTH..]);
+    output[PADDING_LENGTH..PADDED_INPUT_LENGTH].copy_from_slice(&input[..FP_LENGTH]);
+    output[(PADDED_INPUT_LENGTH + PADDING_LENGTH)..].copy_from_slice(&input[FP_LENGTH..]);
 
     output
 }
