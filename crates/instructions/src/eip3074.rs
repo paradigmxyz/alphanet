@@ -13,6 +13,9 @@ const COLD_AUTHORITY_GAS: u64 = 2600;
 const FIXED_FEE_GAS: u64 = 3100;
 
 #[derive(Default, Clone)]
+/// Contains the authority context variable used by EIP-3074 AUTH and AUTHCALL
+/// instructions. It is wrapped in a Rc<RefCell<>> so that we can read and write
+/// to it inside the instructions.
 pub(crate) struct Eip3074Context {
     pub(crate) authority: Rc<RefCell<Address>>,
 }
