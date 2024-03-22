@@ -54,6 +54,8 @@ reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "82b6504", featu
 reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "82b6504" }
 reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "82b6504" }
 reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "82b6504" }
+reth-rpc-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "82b6504" }
+reth-rpc-types = { git = "https://github.com/paradigmxyz/reth.git", rev = "82b6504" }
 
 # revm
 revm = { version = "7.1.0", features = ["std", "secp256k1"], default-features = false }

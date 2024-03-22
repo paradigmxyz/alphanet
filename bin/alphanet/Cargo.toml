@@ -13,12 +13,12 @@ workspace = true
 
 [dependencies]
 alphanet-node.workspace = true
-eyre.workspace = true
-tokio.workspace = true
 tracing.workspace = true
 reth.workspace = true
 reth-node-optimism.workspace = true
-reth-tracing.workspace = true
+reth-rpc-api.workspace = true
+reth-rpc-types.workspace = true
+clap = { workspace = true, features = ["derive"] }
 
 [target.'cfg(not(windows))'.dependencies]
 jemallocator = { version = "0.5", optional = true }
