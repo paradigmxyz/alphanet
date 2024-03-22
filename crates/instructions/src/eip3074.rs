@@ -1,6 +1,6 @@
 use crate::BoxedInstructionWithOpCode;
 use revm::{Database, Evm};
-use revm_interpreter::{gas::memory_gas, next_multiple_of_32, InstructionResult, Interpreter};
+use revm_interpreter::{pop, resize_memory, InstructionResult, Interpreter};
 use revm_precompile::secp256k1::ecrecover;
 use revm_primitives::{alloy_primitives::B512, keccak256, Address, B256};
 use std::{borrow::BorrowMut, cell::RefCell, rc::Rc};
@@ -65,13 +65,7 @@ fn auth_instruction<EXT, DB: Database>(
 ) {
     interp.gas.record_cost(FIXED_FEE_GAS);
 
-    // TODO: use pop_ret! from revm-interpreter
-    if interp.stack.len() < 3 {
-        interp.instruction_result = InstructionResult::StackUnderflow;
-        return;
-    }
-    // SAFETY: length checked above
-    let (authority, offset, length) = unsafe { interp.stack.pop3_unsafe() };
+    pop!(interp, authority, offset, length);
 
     let authority = Address::from_slice(&authority.to_be_bytes::<32>()[12..]);
 
@@ -81,22 +75,9 @@ fn auth_instruction<EXT, DB: Database>(
         COLD_AUTHORITY_GAS
     }); // authority state fee
 
-    // TODO: use shared_memory_resize! from revm-interpreter
     let length = length.saturating_to::<usize>();
     let offset = offset.saturating_to::<usize>();
-    if length != 0 {
-        let size = offset.saturating_add(length);
-        if size > interp.shared_memory.len() {
-            let rounded_size = next_multiple_of_32(size);
-
-            let words_num = rounded_size / 32;
-            if !interp.gas.record_memory(memory_gas(words_num)) {
-                interp.instruction_result = InstructionResult::MemoryLimitOOG;
-                return;
-            }
-            interp.shared_memory.resize(rounded_size);
-        }
-    }
+    resize_memory!(interp, offset, length);
 
     // read yParity, r, s and commit from memory using offset and length
     let y_parity = interp.shared_memory.get_byte(offset);
