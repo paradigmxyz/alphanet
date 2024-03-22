@@ -37,12 +37,12 @@ fn insert_boxed_instructions<'a, I, H>(
     table: &mut InstructionTables<'a, H>,
     boxed_instructions_with_opcodes: I,
 ) where
-    I: Iterator<Item = BoxedInstructionWithOpCode<H>>,
+    I: Iterator<Item = BoxedInstructionWithOpCode<'a, H>>,
     H: Host + 'a,
 {
     for boxed_instruction_with_opcode in boxed_instructions_with_opcodes {
         table.insert_boxed(
-            instruction_with_opcode.opcode,
+            boxed_instruction_with_opcode.opcode,
             boxed_instruction_with_opcode.boxed_instruction,
         );
     }
