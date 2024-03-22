@@ -20,17 +20,18 @@ pub(crate) struct CustomContext {
 /// eip3074 boxed instructions.
 pub fn boxed_instructions<'a, EXT: 'a, DB: Database + 'a>(
 ) -> impl Iterator<Item = BoxedInstructionWithOpCode<'a, Evm<'a, EXT, DB>>> {
-    let shared_context = CustomContext::default();
-    let to_capture = shared_context.clone();
+    let context = CustomContext::default();
+    let to_capture_for_auth = context.clone();
+    let to_capture_for_authcall = context.clone();
 
     let wrapped_auth_instruction =
         Box::new(move |interpreter: &mut Interpreter, evm: &mut Evm<'a, EXT, DB>| {
-            auth_instruction(interpreter, evm, &to_capture);
+            auth_instruction(interpreter, evm, &to_capture_for_auth);
         });
 
     let wrapped_authcall_instruction =
         Box::new(move |interpreter: &mut Interpreter, evm: &mut Evm<'a, EXT, DB>| {
-            authcall_instruction(interpreter, evm, &to_capture);
+            authcall_instruction(interpreter, evm, &to_capture_for_authcall);
         });
 
     [
@@ -132,8 +133,10 @@ fn auth_instruction<EXT, DB: Database>(
     } else {
         (Address::default(), B256::ZERO)
     };
-    let mut inner_authority = ctx.authority.borrow_mut();
-    *inner_authority = to_persist_authority;
+
+    let mut at = &ctx.authority;
+    let inner_authority = at.borrow_mut();
+    let _ = inner_authority.replace(to_persist_authority);
 
     if let Err(e) = interp.stack.push_b256(result) {
         interp.instruction_result = e;
