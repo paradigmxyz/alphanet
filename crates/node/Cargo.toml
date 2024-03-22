@@ -15,6 +15,8 @@ alphanet-instructions.workspace = true
 reth.workspace = true
 reth-node-api.workspace = true
 reth-node-optimism.workspace = true
+revm-interpreter.workspace = true
+revm-precompile.workspace = true
 
 [lints]
 workspace = true

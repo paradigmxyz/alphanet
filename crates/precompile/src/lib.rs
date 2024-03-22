@@ -7,6 +7,11 @@ use revm_primitives::Address;
 /// EIP-7212 secp256r1 precompile.
 pub mod secp256r1;
 
+/// EIP-2537 BLS12-381 precompile.
+pub mod bls12_381;
+
+mod addresses;
+
 /// Const function for making an address by concatenating the bytes from two given numbers.
 ///
 /// Note that 32 + 128 = 160 = 20 bytes (the length of an address). This function is used

@@ -1,5 +1,5 @@
-use alphanet_instructions::eip3074;
-use alphanet_precompile::secp256r1::P256VERIFY;
+use alphanet_instructions::{eip3074, InstructionWithOpCode};
+use alphanet_precompile::{bls12_381, secp256r1};
 use reth::{
     primitives::{
         revm::{config::revm_spec, env::fill_op_tx_env},
@@ -13,12 +13,35 @@ use reth::{
     },
 };
 use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
+use revm_interpreter::{opcode::InstructionTables, Host};
+use revm_precompile::PrecompileWithAddress;
 use std::sync::Arc;
 
 /// Custom EVM configuration
 #[derive(Debug, Clone, Copy, Default)]
 #[non_exhaustive]
 pub struct AlphaNetEvmConfig;
+
+// Inserts the given precompiles with address in the context precompiles.
+fn insert_precompiles<I>(precompiles: &mut Precompiles, precompiles_with_address: I)
+where
+    I: Iterator<Item = PrecompileWithAddress>,
+{
+    for precompile_with_address in precompiles_with_address {
+        precompiles.inner.insert(precompile_with_address.0, precompile_with_address.1);
+    }
+}
+
+// Inserts the given instructions with opcodes in the instructions table.
+fn insert_instructions<'a, I, H>(table: &mut InstructionTables<'a, H>, instructions_with_opcodes: I)
+where
+    I: Iterator<Item = InstructionWithOpCode<H>>,
+    H: Host + 'a,
+{
+    for instruction_with_opcode in instructions_with_opcodes {
+        table.insert(instruction_with_opcode.opcode, instruction_with_opcode.instruction);
+    }
+}
 
 impl AlphaNetEvmConfig {
     /// Sets the precompiles to the EVM handler
@@ -37,7 +60,9 @@ impl AlphaNetEvmConfig {
         // install the precompiles
         handler.pre_execution.load_precompiles = Arc::new(move || {
             let mut precompiles = Precompiles::new(PrecompileSpecId::from_spec_id(spec_id)).clone();
-            precompiles.inner.insert(P256VERIFY.0, P256VERIFY.1);
+            insert_precompiles(&mut precompiles, secp256r1::precompiles());
+            insert_precompiles(&mut precompiles, bls12_381::precompiles());
+
             precompiles.into()
         });
     }
@@ -53,12 +78,7 @@ impl AlphaNetEvmConfig {
         DB: Database,
     {
         if let Some(ref mut table) = handler.instruction_table {
-            let eip3074_initializers = eip3074::initializers::<EXT, DB>();
-
-            for init in eip3074_initializers {
-                let instruction_with_opcode = init();
-                table.insert(instruction_with_opcode.opcode, instruction_with_opcode.instruction);
-            }
+            insert_instructions(table, eip3074::instructions());
         }
     }
 }
