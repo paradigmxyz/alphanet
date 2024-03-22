@@ -5,10 +5,13 @@
 
 use alphanet_node::node::AlphaNetNode;
 use clap::Parser;
-use reth::{builder::NodeHandle, cli::Cli, providers::BlockReaderIdExt};
+use reth::{
+    builder::NodeHandle,
+    cli::Cli,
+    providers::BlockReaderIdExt,
+    rpc::{api::EngineApiClient, types::engine::ForkchoiceState},
+};
 use reth_node_optimism::{args::RollupArgs, OptimismEngineTypes, OptimismNode};
-use reth_rpc_api::EngineApiClient;
-use reth_rpc_types::engine::ForkchoiceState;
 
 // We use jemalloc for performance reasons.
 #[cfg(all(feature = "jemalloc", unix))]

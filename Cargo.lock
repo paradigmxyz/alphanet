@@ -338,8 +338,6 @@ dependencies = [
  "jemallocator",
  "reth",
  "reth-node-optimism",
- "reth-rpc-api",
- "reth-rpc-types",
  "tracing",
 ]
 
