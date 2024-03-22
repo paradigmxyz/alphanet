@@ -132,15 +132,16 @@ fn auth_instruction<EXT, DB: Database>(
         }
     };
 
-    let result = if Address::from_slice(&signer[12..]) == authority {
-        // TODO: set authorized context variable to authority
-
-        B256::with_last_byte(1)
+    let context = ctx.borrow_mut();
+    let (to_persist_authority, result) = if Address::from_slice(&signer[12..]) == authority {
+        (authority, B256::with_last_byte(1))
     } else {
-        // TODO: authorized context variable is reset to unset value
+        context.authority = Address::default();
 
-        B256::ZERO
+        (Address::default(), B256::ZERO)
     };
+    let mut context = ctx.borrow_mut();
+    context.authority = to_persist_authority;
 
     if let Err(e) = interp.stack.push_b256(result) {
         interp.instruction_result = e;
