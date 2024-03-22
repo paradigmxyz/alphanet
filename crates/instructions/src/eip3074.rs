@@ -13,14 +13,14 @@ const COLD_AUTHORITY_GAS: u64 = 2600;
 const FIXED_FEE_GAS: u64 = 3100;
 
 #[derive(Default, Clone)]
-pub(crate) struct CustomContext {
+pub(crate) struct Eip3074Context {
     pub(crate) authority: Rc<RefCell<Address>>,
 }
 
 /// eip3074 boxed instructions.
 pub fn boxed_instructions<'a, EXT: 'a, DB: Database + 'a>(
 ) -> impl Iterator<Item = BoxedInstructionWithOpCode<'a, Evm<'a, EXT, DB>>> {
-    let context = CustomContext::default();
+    let context = Eip3074Context::default();
     let to_capture_for_auth = context.clone();
     let to_capture_for_authcall = context.clone();
 
@@ -61,7 +61,7 @@ fn compose_msg(chain_id: u64, nonce: u64, invoker_address: Address, commit: B256
 fn auth_instruction<EXT, DB: Database>(
     interp: &mut Interpreter,
     evm: &mut Evm<'_, EXT, DB>,
-    ctx: &CustomContext,
+    ctx: &Eip3074Context,
 ) {
     interp.gas.record_cost(FIXED_FEE_GAS);
 
@@ -127,7 +127,7 @@ fn auth_instruction<EXT, DB: Database>(
 fn authcall_instruction<EXT, DB: Database>(
     interp: &mut Interpreter,
     _evm: &mut Evm<'_, EXT, DB>,
-    _ctx: &CustomContext,
+    _ctx: &Eip3074Context,
 ) {
     interp.gas.record_cost(133);
 }
@@ -218,7 +218,7 @@ mod tests {
         let mut interpreter = setup_interpreter();
         let mut evm = setup_evm();
 
-        auth_instruction(&mut interpreter, &mut evm, &CustomContext::default());
+        auth_instruction(&mut interpreter, &mut evm, &Eip3074Context::default());
         assert_eq!(interpreter.instruction_result, InstructionResult::StackUnderflow);
 
         // check gas
@@ -243,7 +243,7 @@ mod tests {
 
         let mut evm = setup_evm();
 
-        auth_instruction(&mut interpreter, &mut evm, &CustomContext::default());
+        auth_instruction(&mut interpreter, &mut evm, &Eip3074Context::default());
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Continue);
         let result = interpreter.stack.pop().unwrap();
@@ -267,7 +267,7 @@ mod tests {
 
         let mut evm = setup_evm();
 
-        auth_instruction(&mut interpreter, &mut evm, &CustomContext::default());
+        auth_instruction(&mut interpreter, &mut evm, &Eip3074Context::default());
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Stop);
 
@@ -294,7 +294,7 @@ mod tests {
 
         let mut evm = setup_evm();
 
-        auth_instruction(&mut interpreter, &mut evm, &CustomContext::default());
+        auth_instruction(&mut interpreter, &mut evm, &Eip3074Context::default());
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Continue);
         let result = interpreter.stack.pop().unwrap();
@@ -319,7 +319,7 @@ mod tests {
         let mut evm = setup_evm();
         evm.context.evm.journaled_state.state.insert(authority, Account::default());
 
-        auth_instruction(&mut interpreter, &mut evm, &CustomContext::default());
+        auth_instruction(&mut interpreter, &mut evm, &Eip3074Context::default());
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Continue);
         let result = interpreter.stack.pop().unwrap();
@@ -347,7 +347,7 @@ mod tests {
 
         let mut evm = setup_evm();
 
-        auth_instruction(&mut interpreter, &mut evm, &CustomContext::default());
+        auth_instruction(&mut interpreter, &mut evm, &Eip3074Context::default());
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Stop);
 
