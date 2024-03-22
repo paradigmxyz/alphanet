@@ -1,8 +1,9 @@
-use crate::InstructionWithOpCode;
+use crate::BoxedInstructionWithOpCode;
 use revm::{Database, Evm};
 use revm_interpreter::{gas::memory_gas, next_multiple_of_32, InstructionResult, Interpreter};
 use revm_precompile::secp256k1::ecrecover;
 use revm_primitives::{alloy_primitives::B512, keccak256, Address, B256};
+use std::{borrow::BorrowMut, cell::RefCell, rc::Rc};
 
 const AUTH_OPCODE: u8 = 0xF6;
 const AUTHCALL_OPCODE: u8 = 0xF7;
@@ -11,14 +12,40 @@ const WARM_AUTHORITY_GAS: u64 = 100;
 const COLD_AUTHORITY_GAS: u64 = 2600;
 const FIXED_FEE_GAS: u64 = 3100;
 
-/// eip3074 instructions.
-pub fn instructions<'a, EXT: 'a, DB: Database + 'a>(
-) -> impl Iterator<Item = InstructionWithOpCode<Evm<'a, EXT, DB>>> {
+#[derive(Default)]
+struct CustomContext {
+    authority: Address,
+}
+
+/// eip3074 boxed instructions.
+pub fn boxed_instructions<'a, EXT: 'a, DB: Database + 'a>(
+) -> impl Iterator<Item = BoxedInstructionWithOpCode<'a, Evm<'a, EXT, DB>>> {
+    let shared_context = Rc::new(RefCell::new(CustomContext::default()));
+
+    let auth_context = Rc::clone(&shared_context);
+    let wrapped_auth_instruction = {
+        move |interpreter: &mut Interpreter, evm: &mut Evm<'a, EXT, DB>| {
+            let mut ctx = auth_context.borrow_mut();
+            auth_instruction(interpreter, evm, ctx)
+        }
+    };
+
+    let authcall_context = Rc::clone(&shared_context);
+    let wrapped_authcall_instruction = {
+        move |interpreter: &mut Interpreter, evm: &mut Evm<'a, EXT, DB>| {
+            let mut ctx = authcall_context.borrow_mut();
+            authcall_instruction(interpreter, evm, ctx)
+        }
+    };
+
     [
-        InstructionWithOpCode { opcode: AUTH_OPCODE, instruction: auth_instruction::<EXT, DB> },
-        InstructionWithOpCode {
+        BoxedInstructionWithOpCode {
+            opcode: AUTH_OPCODE,
+            boxed_instruction: Box::new(wrapped_auth_instruction),
+        },
+        BoxedInstructionWithOpCode {
             opcode: AUTHCALL_OPCODE,
-            instruction: authcall_instruction::<EXT, DB>,
+            boxed_instruction: Box::new(wrapped_authcall_instruction),
         },
     ]
     .into_iter()
@@ -35,7 +62,11 @@ fn compose_msg(chain_id: u64, nonce: u64, invoker_address: Address, commit: B256
     keccak256(msg.as_slice())
 }
 
-fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'_, EXT, DB>) {
+fn auth_instruction<EXT, DB: Database>(
+    interp: &mut Interpreter,
+    evm: &mut Evm<'_, EXT, DB>,
+    ctx: &mut Rc<RefCell<CustomContext>>,
+) {
     interp.gas.record_cost(FIXED_FEE_GAS);
 
     // TODO: use pop_ret! from revm-interpreter
@@ -116,7 +147,11 @@ fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'
     }
 }
 
-fn authcall_instruction<EXT, DB: Database>(interp: &mut Interpreter, _evm: &mut Evm<'_, EXT, DB>) {
+fn authcall_instruction<EXT, DB: Database>(
+    interp: &mut Interpreter,
+    _evm: &mut Evm<'_, EXT, DB>,
+    ctx: &mut Rc<RefCell<CustomContext>>,
+) {
     interp.gas.record_cost(133);
 }
 
@@ -155,7 +190,7 @@ mod tests {
             .with_db(InMemoryDB::default())
             .append_handler_register(|handler| {
                 if let Some(ref mut table) = handler.instruction_table {
-                    table.insert(AUTH_OPCODE, auth_instruction);
+                    table.insert_boxed(AUTH_OPCODE, Box::new(move |_interpreter, _handler| {}));
                 }
             })
             .build()
@@ -201,12 +236,19 @@ mod tests {
         compose_msg(1, 0, Address::default(), B256::ZERO)
     }
 
+    fn default_context() -> Rc<RefCell<CustomContext>> {
+        let shared_context = Rc::new(RefCell::new(CustomContext::default()));
+        let mut context = Rc::clone(&shared_context);
+        context
+    }
+
     #[test]
     fn test_auth_instruction_stack_underflow() {
         let mut interpreter = setup_interpreter();
         let mut evm = setup_evm();
+        let mut context = default_context();
 
-        auth_instruction(&mut interpreter, &mut evm);
+        auth_instruction(&mut interpreter, &mut evm, &mut context);
         assert_eq!(interpreter.instruction_result, InstructionResult::StackUnderflow);
 
         // check gas
@@ -230,8 +272,9 @@ mod tests {
         setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s);
 
         let mut evm = setup_evm();
+        let mut context = default_context();
 
-        auth_instruction(&mut interpreter, &mut evm);
+        auth_instruction(&mut interpreter, &mut evm, &mut context);
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Continue);
         let result = interpreter.stack.pop().unwrap();
@@ -254,8 +297,9 @@ mod tests {
         setup_stack(&mut interpreter.stack, authority);
 
         let mut evm = setup_evm();
+        let mut context = default_context();
 
-        auth_instruction(&mut interpreter, &mut evm);
+        auth_instruction(&mut interpreter, &mut evm, &mut context);
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Stop);
 
@@ -281,8 +325,9 @@ mod tests {
         setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s);
 
         let mut evm = setup_evm();
+        let mut context = default_context();
 
-        auth_instruction(&mut interpreter, &mut evm);
+        auth_instruction(&mut interpreter, &mut evm, &mut context);
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Continue);
         let result = interpreter.stack.pop().unwrap();
@@ -306,8 +351,9 @@ mod tests {
 
         let mut evm = setup_evm();
         evm.context.evm.journaled_state.state.insert(authority, Account::default());
+        let mut context = default_context();
 
-        auth_instruction(&mut interpreter, &mut evm);
+        auth_instruction(&mut interpreter, &mut evm, &mut context);
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Continue);
         let result = interpreter.stack.pop().unwrap();
@@ -334,8 +380,9 @@ mod tests {
         setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &B256::ZERO);
 
         let mut evm = setup_evm();
+        let mut context = default_context();
 
-        auth_instruction(&mut interpreter, &mut evm);
+        auth_instruction(&mut interpreter, &mut evm, &mut context);
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Stop);
 
