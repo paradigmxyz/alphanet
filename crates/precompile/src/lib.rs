@@ -2,8 +2,6 @@
 //!
 //! Implementations of EVM precompiled contracts for AlphaNet.
 
-use revm_primitives::Address;
-
 /// EIP-7212 secp256r1 precompile.
 pub mod secp256r1;
 
