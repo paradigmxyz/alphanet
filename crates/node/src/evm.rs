@@ -83,7 +83,7 @@ impl AlphaNetEvmConfig {
         DB: Database,
     {
         if let Some(ref mut table) = handler.instruction_table {
-            let mut instructions_context = InstructionsContext::default();
+            let instructions_context = InstructionsContext::default();
 
             insert_boxed_instructions(
                 table,
