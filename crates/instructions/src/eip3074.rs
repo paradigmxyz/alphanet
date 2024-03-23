@@ -13,11 +13,11 @@ const COLD_AUTHORITY_GAS: u64 = 2600;
 const FIXED_FEE_GAS: u64 = 3100;
 
 #[derive(Default, Clone)]
-/// Contains the authority context variable used by EIP-3074 AUTH and AUTHCALL
+/// Contains the authorized context variable used by EIP-3074 AUTH and AUTHCALL
 /// instructions. It is wrapped in a Rc<RefCell<>> so that we can read and write
 /// to it inside the instructions.
 pub(crate) struct Eip3074Context {
-    pub(crate) authority: Rc<RefCell<Address>>,
+    pub(crate) authorized: Rc<RefCell<Address>>,
 }
 
 /// eip3074 boxed instructions.
@@ -118,9 +118,9 @@ fn auth_instruction<EXT, DB: Database>(
         (Address::default(), B256::ZERO)
     };
 
-    let mut at = &ctx.authority;
-    let inner_authority = at.borrow_mut();
-    let _ = inner_authority.replace(to_persist_authority);
+    let mut at = &ctx.authorized;
+    let inner_authorized = at.borrow_mut();
+    let _ = inner_authorized.replace(to_persist_authority);
 
     if let Err(e) = interp.stack.push_b256(result) {
         interp.instruction_result = e;
@@ -257,7 +257,7 @@ mod tests {
         let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS;
         assert_eq!(expected_gas, interpreter.gas.spend());
 
-        assert_eq!(*context.authority.borrow(), authority);
+        assert_eq!(*context.authorized.borrow(), authority);
     }
 
     #[test]
