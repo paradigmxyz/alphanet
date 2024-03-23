@@ -245,8 +245,9 @@ mod tests {
         setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s);
 
         let mut evm = setup_evm();
+        let context = Eip3074Context::default();
 
-        auth_instruction(&mut interpreter, &mut evm, &Eip3074Context::default());
+        auth_instruction(&mut interpreter, &mut evm, &context);
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Continue);
         let result = interpreter.stack.pop().unwrap();
@@ -256,7 +257,7 @@ mod tests {
         let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS;
         assert_eq!(expected_gas, interpreter.gas.spend());
 
-        // TODO: check authorized context variable set
+        assert_eq!(*context.authority.borrow(), authority);
     }
 
     #[test]
