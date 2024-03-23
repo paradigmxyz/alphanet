@@ -1,4 +1,4 @@
-use alphanet_instructions::{eip3074, BoxedInstructionWithOpCode};
+use alphanet_instructions::{eip3074, BoxedInstructionWithOpCode, InstructionsContext};
 use alphanet_precompile::{bls12_381, secp256r1};
 use reth::{
     primitives::{
@@ -83,7 +83,14 @@ impl AlphaNetEvmConfig {
         DB: Database,
     {
         if let Some(ref mut table) = handler.instruction_table {
-            insert_boxed_instructions(table, eip3074::boxed_instructions());
+            let mut instructions_context = InstructionsContext::default();
+
+            insert_boxed_instructions(
+                table,
+                eip3074::boxed_instructions(instructions_context.clone()),
+            );
+
+            instructions_context.reset();
         }
     }
 }
