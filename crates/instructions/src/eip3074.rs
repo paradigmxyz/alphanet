@@ -3,7 +3,6 @@ use revm::{Database, Evm};
 use revm_interpreter::{pop, resize_memory, InstructionResult, Interpreter};
 use revm_precompile::secp256k1::ecrecover;
 use revm_primitives::{alloy_primitives::B512, keccak256, Address, B256};
-use std::{borrow::BorrowMut, collections::HashMap};
 
 const AUTH_OPCODE: u8 = 0xF6;
 const AUTHCALL_OPCODE: u8 = 0xF7;
@@ -111,13 +110,7 @@ fn auth_instruction<EXT, DB: Database>(
         ((&[] as &[u8]), B256::ZERO)
     };
 
-    let mut at = &ctx.inner;
-    let inner_map = at.borrow_mut();
-    let new_map: HashMap<Vec<u8>, Vec<u8>> =
-        vec![(Vec::from(AUTORIZED_VAR_NAME.as_bytes()), Vec::from(to_persist_authority))]
-            .into_iter()
-            .collect();
-    let _ = inner_map.replace(new_map);
+    ctx.set(Vec::from(AUTORIZED_VAR_NAME.as_bytes()), Vec::from(to_persist_authority));
 
     if let Err(e) = interp.stack.push_b256(result) {
         interp.instruction_result = e;
@@ -254,10 +247,9 @@ mod tests {
         let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS;
         assert_eq!(expected_gas, interpreter.gas.spend());
 
-        let inner_map = context.inner.borrow();
         assert_eq!(
-            inner_map.get(&Vec::from(AUTORIZED_VAR_NAME.as_bytes())).unwrap(),
-            &authority.to_vec()
+            context.get(Vec::from(AUTORIZED_VAR_NAME.as_bytes())).unwrap(),
+            authority.to_vec()
         );
     }
 
