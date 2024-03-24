@@ -1,4 +1,4 @@
-use alphanet_instructions::{eip3074, BoxedInstructionWithOpCode, InstructionsContext};
+use alphanet_instructions::{context::InstructionsContext, eip3074, BoxedInstructionWithOpCode};
 use alphanet_precompile::{bls12_381, secp256r1};
 use reth::{
     primitives::{
@@ -90,7 +90,7 @@ impl AlphaNetEvmConfig {
                 eip3074::boxed_instructions(instructions_context.clone()),
             );
 
-            instructions_context.reset();
+            instructions_context.clear();
         }
     }
 }

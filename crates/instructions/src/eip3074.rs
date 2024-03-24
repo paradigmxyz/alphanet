@@ -1,4 +1,4 @@
-use crate::{BoxedInstructionWithOpCode, InstructionsContext};
+use crate::{context::InstructionsContext, BoxedInstructionWithOpCode};
 use revm::{Database, Evm};
 use revm_interpreter::{pop, resize_memory, InstructionResult, Interpreter};
 use revm_precompile::secp256k1::ecrecover;
