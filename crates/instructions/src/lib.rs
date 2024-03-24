@@ -40,6 +40,16 @@ impl InstructionsContext {
         map.get(&key).cloned()
     }
 
+    /// Sets a value for the given &str as key.
+    pub fn set_named_variable(&self, key: &str, value: Vec<u8>) {
+        self.set(Vec::from(key.as_bytes()), value);
+    }
+
+    /// Gets the value for the given &str key, if any.
+    pub fn get_named_variable(&self, key: &str) -> Option<Vec<u8>> {
+        self.get(Vec::from(key.as_bytes()))
+    }
+
     /// Empties inner state
     pub fn reset(&self) {
         let cell = &self.inner;

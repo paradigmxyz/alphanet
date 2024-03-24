@@ -110,7 +110,7 @@ fn auth_instruction<EXT, DB: Database>(
         ((&[] as &[u8]), B256::ZERO)
     };
 
-    ctx.set(Vec::from(AUTORIZED_VAR_NAME.as_bytes()), Vec::from(to_persist_authority));
+    ctx.set_named_variable(AUTORIZED_VAR_NAME, Vec::from(to_persist_authority));
 
     if let Err(e) = interp.stack.push_b256(result) {
         interp.instruction_result = e;
@@ -247,10 +247,7 @@ mod tests {
         let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS;
         assert_eq!(expected_gas, interpreter.gas.spend());
 
-        assert_eq!(
-            context.get(Vec::from(AUTORIZED_VAR_NAME.as_bytes())).unwrap(),
-            authority.to_vec()
-        );
+        assert_eq!(context.get_named_variable(AUTORIZED_VAR_NAME).unwrap(), authority.to_vec());
     }
 
     #[test]
