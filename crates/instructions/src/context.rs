@@ -1,3 +1,4 @@
+use revm::{Database, Inspector};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 #[derive(Clone, Default)]
@@ -12,14 +13,14 @@ pub struct InstructionsContext {
 
 impl InstructionsContext {
     /// Sets a value for the given key.
-    pub fn set(&self, key: Vec<u8>, value: Vec<u8>) {
+    fn set(&self, key: Vec<u8>, value: Vec<u8>) {
         let cell = &self.inner;
         let mut map = cell.borrow_mut();
         map.insert(key, value);
     }
 
     /// Gets the value for the given key, if any.
-    pub fn get(&self, key: Vec<u8>) -> Option<Vec<u8>> {
+    fn get(&self, key: Vec<u8>) -> Option<Vec<u8>> {
         let map = self.inner.borrow();
         map.get(&key).cloned()
     }
@@ -40,19 +41,36 @@ impl InstructionsContext {
         let mut map = cell.borrow_mut();
         map.clear();
     }
+}
 
-    /// Empties inner state for the given key.
-    pub fn remove_named_variable(&self, key: &str) {
-        let cell = &self.inner;
-        let mut map = cell.borrow_mut();
-        map.remove(&Vec::from(key.as_bytes()));
+/// Inspector to manage instructions context.
+pub struct InstructionsContextInspector {
+    instructions_context: InstructionsContext,
+}
+
+impl InstructionsContextInspector {
+    /// Constructor, sets instructions context.
+    pub fn new(instructions_context: InstructionsContext) -> Self {
+        Self { instructions_context }
+    }
+}
+
+impl<DB: Database> Inspector<DB> for InstructionsContextInspector {
+    fn call_end(
+        &mut self,
+        _context: &mut revm::EvmContext<DB>,
+        _inputs: &revm_interpreter::CallInputs,
+        outcome: revm_interpreter::CallOutcome,
+    ) -> revm_interpreter::CallOutcome {
+        self.instructions_context.clear();
+        outcome
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use revm::{Evm, InMemoryDB};
+    use revm::{inspector_handle_register, Evm, InMemoryDB};
     use revm_interpreter::Interpreter;
     use revm_primitives::{address, AccountInfo, Bytecode, TransactTo, U256};
 
@@ -79,30 +97,31 @@ mod tests {
         let key = "my-key";
         assert_eq!(custom_context.get_named_variable(key), None);
 
-        let to_capture = custom_context.clone();
+        let to_capture_instructions = custom_context.clone();
+
         let mut evm = Evm::builder()
             .with_db(InMemoryDB::default())
+            .with_external_context(InstructionsContextInspector::new(custom_context.clone()))
             .modify_db(|db| {
                 db.insert_account_info(to_addr, AccountInfo::new(U256::ZERO, 0, code_hash, code))
             })
             .modify_tx_env(|tx| tx.transact_to = TransactTo::Call(to_addr))
             .append_handler_register_box(Box::new(move |handler| {
-                let writer_context = to_capture.clone();
+                let writer_context = to_capture_instructions.clone();
                 let writer_instruction = Box::new(
-                    move |_interp: &mut Interpreter, _host: &mut Evm<'_, (), InMemoryDB>| {
+                    move |_interp: &mut Interpreter, _host: &mut Evm<'_, InstructionsContextInspector, InMemoryDB>| {
                         // write into the context variable.
                         writer_context.set_named_variable(key, vec![0x01, 0x02]);
                     },
                 );
-                let reader_context = to_capture.clone();
+                let reader_context = to_capture_instructions.clone();
                 let reader_instruction = Box::new(
-                    move |_interp: &mut Interpreter, _host: &mut Evm<'_, (), InMemoryDB>| {
+                    move |_interp: &mut Interpreter, _host: &mut Evm<'_, InstructionsContextInspector, InMemoryDB>| {
                         // read from context variable and clear.
                         assert_eq!(
                             reader_context.get_named_variable(key).unwrap(),
                             vec![0x01, 0x02]
                         );
-                        reader_context.remove_named_variable(key);
                     },
                 );
 
@@ -114,6 +133,7 @@ mod tests {
                 });
                 handler.instruction_table = table;
             }))
+            .append_handler_register(inspector_handle_register)
             .build();
 
         let _result_and_state = evm.transact().unwrap();
