@@ -122,10 +122,13 @@ mod tests {
             }))
             .append_handler_register_box(Box::new(move |handler| {
                 let ctx = to_capture_post_execution.clone();
-                handler.post_execution.end = Arc::new(move |_, outcome: _| {
-                    ctx.clear();
-                    outcome
-                });
+                #[allow(clippy::arc_with_non_send_sync)]
+                {
+                    handler.post_execution.end = Arc::new(move |_, outcome: _| {
+                        ctx.clear();
+                        outcome
+                    });
+                }
             }))
             .build();
 
