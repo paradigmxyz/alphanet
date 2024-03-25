@@ -15,22 +15,17 @@ pub struct InstructionsContext {
 impl InstructionsContext {
     /// Sets a value for the given key.
     pub fn set(&self, key: &'static str, value: Vec<u8>) {
-        let cell = &self.inner;
-        let mut map = cell.borrow_mut();
-        map.insert(key, value);
+        let _ = self.inner.borrow_mut().insert(key, value);
     }
 
     /// Gets the value for the given key, if any.
     pub fn get(&self, key: &'static str) -> Option<Vec<u8>> {
-        let map = self.inner.borrow();
-        map.get(&key).cloned()
+        self.inner.borrow().get(&key).cloned()
     }
 
     /// Empties inner state.
     pub fn clear(&self) {
-        let cell = &self.inner;
-        let mut map = cell.borrow_mut();
-        map.clear();
+        self.inner.borrow_mut().clear();
     }
 }
 
