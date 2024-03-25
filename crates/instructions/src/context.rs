@@ -1,4 +1,3 @@
-use revm::{Database, Inspector};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 #[derive(Clone, Default)]
@@ -26,30 +25,6 @@ impl InstructionsContext {
     /// Empties inner state.
     pub fn clear(&self) {
         self.inner.borrow_mut().clear();
-    }
-}
-
-/// Inspector to manage instructions context.
-pub struct InstructionsContextInspector {
-    instructions_context: InstructionsContext,
-}
-
-impl InstructionsContextInspector {
-    /// Constructor, sets instructions context.
-    pub fn new(instructions_context: InstructionsContext) -> Self {
-        Self { instructions_context }
-    }
-}
-
-impl<DB: Database> Inspector<DB> for InstructionsContextInspector {
-    fn call_end(
-        &mut self,
-        _context: &mut revm::EvmContext<DB>,
-        _inputs: &revm_interpreter::CallInputs,
-        outcome: revm_interpreter::CallOutcome,
-    ) -> revm_interpreter::CallOutcome {
-        self.instructions_context.clear();
-        outcome
     }
 }
 
