@@ -4,6 +4,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 #[derive(Clone, Default)]
 /// Context variables to be used in instructions. The data set here is expected
 /// to live for the duration of a single transaction.
+/// Similar to TStore for arbitrary data.
 pub struct InstructionsContext {
     /// Contains the actual variables. Is meant to be accessed both for reads
     /// and writes using interior mutability, so that the Instruction and
