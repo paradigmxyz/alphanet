@@ -8,31 +8,21 @@ pub struct InstructionsContext {
     /// Contains the actual variables. Is meant to be accessed both for reads
     /// and writes using interior mutability, so that the Instruction and
     /// BoxedInstruction signatures are observed.
-    inner: Rc<RefCell<HashMap<Vec<u8>, Vec<u8>>>>,
+    inner: Rc<RefCell<HashMap<&'static str, Vec<u8>>>>,
 }
 
 impl InstructionsContext {
     /// Sets a value for the given key.
-    fn set(&self, key: Vec<u8>, value: Vec<u8>) {
+    pub fn set(&self, key: &'static str, value: Vec<u8>) {
         let cell = &self.inner;
         let mut map = cell.borrow_mut();
         map.insert(key, value);
     }
 
     /// Gets the value for the given key, if any.
-    fn get(&self, key: Vec<u8>) -> Option<Vec<u8>> {
+    pub fn get(&self, key: &'static str) -> Option<Vec<u8>> {
         let map = self.inner.borrow();
         map.get(&key).cloned()
-    }
-
-    /// Sets a value for the given &str as key.
-    pub fn set_named_variable(&self, key: &str, value: Vec<u8>) {
-        self.set(Vec::from(key.as_bytes()), value);
-    }
-
-    /// Gets the value for the given &str key, if any.
-    pub fn get_named_variable(&self, key: &str) -> Option<Vec<u8>> {
-        self.get(Vec::from(key.as_bytes()))
     }
 
     /// Empties inner state.
@@ -81,10 +71,10 @@ mod tests {
         let key = "my-key";
         let value = vec![0x01, 0x02];
 
-        ctx.set_named_variable(key, value.clone());
+        ctx.set(key, value.clone());
 
         let cloned_ctx = ctx.clone();
-        assert_eq!(cloned_ctx.get_named_variable(key).unwrap(), value);
+        assert_eq!(cloned_ctx.get(key).unwrap(), value);
     }
 
     #[test]
@@ -96,7 +86,7 @@ mod tests {
         // initialize the custom context and make sure it's None for a given key
         let custom_context = InstructionsContext::default();
         let key = "my-key";
-        assert_eq!(custom_context.get_named_variable(key), None);
+        assert_eq!(custom_context.get(key), None);
 
         let to_capture_instructions = custom_context.clone();
         let to_capture_post_execution = custom_context.clone();
@@ -111,17 +101,14 @@ mod tests {
                 let writer_instruction = Box::new(
                     move |_interp: &mut Interpreter, _host: &mut Evm<'_, (), InMemoryDB>| {
                         // write into the context variable.
-                        writer_context.set_named_variable(key, vec![0x01, 0x02]);
+                        writer_context.set(key, vec![0x01, 0x02]);
                     },
                 );
                 let reader_context = to_capture_instructions.clone();
                 let reader_instruction = Box::new(
                     move |_interp: &mut Interpreter, _host: &mut Evm<'_, (), InMemoryDB>| {
                         // read from context variable and clear.
-                        assert_eq!(
-                            reader_context.get_named_variable(key).unwrap(),
-                            vec![0x01, 0x02]
-                        );
+                        assert_eq!(reader_context.get(key).unwrap(), vec![0x01, 0x02]);
                     },
                 );
 
@@ -145,6 +132,6 @@ mod tests {
         let _result_and_state = evm.transact().unwrap();
 
         // ensure the custom context was cleared
-        assert_eq!(custom_context.get_named_variable(key), None);
+        assert_eq!(custom_context.get(key), None);
     }
 }
