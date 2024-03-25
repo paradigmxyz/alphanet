@@ -10,7 +10,7 @@ const MAGIC: u8 = 0x04;
 const WARM_AUTHORITY_GAS: u64 = 100;
 const COLD_AUTHORITY_GAS: u64 = 2600;
 const FIXED_FEE_GAS: u64 = 3100;
-const AUTORIZED_VAR_NAME: &str = "authorized";
+const AUTHORIZED_VAR_NAME: &str = "authorized";
 
 /// eip3074 boxed instructions.
 pub fn boxed_instructions<'a, EXT: 'a, DB: Database + 'a>(
@@ -110,7 +110,7 @@ fn auth_instruction<EXT, DB: Database>(
         ((&[] as &[u8]), B256::ZERO)
     };
 
-    ctx.set(AUTORIZED_VAR_NAME, Vec::from(to_persist_authority));
+    ctx.set(AUTHORIZED_VAR_NAME, Vec::from(to_persist_authority));
 
     if let Err(e) = interp.stack.push_b256(result) {
         interp.instruction_result = e;
@@ -247,7 +247,7 @@ mod tests {
         let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS;
         assert_eq!(expected_gas, interpreter.gas.spend());
 
-        assert_eq!(context.get(AUTORIZED_VAR_NAME).unwrap(), authority.to_vec());
+        assert_eq!(context.get(AUTHORIZED_VAR_NAME).unwrap(), authority.to_vec());
     }
 
     #[test]
