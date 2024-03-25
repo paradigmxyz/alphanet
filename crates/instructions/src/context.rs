@@ -70,9 +70,10 @@ impl<DB: Database> Inspector<DB> for InstructionsContextInspector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use revm::{inspector_handle_register, Evm, InMemoryDB};
+    use revm::{Evm, InMemoryDB};
     use revm_interpreter::Interpreter;
     use revm_primitives::{address, AccountInfo, Bytecode, TransactTo, U256};
+    use std::sync::Arc;
 
     #[test]
     fn test_set_get() {
@@ -98,10 +99,9 @@ mod tests {
         assert_eq!(custom_context.get_named_variable(key), None);
 
         let to_capture_instructions = custom_context.clone();
-
+        let to_capture_post_execution = custom_context.clone();
         let mut evm = Evm::builder()
             .with_db(InMemoryDB::default())
-            .with_external_context(InstructionsContextInspector::new(custom_context.clone()))
             .modify_db(|db| {
                 db.insert_account_info(to_addr, AccountInfo::new(U256::ZERO, 0, code_hash, code))
             })
@@ -109,14 +109,14 @@ mod tests {
             .append_handler_register_box(Box::new(move |handler| {
                 let writer_context = to_capture_instructions.clone();
                 let writer_instruction = Box::new(
-                    move |_interp: &mut Interpreter, _host: &mut Evm<'_, InstructionsContextInspector, InMemoryDB>| {
+                    move |_interp: &mut Interpreter, _host: &mut Evm<'_, (), InMemoryDB>| {
                         // write into the context variable.
                         writer_context.set_named_variable(key, vec![0x01, 0x02]);
                     },
                 );
                 let reader_context = to_capture_instructions.clone();
                 let reader_instruction = Box::new(
-                    move |_interp: &mut Interpreter, _host: &mut Evm<'_, InstructionsContextInspector, InMemoryDB>| {
+                    move |_interp: &mut Interpreter, _host: &mut Evm<'_, (), InMemoryDB>| {
                         // read from context variable and clear.
                         assert_eq!(
                             reader_context.get_named_variable(key).unwrap(),
@@ -133,7 +133,13 @@ mod tests {
                 });
                 handler.instruction_table = table;
             }))
-            .append_handler_register(inspector_handle_register)
+            .append_handler_register_box(Box::new(move |handler| {
+                let ctx = to_capture_post_execution.clone();
+                handler.post_execution.end = Arc::new(move |_, outcome: _| {
+                    ctx.clear();
+                    outcome
+                });
+            }))
             .build();
 
         let _result_and_state = evm.transact().unwrap();

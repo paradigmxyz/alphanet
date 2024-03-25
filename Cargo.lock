@@ -347,12 +347,10 @@ name = "alphanet"
 version = "0.0.0"
 dependencies = [
  "alphanet-node",
- "eyre",
+ "clap",
  "reth",
  "reth-node-optimism",
- "reth-tracing",
  "tikv-jemallocator",
- "tokio",
  "tracing",
 ]
 
