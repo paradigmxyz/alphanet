@@ -90,13 +90,12 @@ mod tests {
                     table
                 });
                 handler.instruction_table = table;
-            }))
-            .append_handler_register_box(Box::new(move |handler| {
-                let ctx = to_capture_post_execution.clone();
+
+                let post_execution_context = to_capture_post_execution.clone();
                 #[allow(clippy::arc_with_non_send_sync)]
                 {
                     handler.post_execution.end = Arc::new(move |_, outcome: _| {
-                        ctx.clear();
+                        post_execution_context.clear();
                         outcome
                     });
                 }
