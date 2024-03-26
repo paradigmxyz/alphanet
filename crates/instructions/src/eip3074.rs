@@ -1,11 +1,8 @@
-use crate::InstructionWithOpCode;
+use crate::{context::InstructionsContext, BoxedInstructionWithOpCode};
 use revm::{Database, Evm};
-use revm_interpreter::{gas::memory_gas, next_multiple_of_32, InstructionResult, Interpreter};
+use revm_interpreter::{pop, resize_memory, InstructionResult, Interpreter};
+use revm_precompile::secp256k1::ecrecover;
 use revm_primitives::{alloy_primitives::B512, keccak256, Address, B256};
-use secp256k1::{
-    ecdsa::{RecoverableSignature, RecoveryId},
-    Message, Secp256k1,
-};
 
 const AUTH_OPCODE: u8 = 0xF6;
 const AUTHCALL_OPCODE: u8 = 0xF7;
@@ -13,32 +10,36 @@ const MAGIC: u8 = 0x04;
 const WARM_AUTHORITY_GAS: u64 = 100;
 const COLD_AUTHORITY_GAS: u64 = 2600;
 const FIXED_FEE_GAS: u64 = 3100;
+const AUTHORIZED_VAR_NAME: &str = "authorized";
 
-/// eip3074 instructions.
-pub fn instructions<'a, EXT: 'a, DB: Database + 'a>(
-) -> impl Iterator<Item = InstructionWithOpCode<Evm<'a, EXT, DB>>> {
+/// eip3074 boxed instructions.
+pub fn boxed_instructions<'a, EXT: 'a, DB: Database + 'a>(
+    context: InstructionsContext,
+) -> impl Iterator<Item = BoxedInstructionWithOpCode<'a, Evm<'a, EXT, DB>>> {
+    let to_capture_for_auth = context.clone();
+    let to_capture_for_authcall = context.clone();
+
+    let boxed_auth_instruction =
+        Box::new(move |interpreter: &mut Interpreter, evm: &mut Evm<'a, EXT, DB>| {
+            auth_instruction(interpreter, evm, &to_capture_for_auth);
+        });
+
+    let boxed_authcall_instruction =
+        Box::new(move |interpreter: &mut Interpreter, evm: &mut Evm<'a, EXT, DB>| {
+            authcall_instruction(interpreter, evm, &to_capture_for_authcall);
+        });
+
     [
-        InstructionWithOpCode { opcode: AUTH_OPCODE, instruction: auth_instruction::<EXT, DB> },
-        InstructionWithOpCode {
+        BoxedInstructionWithOpCode {
+            opcode: AUTH_OPCODE,
+            boxed_instruction: boxed_auth_instruction,
+        },
+        BoxedInstructionWithOpCode {
             opcode: AUTHCALL_OPCODE,
-            instruction: authcall_instruction::<EXT, DB>,
+            boxed_instruction: boxed_authcall_instruction,
         },
     ]
     .into_iter()
-}
-
-// TODO: use ecrecover from revm-precompile::secp256k1.
-fn ecrecover(sig: &B512, recid: u8, msg: &B256) -> Result<B256, secp256k1::Error> {
-    let recid = RecoveryId::from_i32(recid as i32).expect("recovery ID is valid");
-    let sig = RecoverableSignature::from_compact(sig.as_slice(), recid)?;
-
-    let secp = Secp256k1::new();
-    let msg = Message::from_digest(msg.0);
-    let public = secp.recover_ecdsa(&msg, &sig)?;
-
-    let mut hash = keccak256(&public.serialize_uncompressed()[1..]);
-    hash[..12].fill(0);
-    Ok(hash)
 }
 
 // keccak256(MAGIC || chainId || nonce || invokerAddress || commit)
@@ -52,16 +53,14 @@ fn compose_msg(chain_id: u64, nonce: u64, invoker_address: Address, commit: B256
     keccak256(msg.as_slice())
 }
 
-fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'_, EXT, DB>) {
+fn auth_instruction<EXT, DB: Database>(
+    interp: &mut Interpreter,
+    evm: &mut Evm<'_, EXT, DB>,
+    ctx: &InstructionsContext,
+) {
     interp.gas.record_cost(FIXED_FEE_GAS);
 
-    // TODO: use pop_ret! from revm-interpreter
-    if interp.stack.len() < 3 {
-        interp.instruction_result = InstructionResult::StackUnderflow;
-        return;
-    }
-    // SAFETY: length checked above
-    let (authority, offset, length) = unsafe { interp.stack.pop3_unsafe() };
+    pop!(interp, authority, offset, length);
 
     let authority = Address::from_slice(&authority.to_be_bytes::<32>()[12..]);
 
@@ -71,22 +70,9 @@ fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'
         COLD_AUTHORITY_GAS
     }); // authority state fee
 
-    // TODO: use shared_memory_resize! from revm-interpreter
     let length = length.saturating_to::<usize>();
     let offset = offset.saturating_to::<usize>();
-    if length != 0 {
-        let size = offset.saturating_add(length);
-        if size > interp.shared_memory.len() {
-            let rounded_size = next_multiple_of_32(size);
-
-            let words_num = rounded_size / 32;
-            if !interp.gas.record_memory(memory_gas(words_num)) {
-                interp.instruction_result = InstructionResult::MemoryLimitOOG;
-                return;
-            }
-            interp.shared_memory.resize(rounded_size);
-        }
-    }
+    resize_memory!(interp, offset, length);
 
     // read yParity, r, s and commit from memory using offset and length
     let y_parity = interp.shared_memory.get_byte(offset);
@@ -118,22 +104,24 @@ fn auth_instruction<EXT, DB: Database>(interp: &mut Interpreter, evm: &mut Evm<'
         }
     };
 
-    let result = if Address::from_slice(&signer[12..]) == authority {
-        // TODO: set authorized context variable to authority
-
-        B256::with_last_byte(1)
+    let (to_persist_authority, result) = if Address::from_slice(&signer[12..]) == authority {
+        (&signer[12..], B256::with_last_byte(1))
     } else {
-        // TODO: authorized context variable is reset to unset value
-
-        B256::ZERO
+        ((&[] as &[u8]), B256::ZERO)
     };
+
+    ctx.set(AUTHORIZED_VAR_NAME, Vec::from(to_persist_authority));
 
     if let Err(e) = interp.stack.push_b256(result) {
         interp.instruction_result = e;
     }
 }
 
-fn authcall_instruction<EXT, DB: Database>(interp: &mut Interpreter, _evm: &mut Evm<'_, EXT, DB>) {
+fn authcall_instruction<EXT, DB: Database>(
+    interp: &mut Interpreter,
+    _evm: &mut Evm<'_, EXT, DB>,
+    _ctx: &InstructionsContext,
+) {
     interp.gas.record_cost(133);
 }
 
@@ -146,7 +134,7 @@ mod tests {
     };
     use revm_interpreter::{Contract, SharedMemory, Stack};
     use revm_primitives::{Account, Bytecode, Bytes, U256};
-    use secp256k1::{rand, Context, PublicKey, SecretKey, Signing};
+    use secp256k1::{rand, Context, Message, PublicKey, Secp256k1, SecretKey, Signing};
     use std::convert::Infallible;
 
     fn setup_interpreter() -> Interpreter {
@@ -170,11 +158,11 @@ mod tests {
     fn setup_evm() -> Evm<'static, (), CacheDB<EmptyDBTyped<Infallible>>> {
         Evm::builder()
             .with_db(InMemoryDB::default())
-            .append_handler_register(|handler| {
+            .append_handler_register_box(Box::new(|handler| {
                 if let Some(ref mut table) = handler.instruction_table {
-                    table.insert(AUTH_OPCODE, auth_instruction);
+                    table.insert_boxed(AUTH_OPCODE, Box::new(move |_interpreter, _handler| {}));
                 }
-            })
+            }))
             .build()
     }
 
@@ -223,7 +211,7 @@ mod tests {
         let mut interpreter = setup_interpreter();
         let mut evm = setup_evm();
 
-        auth_instruction(&mut interpreter, &mut evm);
+        auth_instruction(&mut interpreter, &mut evm, &InstructionsContext::default());
         assert_eq!(interpreter.instruction_result, InstructionResult::StackUnderflow);
 
         // check gas
@@ -247,8 +235,9 @@ mod tests {
         setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s);
 
         let mut evm = setup_evm();
+        let context = InstructionsContext::default();
 
-        auth_instruction(&mut interpreter, &mut evm);
+        auth_instruction(&mut interpreter, &mut evm, &context);
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Continue);
         let result = interpreter.stack.pop().unwrap();
@@ -258,7 +247,7 @@ mod tests {
         let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS;
         assert_eq!(expected_gas, interpreter.gas.spend());
 
-        // TODO: check authorized context variable set
+        assert_eq!(context.get(AUTHORIZED_VAR_NAME).unwrap(), authority.to_vec());
     }
 
     #[test]
@@ -272,7 +261,7 @@ mod tests {
 
         let mut evm = setup_evm();
 
-        auth_instruction(&mut interpreter, &mut evm);
+        auth_instruction(&mut interpreter, &mut evm, &InstructionsContext::default());
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Stop);
 
@@ -299,7 +288,7 @@ mod tests {
 
         let mut evm = setup_evm();
 
-        auth_instruction(&mut interpreter, &mut evm);
+        auth_instruction(&mut interpreter, &mut evm, &InstructionsContext::default());
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Continue);
         let result = interpreter.stack.pop().unwrap();
@@ -324,7 +313,7 @@ mod tests {
         let mut evm = setup_evm();
         evm.context.evm.journaled_state.state.insert(authority, Account::default());
 
-        auth_instruction(&mut interpreter, &mut evm);
+        auth_instruction(&mut interpreter, &mut evm, &InstructionsContext::default());
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Continue);
         let result = interpreter.stack.pop().unwrap();
@@ -352,7 +341,7 @@ mod tests {
 
         let mut evm = setup_evm();
 
-        auth_instruction(&mut interpreter, &mut evm);
+        auth_instruction(&mut interpreter, &mut evm, &InstructionsContext::default());
 
         assert_eq!(interpreter.instruction_result, InstructionResult::Stop);
 

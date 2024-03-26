@@ -1,4 +1,4 @@
-use alphanet_instructions::{eip3074, InstructionWithOpCode};
+use alphanet_instructions::{context::InstructionsContext, eip3074, BoxedInstructionWithOpCode};
 use alphanet_precompile::{bls12_381, secp256r1};
 use reth::{
     primitives::{
@@ -32,14 +32,19 @@ where
     }
 }
 
-// Inserts the given instructions with opcodes in the instructions table.
-fn insert_instructions<'a, I, H>(table: &mut InstructionTables<'a, H>, instructions_with_opcodes: I)
-where
-    I: Iterator<Item = InstructionWithOpCode<H>>,
+// Inserts the given boxed instructions with opcodes in the instructions table.
+fn insert_boxed_instructions<'a, I, H>(
+    table: &mut InstructionTables<'a, H>,
+    boxed_instructions_with_opcodes: I,
+) where
+    I: Iterator<Item = BoxedInstructionWithOpCode<'a, H>>,
     H: Host + 'a,
 {
-    for instruction_with_opcode in instructions_with_opcodes {
-        table.insert(instruction_with_opcode.opcode, instruction_with_opcode.instruction);
+    for boxed_instruction_with_opcode in boxed_instructions_with_opcodes {
+        table.insert_boxed(
+            boxed_instruction_with_opcode.opcode,
+            boxed_instruction_with_opcode.boxed_instruction,
+        );
     }
 }
 
@@ -78,7 +83,14 @@ impl AlphaNetEvmConfig {
         DB: Database,
     {
         if let Some(ref mut table) = handler.instruction_table {
-            insert_instructions(table, eip3074::instructions());
+            let instructions_context = InstructionsContext::default();
+
+            insert_boxed_instructions(
+                table,
+                eip3074::boxed_instructions(instructions_context.clone()),
+            );
+
+            instructions_context.clear();
         }
     }
 }

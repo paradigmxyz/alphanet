@@ -16,7 +16,7 @@ use reth_node_optimism::{args::RollupArgs, OptimismEngineTypes, OptimismNode};
 // We use jemalloc for performance reasons.
 #[cfg(all(feature = "jemalloc", unix))]
 #[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 fn main() {
     reth::sigsegv_handler::install();

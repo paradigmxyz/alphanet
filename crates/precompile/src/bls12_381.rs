@@ -4,7 +4,7 @@ use crate::addresses::{
     BLS12_MAP_FP_TO_G1_ADDRESS, BLS12_PAIRING_ADDRESS,
 };
 use bls12_381::{G1Affine, G1Projective};
-use revm_precompile::{Precompile, PrecompileWithAddress};
+use revm_precompile::{u64_to_address, Precompile, PrecompileWithAddress};
 use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
 use std::ops::Add;
 
@@ -35,7 +35,7 @@ pub fn precompiles() -> impl Iterator<Item = PrecompileWithAddress> {
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G1ADD precompile.
 const BLS12_G1ADD: PrecompileWithAddress =
-    PrecompileWithAddress(crate::u64_to_address(BLS12_G1ADD_ADDRESS), Precompile::Standard(g1_add));
+    PrecompileWithAddress(u64_to_address(BLS12_G1ADD_ADDRESS), Precompile::Standard(g1_add));
 
 // Removes zeros with which the precompile inputs are left padded to 64 bytes.
 fn remove_padding(input: &[u8]) -> Result<[u8; FP_LENGTH], PrecompileError> {
@@ -154,7 +154,7 @@ fn g1_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G1MUL precompile.
 const BLS12_G1MUL: PrecompileWithAddress =
-    PrecompileWithAddress(crate::u64_to_address(BLS12_G1MUL_ADDRESS), Precompile::Standard(g1_mul));
+    PrecompileWithAddress(u64_to_address(BLS12_G1MUL_ADDRESS), Precompile::Standard(g1_mul));
 
 fn g1_mul(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
     const G1MUL_BASE: u64 = 12000;
@@ -167,7 +167,7 @@ fn g1_mul(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G1MULTIEXP precompile.
 const BLS12_G1MULTIEXP: PrecompileWithAddress = PrecompileWithAddress(
-    crate::u64_to_address(BLS12_G1MULTIEXP_ADDRESS),
+    u64_to_address(BLS12_G1MULTIEXP_ADDRESS),
     Precompile::Standard(g1_multiexp),
 );
 
@@ -183,7 +183,7 @@ fn g1_multiexp(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G2ADD precompile.
 const BLS12_G2ADD: PrecompileWithAddress =
-    PrecompileWithAddress(crate::u64_to_address(BLS12_G2ADD_ADDRESS), Precompile::Standard(g2_add));
+    PrecompileWithAddress(u64_to_address(BLS12_G2ADD_ADDRESS), Precompile::Standard(g2_add));
 
 fn g2_add(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
     const G2ADD_BASE: u64 = 800;
@@ -196,7 +196,7 @@ fn g2_add(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G2MUL precompile.
 const BLS12_G2MUL: PrecompileWithAddress =
-    PrecompileWithAddress(crate::u64_to_address(BLS12_G2MUL_ADDRESS), Precompile::Standard(g2_mul));
+    PrecompileWithAddress(u64_to_address(BLS12_G2MUL_ADDRESS), Precompile::Standard(g2_mul));
 
 fn g2_mul(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
     const G2MUL_BASE: u64 = 45000;
@@ -209,7 +209,7 @@ fn g2_mul(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G2MULTIEXP precompile.
 const BLS12_G2MULTIEXP: PrecompileWithAddress = PrecompileWithAddress(
-    crate::u64_to_address(BLS12_G2MULTIEXP_ADDRESS),
+    u64_to_address(BLS12_G2MULTIEXP_ADDRESS),
     Precompile::Standard(g2_multiexp),
 );
 
@@ -224,10 +224,8 @@ fn g2_multiexp(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
 }
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_PAIRING precompile.
-const BLS12_PAIRING: PrecompileWithAddress = PrecompileWithAddress(
-    crate::u64_to_address(BLS12_PAIRING_ADDRESS),
-    Precompile::Standard(pairing),
-);
+const BLS12_PAIRING: PrecompileWithAddress =
+    PrecompileWithAddress(u64_to_address(BLS12_PAIRING_ADDRESS), Precompile::Standard(pairing));
 
 fn pairing(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
     // TODO: make gas base depend on input k
@@ -241,7 +239,7 @@ fn pairing(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_MAP_FP_TO_G1 precompile.
 const BLS12_MAP_FP_TO_G1: PrecompileWithAddress = PrecompileWithAddress(
-    crate::u64_to_address(BLS12_MAP_FP_TO_G1_ADDRESS),
+    u64_to_address(BLS12_MAP_FP_TO_G1_ADDRESS),
     Precompile::Standard(map_fp_to_g1),
 );
 
@@ -257,7 +255,7 @@ fn map_fp_to_g1(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_MAP_FP2_TO_G2 precompile.
 const BLS12_MAP_FP2_TO_G2: PrecompileWithAddress = PrecompileWithAddress(
-    crate::u64_to_address(BLS12_MAP_FP2_TO_G2_ADDRESS),
+    u64_to_address(BLS12_MAP_FP2_TO_G2_ADDRESS),
     Precompile::Standard(map_fp2_to_g2),
 );
 

@@ -2,16 +2,18 @@
 //!
 //! Custom instructions for Alphanet.
 
-use revm_interpreter::Instruction;
+use revm_interpreter::opcode::BoxedInstruction;
 
 /// EIP-3074 custom instructions.
 pub mod eip3074;
 
-/// Association of OpCode and correspondent instruction.
-#[derive(Clone, Debug)]
-pub struct InstructionWithOpCode<H> {
+/// Instructions context.
+pub mod context;
+
+/// Association of OpCode and correspondent boxed instruction.
+pub struct BoxedInstructionWithOpCode<'a, H> {
     /// Opcode.
     pub opcode: u8,
-    /// Instruction.
-    pub instruction: Instruction<H>,
+    /// Boxed instruction.
+    pub boxed_instruction: BoxedInstruction<'a, H>,
 }
