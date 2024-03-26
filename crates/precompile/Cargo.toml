@@ -18,5 +18,11 @@ revm-primitives.workspace = true
 [dev-dependencies]
 rstest.workspace = true
 
+[features]
+optimism = [
+  "revm-precompile/optimism",
+  "revm-primitives/optimism",
+]
+
 [lints]
 workspace = true

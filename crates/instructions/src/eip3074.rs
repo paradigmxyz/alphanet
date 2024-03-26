@@ -1,8 +1,15 @@
 use crate::{context::InstructionsContext, BoxedInstructionWithOpCode};
 use revm::{Database, Evm};
-use revm_interpreter::{pop, resize_memory, InstructionResult, Interpreter};
+use revm_interpreter::{
+    gas,
+    instructions::host::{calc_call_gas, get_memory_input_and_out_ranges},
+    pop, pop_address, resize_memory, CallContext, CallInputs, CallScheme, InstructionResult,
+    Interpreter, InterpreterAction, Transfer,
+};
 use revm_precompile::secp256k1::ecrecover;
-use revm_primitives::{alloy_primitives::B512, keccak256, Address, B256};
+use revm_primitives::{
+    alloy_primitives::B512, keccak256, spec_to_generic, Address, SpecId, B256, U256,
+};
 
 const AUTH_OPCODE: u8 = 0xF6;
 const AUTHCALL_OPCODE: u8 = 0xF7;
@@ -119,10 +126,73 @@ fn auth_instruction<EXT, DB: Database>(
 
 fn authcall_instruction<EXT, DB: Database>(
     interp: &mut Interpreter,
-    _evm: &mut Evm<'_, EXT, DB>,
-    _ctx: &InstructionsContext,
+    evm: &mut Evm<'_, EXT, DB>,
+    ctx: &InstructionsContext,
 ) {
-    interp.gas.record_cost(133);
+    let authorized = match ctx.get(AUTHORIZED_VAR_NAME) {
+        Some(address) => Address::from_slice(&address),
+        None => {
+            interp.instruction_result = InstructionResult::Stop;
+            return;
+        }
+    };
+
+    pop!(interp, local_gas_limit);
+    pop_address!(interp, to);
+    // max gas limit is not possible in real ethereum situation.
+    let local_gas_limit = u64::try_from(local_gas_limit).unwrap_or(u64::MAX);
+
+    pop!(interp, value);
+    if interp.is_static && value != U256::ZERO {
+        interp.instruction_result = InstructionResult::CallNotAllowedInsideStatic;
+        return;
+    }
+
+    let Some((input, return_memory_offset)) = get_memory_input_and_out_ranges(interp) else {
+        return;
+    };
+
+    let Some(mut gas_limit) = spec_to_generic!(
+        evm.spec_id(),
+        calc_call_gas::<Evm<'_, EXT, DB>, SPEC>(
+            interp,
+            evm,
+            to,
+            value != U256::ZERO,
+            local_gas_limit,
+            true,
+            true
+        )
+    ) else {
+        return;
+    };
+
+    gas!(interp, gas_limit);
+
+    // add call stipend if there is value to be transferred.
+    if value != U256::ZERO {
+        gas_limit = gas_limit.saturating_add(gas::CALL_STIPEND);
+    }
+
+    // Call host to interact with target contract
+    interp.next_action = InterpreterAction::Call {
+        inputs: Box::new(CallInputs {
+            contract: to,
+            transfer: Transfer { source: interp.contract.address, target: to, value },
+            input,
+            gas_limit,
+            context: CallContext {
+                address: to,
+                caller: authorized,
+                code_address: to,
+                apparent_value: value,
+                scheme: CallScheme::Call,
+            },
+            is_static: interp.is_static,
+            return_memory_offset,
+        }),
+    };
+    interp.instruction_result = InstructionResult::CallOrCreate;
 }
 
 #[cfg(test)]
@@ -133,7 +203,7 @@ mod tests {
         InMemoryDB,
     };
     use revm_interpreter::{Contract, SharedMemory, Stack};
-    use revm_primitives::{Account, Bytecode, Bytes, U256};
+    use revm_primitives::{Account, Bytecode, Bytes};
     use secp256k1::{rand, Context, Message, PublicKey, Secp256k1, SecretKey, Signing};
     use std::convert::Infallible;
 

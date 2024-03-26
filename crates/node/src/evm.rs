@@ -1,20 +1,18 @@
 use alphanet_instructions::{context::InstructionsContext, eip3074, BoxedInstructionWithOpCode};
 use alphanet_precompile::{bls12_381, secp256r1};
-use reth::{
-    primitives::{
-        revm::{config::revm_spec, env::fill_op_tx_env},
-        revm_primitives::{AnalysisKind, CfgEnvWithHandlerCfg, TxEnv},
-        Address, Bytes, ChainSpec, Head, Header, Transaction, U256,
-    },
-    revm::{
-        handler::register::EvmHandler,
-        precompile::{PrecompileSpecId, Precompiles},
-        Database, Evm, EvmBuilder,
-    },
+use reth::primitives::{
+    revm::{config::revm_spec, env::fill_op_tx_env},
+    Address, Bytes, ChainSpec, Head, Header, Transaction, U256,
 };
 use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
+use revm::{
+    handler::register::EvmHandler,
+    precompile::{PrecompileSpecId, Precompiles},
+    Database, Evm, EvmBuilder,
+};
 use revm_interpreter::{opcode::InstructionTables, Host};
 use revm_precompile::PrecompileWithAddress;
+use revm_primitives::{AnalysisKind, CfgEnvWithHandlerCfg, TxEnv};
 use std::sync::Arc;
 
 /// Custom EVM configuration
