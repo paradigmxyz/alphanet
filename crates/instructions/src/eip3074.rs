@@ -60,6 +60,9 @@ fn compose_msg(chain_id: u64, nonce: u64, invoker_address: Address, commit: B256
     keccak256(msg.as_slice())
 }
 
+// AUTH instruction, see EIP-3074:
+//
+// <https://eips.ethereum.org/EIPS/eip-3074#auth-0xf6>
 fn auth_instruction<EXT, DB: Database>(
     interp: &mut Interpreter,
     evm: &mut Evm<'_, EXT, DB>,
@@ -124,6 +127,9 @@ fn auth_instruction<EXT, DB: Database>(
     }
 }
 
+// AUTHCALL instruction, see EIP-3074:
+//
+// <https://eips.ethereum.org/EIPS/eip-3074#authcall-0xf7>
 fn authcall_instruction<EXT, DB: Database>(
     interp: &mut Interpreter,
     evm: &mut Evm<'_, EXT, DB>,
@@ -152,6 +158,8 @@ fn authcall_instruction<EXT, DB: Database>(
         return;
     };
 
+    // calc_call_gas requires a generic SPEC argument, spec_to_generic! provides
+    // it by using the spec ID set in the evm.
     let Some(mut gas_limit) = spec_to_generic!(
         evm.spec_id(),
         calc_call_gas::<Evm<'_, EXT, DB>, SPEC>(
