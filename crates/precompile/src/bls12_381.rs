@@ -149,11 +149,13 @@ fn extract_g1_input(input: &[u8]) -> Result<G1Affine, PrecompileError> {
     }
 }
 
-// G1 addition call expects `256` bytes as an input that is interpreted as byte
-// concatenation of two G1 points (`128` bytes each).
-// Output is an encoding of addition operation result - single G1 point (`128`
-// bytes).
-fn g1_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
+/// G1 addition call expects `256` bytes as an input that is interpreted as byte
+/// concatenation of two G1 points (`128` bytes each).
+/// Output is an encoding of addition operation result - single G1 point (`128`
+/// bytes). See EIP-2537:
+///
+/// <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g1-addition>
+pub fn g1_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     if G1ADD_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
     }
