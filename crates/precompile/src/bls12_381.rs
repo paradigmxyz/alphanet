@@ -190,12 +190,14 @@ pub fn g1_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
 const BLS12_G1MUL: PrecompileWithAddress =
     PrecompileWithAddress(u64_to_address(BLS12_G1MUL_ADDRESS), Precompile::Standard(g1_mul));
 
-// G1 multiplication call expects `160` bytes as an input that is interpreted as
-// byte concatenation of encoding of G1 point (`128` bytes) and encoding of a
-// scalar value (`32` bytes).
-// Output is an encoding of multiplication operation result - single G1 point
-// (`128` bytes).
-fn g1_mul(input: &Bytes, gas_limit: u64) -> PrecompileResult {
+/// G1 multiplication call expects `160` bytes as an input that is interpreted as
+/// byte concatenation of encoding of G1 point (`128` bytes) and encoding of a
+/// scalar value (`32` bytes).
+/// Output is an encoding of multiplication operation result - single G1 point
+/// (`128` bytes). See EIP-2537:
+///
+/// <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g1-multiplication>
+pub fn g1_mul(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     if G1MUL_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
     }
