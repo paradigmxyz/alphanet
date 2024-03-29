@@ -2,6 +2,8 @@
 //!
 //! Custom instructions for Alphanet.
 
+#![warn(unused_crate_dependencies)]
+
 use revm_interpreter::opcode::BoxedInstruction;
 
 /// EIP-3074 custom instructions.

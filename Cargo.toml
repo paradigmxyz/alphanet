@@ -26,7 +26,6 @@ use-self = "warn"
 [workspace.lints.rust]
 rust-2018-idioms = "deny"
 unreachable-pub = "warn"
-unused-crate-dependencies = "warn"
 unused-must-use = "deny"
 missing_docs = "warn"
 

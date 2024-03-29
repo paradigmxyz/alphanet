@@ -3,6 +3,8 @@
 //! Reth AlphaNet is a testnet OP Stack rollup aimed at enabling experimentation of bleeding edge
 //! Ethereum Research.
 
+#![warn(unused_crate_dependencies)]
+
 use alphanet_node::node::AlphaNetNode;
 use clap::Parser;
 use reth::{
