@@ -15,8 +15,22 @@ alphanet-instructions.workspace = true
 reth.workspace = true
 reth-node-api.workspace = true
 reth-node-optimism.workspace = true
+revm.workspace = true
 revm-interpreter.workspace = true
 revm-precompile.workspace = true
+revm-primitives.workspace = true
+
+[features]
+default = [
+  "alphanet-precompile/optimism",
+  "alphanet-instructions/optimism",
+  "reth/optimism",
+  "reth-node-optimism/optimism",
+  "revm/optimism",
+  "revm-interpreter/optimism",
+  "revm-precompile/optimism",
+  "revm-primitives/optimism",
+]
 
 [lints]
 workspace = true

@@ -1,8 +1,15 @@
 use crate::{context::InstructionsContext, BoxedInstructionWithOpCode};
 use revm::{Database, Evm};
-use revm_interpreter::{pop, resize_memory, InstructionResult, Interpreter};
+use revm_interpreter::{
+    gas,
+    instructions::host::{calc_call_gas, get_memory_input_and_out_ranges},
+    pop, pop_address, resize_memory, CallContext, CallInputs, CallScheme, InstructionResult,
+    Interpreter, InterpreterAction, Transfer,
+};
 use revm_precompile::secp256k1::ecrecover;
-use revm_primitives::{alloy_primitives::B512, keccak256, Address, B256};
+use revm_primitives::{
+    alloy_primitives::B512, keccak256, spec_to_generic, Address, SpecId, B256, U256,
+};
 
 const AUTH_OPCODE: u8 = 0xF6;
 const AUTHCALL_OPCODE: u8 = 0xF7;
@@ -53,6 +60,9 @@ fn compose_msg(chain_id: u64, nonce: u64, invoker_address: Address, commit: B256
     keccak256(msg.as_slice())
 }
 
+// AUTH instruction, see EIP-3074:
+//
+// <https://eips.ethereum.org/EIPS/eip-3074#auth-0xf6>
 fn auth_instruction<EXT, DB: Database>(
     interp: &mut Interpreter,
     evm: &mut Evm<'_, EXT, DB>,
@@ -117,12 +127,81 @@ fn auth_instruction<EXT, DB: Database>(
     }
 }
 
+// AUTHCALL instruction, see EIP-3074:
+//
+// <https://eips.ethereum.org/EIPS/eip-3074#authcall-0xf7>
 fn authcall_instruction<EXT, DB: Database>(
     interp: &mut Interpreter,
-    _evm: &mut Evm<'_, EXT, DB>,
-    _ctx: &InstructionsContext,
+    evm: &mut Evm<'_, EXT, DB>,
+    ctx: &InstructionsContext,
 ) {
-    interp.gas.record_cost(133);
+    let authorized = match ctx.get(AUTHORIZED_VAR_NAME) {
+        Some(address) => Address::from_slice(&address),
+        None => {
+            interp.instruction_result = InstructionResult::Stop;
+            return;
+        }
+    };
+
+    pop!(interp, local_gas_limit);
+    pop_address!(interp, to);
+    // max gas limit is not possible in real ethereum situation.
+    let local_gas_limit = u64::try_from(local_gas_limit).unwrap_or(u64::MAX);
+
+    pop!(interp, value);
+    if interp.is_static && value != U256::ZERO {
+        interp.instruction_result = InstructionResult::CallNotAllowedInsideStatic;
+        return;
+    }
+
+    let Some((input, return_memory_offset)) = get_memory_input_and_out_ranges(interp) else {
+        return;
+    };
+
+    // calc_call_gas requires a generic SPEC argument, spec_to_generic! provides
+    // it by using the spec ID set in the evm.
+    let Some(mut gas_limit) = spec_to_generic!(
+        evm.spec_id(),
+        calc_call_gas::<Evm<'_, EXT, DB>, SPEC>(
+            interp,
+            evm,
+            to,
+            value != U256::ZERO,
+            local_gas_limit,
+            true,
+            true
+        )
+    ) else {
+        return;
+    };
+
+    gas!(interp, gas_limit);
+
+    // add call stipend if there is value to be transferred.
+    if value != U256::ZERO {
+        gas_limit = gas_limit.saturating_add(gas::CALL_STIPEND);
+    }
+
+    // Call host to interact with target contract
+    interp.next_action = InterpreterAction::Call {
+        inputs: Box::new(CallInputs {
+            contract: to,
+            transfer: Transfer { source: interp.contract.address, target: to, value },
+            input,
+            gas_limit,
+            context: CallContext {
+                address: to,
+                // set caller to the authorized address.
+                caller: authorized,
+                code_address: to,
+                apparent_value: value,
+                scheme: CallScheme::Call,
+            },
+            is_static: interp.is_static,
+            return_memory_offset,
+        }),
+    };
+    interp.instruction_result = InstructionResult::CallOrCreate;
 }
 
 #[cfg(test)]
@@ -133,7 +212,7 @@ mod tests {
         InMemoryDB,
     };
     use revm_interpreter::{Contract, SharedMemory, Stack};
-    use revm_primitives::{Account, Bytecode, Bytes, U256};
+    use revm_primitives::{address, Account, Bytecode, Bytes};
     use secp256k1::{rand, Context, Message, PublicKey, Secp256k1, SecretKey, Signing};
     use std::convert::Infallible;
 
@@ -149,7 +228,7 @@ mod tests {
             B256::ZERO.into(),
         );
 
-        let interpreter = Interpreter::new(Box::new(contract), 3000000, true);
+        let interpreter = Interpreter::new(Box::new(contract), 3000000, false);
         assert_eq!(interpreter.gas.spend(), 0);
 
         interpreter
@@ -173,7 +252,7 @@ mod tests {
         (secret_key, Address::from_slice(&hash[12..]))
     }
 
-    fn setup_stack(stack: &mut Stack, authority: Address) {
+    fn setup_auth_stack(stack: &mut Stack, authority: Address) {
         let offset = 0;
         let length = 97;
         stack.push(U256::from(length)).unwrap();
@@ -181,7 +260,26 @@ mod tests {
         stack.push_b256(B256::left_padding_from(authority.as_slice())).unwrap();
     }
 
-    fn setup_shared_memory(shared_memory: &mut SharedMemory, y_parity: i32, r: &B256, s: &B256) {
+    fn setup_authcall_stack(stack: &mut Stack, gas: u64, to: Address, value: u64) {
+        let ret_offset = 0;
+        let ret_length = 64;
+        let args_offset = 64;
+        let args_length = 64;
+        stack.push(U256::from(ret_length)).unwrap();
+        stack.push(U256::from(ret_offset)).unwrap();
+        stack.push(U256::from(args_length)).unwrap();
+        stack.push(U256::from(args_offset)).unwrap();
+        stack.push(U256::from(value)).unwrap();
+        stack.push_b256(B256::left_padding_from(to.as_slice())).unwrap();
+        stack.push(U256::from(gas)).unwrap();
+    }
+
+    fn setup_auth_shared_memory(
+        shared_memory: &mut SharedMemory,
+        y_parity: i32,
+        r: &B256,
+        s: &B256,
+    ) {
         shared_memory.resize(100);
         shared_memory.set_byte(0, y_parity.try_into().unwrap());
         shared_memory.set_word(1, r);
@@ -226,13 +324,13 @@ mod tests {
         let secp = Secp256k1::new();
         let (secret_key, authority) = setup_authority(secp.clone());
 
-        setup_stack(&mut interpreter.stack, authority);
+        setup_auth_stack(&mut interpreter.stack, authority);
 
         let msg = default_msg();
 
         let (y_parity, r, s) = generate_signature(secp, secret_key, msg);
 
-        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s);
+        setup_auth_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s);
 
         let mut evm = setup_evm();
         let context = InstructionsContext::default();
@@ -257,7 +355,7 @@ mod tests {
         let secp = Secp256k1::new();
         let (_, authority) = setup_authority(secp.clone());
 
-        setup_stack(&mut interpreter.stack, authority);
+        setup_auth_stack(&mut interpreter.stack, authority);
 
         let mut evm = setup_evm();
 
@@ -278,13 +376,13 @@ mod tests {
         let (secret_key, _) = setup_authority(secp.clone());
         let (_, non_authority) = setup_authority(secp.clone());
 
-        setup_stack(&mut interpreter.stack, non_authority);
+        setup_auth_stack(&mut interpreter.stack, non_authority);
 
         let msg = default_msg();
 
         let (y_parity, r, s) = generate_signature(secp, secret_key, msg);
 
-        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s);
+        setup_auth_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s);
 
         let mut evm = setup_evm();
 
@@ -302,13 +400,13 @@ mod tests {
         let secp = Secp256k1::new();
         let (secret_key, authority) = setup_authority(secp.clone());
 
-        setup_stack(&mut interpreter.stack, authority);
+        setup_auth_stack(&mut interpreter.stack, authority);
 
         let msg = default_msg();
 
         let (y_parity, r, s) = generate_signature(secp, secret_key, msg);
 
-        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s);
+        setup_auth_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s);
 
         let mut evm = setup_evm();
         evm.context.evm.journaled_state.state.insert(authority, Account::default());
@@ -331,13 +429,13 @@ mod tests {
         let secp = Secp256k1::new();
         let (secret_key, authority) = setup_authority(secp.clone());
 
-        setup_stack(&mut interpreter.stack, authority);
+        setup_auth_stack(&mut interpreter.stack, authority);
 
         let msg = default_msg();
 
         let (y_parity, r, _) = generate_signature(secp, secret_key, msg);
 
-        setup_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &B256::ZERO);
+        setup_auth_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &B256::ZERO);
 
         let mut evm = setup_evm();
 
@@ -348,5 +446,85 @@ mod tests {
         // check gas
         let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS;
         assert_eq!(expected_gas, interpreter.gas.spend());
+    }
+
+    #[test]
+    fn test_authcall_instruction_authorized_not_set() {
+        let mut interpreter = setup_interpreter();
+        let mut evm = setup_evm();
+
+        authcall_instruction(&mut interpreter, &mut evm, &InstructionsContext::default());
+        assert_eq!(interpreter.instruction_result, InstructionResult::Stop);
+
+        // check gas
+        let expected_gas = 0;
+        assert_eq!(expected_gas, interpreter.gas.spend());
+    }
+
+    #[test]
+    fn test_authcall_instruction_stack_underflow() {
+        let mut interpreter = setup_interpreter();
+        let mut evm = setup_evm();
+
+        let authorized = address!("cafecafecafecafecafecafecafecafecafecafe");
+        let ctx = InstructionsContext::default();
+        ctx.set(AUTHORIZED_VAR_NAME, authorized.to_vec());
+
+        authcall_instruction(&mut interpreter, &mut evm, &ctx);
+        assert_eq!(interpreter.instruction_result, InstructionResult::StackUnderflow);
+
+        // check gas
+        let expected_gas = 0;
+        assert_eq!(expected_gas, interpreter.gas.spend());
+    }
+
+    #[test]
+    fn test_authcall_instruction_happy_path() {
+        let mut interpreter = setup_interpreter();
+
+        let gas_limit = 30_000;
+        let to = address!("cafecafecafecafecafecafecafecafecafecafe");
+        let value = 100;
+        setup_authcall_stack(&mut interpreter.stack, gas_limit, to, value);
+
+        let mut evm = setup_evm();
+        let ctx = InstructionsContext::default();
+        let authorized = address!("beefbeefbeefbeefbeefbeefbeefbeefbeefbeef");
+        ctx.set(AUTHORIZED_VAR_NAME, authorized.to_vec());
+        authcall_instruction(&mut interpreter, &mut evm, &ctx);
+
+        assert_eq!(interpreter.instruction_result, InstructionResult::CallOrCreate);
+
+        // check gas
+        let expected_gas = 66612;
+        assert_eq!(expected_gas, interpreter.gas.spend());
+
+        // check next action
+        let value = U256::from(value);
+        match interpreter.next_action {
+            InterpreterAction::Call { inputs } => {
+                assert_eq!(inputs.contract, to);
+                assert_eq!(
+                    inputs.transfer,
+                    Transfer { source: interpreter.contract.address, target: to, value }
+                );
+                assert_eq!(inputs.input, Bytes::from(&[0_u8; 64]));
+                assert_eq!(inputs.gas_limit, gas_limit + gas::CALL_STIPEND);
+                assert_eq!(
+                    inputs.context,
+                    CallContext {
+                        address: to,
+                        // set caller to the authorized address.
+                        caller: authorized,
+                        code_address: to,
+                        apparent_value: value,
+                        scheme: CallScheme::Call,
+                    }
+                );
+                assert_eq!(inputs.is_static, interpreter.is_static);
+                assert_eq!(inputs.return_memory_offset, (0..64));
+            }
+            _ => panic!("unexpected next action!"),
+        }
     }
 }

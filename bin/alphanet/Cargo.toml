@@ -22,7 +22,12 @@ clap = { workspace = true, features = ["derive"] }
 tikv-jemallocator = { version = "0.5", optional = true }
 
 [features]
-default = ["jemalloc"]
+default = [
+  "jemalloc",
+  "reth/optimism",
+  "reth-node-optimism/optimism",
+]
+
 asm-keccak = []
 
 jemalloc = ["dep:tikv-jemallocator"]
