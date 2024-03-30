@@ -21,10 +21,38 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-      - name: Run benchs
-        run: cargo bench --package alphanet-precompile
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+      - name: Benchmark Base Branch
+        run: cargo bench -p alphanet-precompile
+      - name: Save benchmark data
+        id: precompile-benchmark-save
+        uses: actions/cache/save@v4
+        with:
+          path: target/criterion
+          key: ${{ runner.os }}-precompile-benchmark
+
+      - name: Checkout PR Branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: .
+      - name: Restore benchmark data
+        id: precompile-benchmark-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: target/criterion
+          key: ${{ runner.os }}-precompile-benchmark
+      - name: Benchmark PR Branch
+        run: cargo bench -p alphanet-precompile | tee ./criterion_output.txt
+
+      - name: Compare Benchmarks
+        run: .github/scripts/compare_precompile_bench.sh ./criterion_output.txt
