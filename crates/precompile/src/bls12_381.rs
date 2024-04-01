@@ -45,6 +45,7 @@ const BLS12_G1ADD: PrecompileWithAddress =
     PrecompileWithAddress(u64_to_address(BLS12_G1ADD_ADDRESS), Precompile::Standard(g1_add));
 
 fn encode_g1_point(out: &mut [u8], input: *const blst_p1_affine) {
+    // SAFETY: out comes from fixed length array, x and y are blst values.
     unsafe {
         fp_to_bytes(&mut out[..PADDED_FP_LENGTH], &(*input).x);
         fp_to_bytes(&mut out[PADDED_FP_LENGTH..], &(*input).y);
@@ -58,6 +59,7 @@ fn fp_to_bytes(out: &mut [u8], input: *const blst_fp) {
     for item in out.iter_mut().take(PADDING_LENGTH) {
         *item = 0;
     }
+    // SAFETY: out length is checked previously, input is a blst value.
     unsafe {
         blst_bendian_from_fp(out[PADDING_LENGTH..].as_mut_ptr(), input);
     }
@@ -91,6 +93,7 @@ fn extract_scalar_input(input: &[u8]) -> Result<blst_scalar, PrecompileError> {
     }
 
     let mut out: blst_scalar = Default::default();
+    // SAFETY: input length is checked previously, out is a blst value.
     unsafe {
         blst_scalar_from_bendian(&mut out, input.as_ptr());
     }
@@ -119,10 +122,12 @@ fn extract_g1_input(
         Err(e) => return Err(e),
     };
 
+    // SAFETY: input_p0_x and input_p0_y have fixed length, x and y are blst values.
     unsafe {
         blst_fp_from_bendian(&mut (*out).x, input_p0_x.as_ptr());
         blst_fp_from_bendian(&mut (*out).y, input_p0_y.as_ptr());
     }
+    // SAFETY: out is a blst value.
     unsafe {
         if !blst_p1_affine_in_g1(out) {
             return Err(PrecompileError::Other("Element not in G1".to_string()));
@@ -156,16 +161,19 @@ pub fn g1_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     let b_aff = extract_g1_input(&mut b_aff, &input[INPUT_ITEM_LENGTH..])?;
 
     let mut b: blst_p1 = Default::default();
+    // SAFETY: b and b_aff are blst values.
     unsafe {
         blst_p1_from_affine(&mut b, b_aff);
     }
 
     let mut p: blst_p1 = Default::default();
+    // SAFETY: p, b and a_aff are blst values.
     unsafe {
         blst_p1_add_or_double_affine(&mut p, &b, a_aff);
     }
 
     let mut p_aff: blst_p1_affine = Default::default();
+    // SAFETY: p_aff and p are blst values.
     unsafe {
         blst_p1_to_affine(&mut p_aff, &p);
     }
@@ -201,6 +209,7 @@ pub fn g1_mul(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     let mut p0_aff: blst_p1_affine = Default::default();
     let p0_aff = extract_g1_input(&mut p0_aff, &input[..INPUT_ITEM_LENGTH])?;
     let mut p0: blst_p1 = Default::default();
+    // SAFETY: p0 and p0_aff are blst values.
     unsafe {
         blst_p1_from_affine(&mut p0, p0_aff);
     }
@@ -208,10 +217,12 @@ pub fn g1_mul(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     let input_scalar0 = extract_scalar_input(&input[INPUT_ITEM_LENGTH..])?;
 
     let mut p: blst_p1 = Default::default();
+    // SAFETY: input_scalar0.b has fixed size, p and p0 are blst values.
     unsafe {
         blst_p1_mult(&mut p, &p0, input_scalar0.b.as_ptr(), G1MUL_OUTPUT_LENGTH);
     }
     let mut p_aff: blst_p1_affine = Default::default();
+    // SAFETY: p_aff and p are blst values.
     unsafe {
         blst_p1_to_affine(&mut p_aff, &p);
     }
