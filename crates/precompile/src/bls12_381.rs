@@ -3,22 +3,26 @@ use crate::addresses::{
     BLS12_G2MULTIEXP_ADDRESS, BLS12_G2MUL_ADDRESS, BLS12_MAP_FP2_TO_G2_ADDRESS,
     BLS12_MAP_FP_TO_G1_ADDRESS, BLS12_PAIRING_ADDRESS,
 };
-use bls12_381::{G1Affine, G1Projective};
+use blst::{
+    blst_bendian_from_fp, blst_fp, blst_fp_from_bendian, blst_p1, blst_p1_add_or_double_affine,
+    blst_p1_affine, blst_p1_affine_in_g1, blst_p1_from_affine, blst_p1_mult, blst_p1_to_affine,
+    blst_scalar, blst_scalar_from_bendian,
+};
 use revm_precompile::{u64_to_address, Precompile, PrecompileWithAddress};
 use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
-use std::ops::Add;
 
 const G1ADD_BASE: u64 = 500;
 const G1MUL_BASE: u64 = 12000;
 const G1ADD_INPUT_LENGTH: usize = 256;
 const G1MUL_INPUT_LENGTH: usize = 160;
+const G1MUL_OUTPUT_LENGTH: usize = 256;
 const INPUT_ITEM_LENGTH: usize = 128;
 const OUTPUT_LENGTH: usize = 128;
 const FP_LENGTH: usize = 48;
 const PADDED_INPUT_LENGTH: usize = 64;
 const PADDING_LENGTH: usize = 16;
-const FP_CONCAT_LENGTH: usize = 96;
 const SCALAR_LENGTH: usize = 32;
+const PADDED_FP_LENGTH: usize = 64;
 
 /// bls12381 precompiles
 pub fn precompiles() -> impl Iterator<Item = PrecompileWithAddress> {
@@ -40,6 +44,27 @@ pub fn precompiles() -> impl Iterator<Item = PrecompileWithAddress> {
 const BLS12_G1ADD: PrecompileWithAddress =
     PrecompileWithAddress(u64_to_address(BLS12_G1ADD_ADDRESS), Precompile::Standard(g1_add));
 
+fn encode_g1_point(out: &mut [u8], input: *const blst_p1_affine) {
+    // SAFETY: out comes from fixed length array, x and y are blst values.
+    unsafe {
+        fp_to_bytes(&mut out[..PADDED_FP_LENGTH], &(*input).x);
+        fp_to_bytes(&mut out[PADDED_FP_LENGTH..], &(*input).y);
+    }
+}
+
+fn fp_to_bytes(out: &mut [u8], input: *const blst_fp) {
+    if out.len() != PADDED_FP_LENGTH {
+        return;
+    }
+    for item in out.iter_mut().take(PADDING_LENGTH) {
+        *item = 0;
+    }
+    // SAFETY: out length is checked previously, input is a blst value.
+    unsafe {
+        blst_bendian_from_fp(out[PADDING_LENGTH..].as_mut_ptr(), input);
+    }
+}
+
 // Removes zeros with which the precompile inputs are left padded to 64 bytes.
 fn remove_padding(input: &[u8]) -> Result<[u8; FP_LENGTH], PrecompileError> {
     if input.len() != PADDED_INPUT_LENGTH {
@@ -58,48 +83,8 @@ fn remove_padding(input: &[u8]) -> Result<[u8; FP_LENGTH], PrecompileError> {
     <[u8; FP_LENGTH]>::try_from(sliced).map_err(|e| PrecompileError::Other(format!("{e}")))
 }
 
-// Adds left pad with zeros to each FP element so that the output lenght matches
-// 128 bytes.
-fn set_padding(input: [u8; FP_CONCAT_LENGTH]) -> [u8; OUTPUT_LENGTH] {
-    let mut output = [0u8; OUTPUT_LENGTH];
-
-    output[PADDING_LENGTH..PADDED_INPUT_LENGTH].copy_from_slice(&input[..FP_LENGTH]);
-    output[(PADDED_INPUT_LENGTH + PADDING_LENGTH)..].copy_from_slice(&input[FP_LENGTH..]);
-
-    output
-}
-
-// Adds a G1 pont in projective format to another one in affine format. If any
-// of the inputs is the identity, the other is returned.
-fn add_g1_affine_projective(p0: G1Affine, p1_projective: G1Projective) -> G1Projective {
-    if p0.is_identity().into() {
-        return p1_projective;
-    }
-    if p1_projective.is_identity().into() {
-        return p0.into();
-    }
-    p0.add(p1_projective)
-}
-
-// Multiplies a G1 point in projective format by scalar.
-fn mul_g1_projective_scalar(p0: G1Projective, scalar0: [u8; SCALAR_LENGTH]) -> G1Projective {
-    let mut q = G1Projective::default();
-    let mut n = p0;
-
-    for byte in scalar0.into_iter().rev() {
-        for bit_index in 0..8 {
-            let bit = (byte >> bit_index) & 1;
-            if bit == 0x01 {
-                q = q.add(n);
-            }
-            n = n.double();
-        }
-    }
-    q
-}
-
 // Extracts an Scalar from a 32 byte slice representation.
-fn extract_scalar_input(input: &[u8]) -> Result<[u8; SCALAR_LENGTH], PrecompileError> {
+fn extract_scalar_input(input: &[u8]) -> Result<blst_scalar, PrecompileError> {
     if input.len() != SCALAR_LENGTH {
         return Err(PrecompileError::Other(format!(
             "Input should be {SCALAR_LENGTH} bits, was {}",
@@ -107,11 +92,20 @@ fn extract_scalar_input(input: &[u8]) -> Result<[u8; SCALAR_LENGTH], PrecompileE
         )));
     }
 
-    Ok(input.try_into().unwrap())
+    let mut out: blst_scalar = Default::default();
+    // SAFETY: input length is checked previously, out is a blst value.
+    unsafe {
+        blst_scalar_from_bendian(&mut out, input.as_ptr());
+    }
+
+    Ok(out)
 }
 
 // Extracts a G1 point in Affine format from a 128 byte slice representation.
-fn extract_g1_input(input: &[u8]) -> Result<G1Affine, PrecompileError> {
+fn extract_g1_input(
+    out: *mut blst_p1_affine,
+    input: &[u8],
+) -> Result<*mut blst_p1_affine, PrecompileError> {
     if input.len() != INPUT_ITEM_LENGTH {
         return Err(PrecompileError::Other(format!(
             "Input should be {INPUT_ITEM_LENGTH} bits, was {}",
@@ -127,26 +121,19 @@ fn extract_g1_input(input: &[u8]) -> Result<G1Affine, PrecompileError> {
         Ok(input_p0_y) => input_p0_y,
         Err(e) => return Err(e),
     };
-    let mut input_p0: [u8; FP_CONCAT_LENGTH] = [0; FP_CONCAT_LENGTH];
-    input_p0[..FP_LENGTH].copy_from_slice(&input_p0_x);
-    input_p0[FP_LENGTH..].copy_from_slice(&input_p0_y);
 
-    // handle the case in which all
-    // the input bytes are zero, which should represent the infinity point in the
-    // curve, see EIP-2537:
-    //
-    // <https://eips.ethereum.org/EIPS/eip-2537#point-of-infinity-encoding>
-    if input_p0 == [0; FP_CONCAT_LENGTH] {
-        Ok(G1Affine::identity())
-    } else {
-        let output = G1Affine::from_uncompressed(&input_p0);
-        if (!output.is_some()).into() {
-            return Err(PrecompileError::Other(
-                "The given input did not represent a valid elliptic curve point".to_string(),
-            ));
-        }
-        Ok(output.unwrap())
+    // SAFETY: input_p0_x and input_p0_y have fixed length, x and y are blst values.
+    unsafe {
+        blst_fp_from_bendian(&mut (*out).x, input_p0_x.as_ptr());
+        blst_fp_from_bendian(&mut (*out).y, input_p0_y.as_ptr());
     }
+    // SAFETY: out is a blst value.
+    unsafe {
+        if !blst_p1_affine_in_g1(out) {
+            return Err(PrecompileError::Other("Element not in G1".to_string()));
+        }
+    }
+    Ok(out)
 }
 
 /// G1 addition call expects `256` bytes as an input that is interpreted as byte
@@ -167,23 +154,34 @@ pub fn g1_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
         )));
     }
 
-    let p0 = extract_g1_input(&input[..INPUT_ITEM_LENGTH])?;
+    let mut a_aff: blst_p1_affine = Default::default();
+    let a_aff = extract_g1_input(&mut a_aff, &input[..INPUT_ITEM_LENGTH])?;
 
-    let p1 = extract_g1_input(&input[INPUT_ITEM_LENGTH..])?;
-    let p1_projective: G1Projective = p1.into();
+    let mut b_aff: blst_p1_affine = Default::default();
+    let b_aff = extract_g1_input(&mut b_aff, &input[INPUT_ITEM_LENGTH..])?;
 
-    let out = add_g1_affine_projective(p0, p1_projective);
-    let out: G1Affine = out.into();
+    let mut b: blst_p1 = Default::default();
+    // SAFETY: b and b_aff are blst values.
+    unsafe {
+        blst_p1_from_affine(&mut b, b_aff);
+    }
 
-    // take into account point of infinity encoding
-    // https://eips.ethereum.org/EIPS/eip-2537#point-of-infinity-encoding
-    let out_bytes = if out.is_identity().into() {
-        [0u8; OUTPUT_LENGTH]
-    } else {
-        set_padding(out.to_uncompressed())
-    };
+    let mut p: blst_p1 = Default::default();
+    // SAFETY: p, b and a_aff are blst values.
+    unsafe {
+        blst_p1_add_or_double_affine(&mut p, &b, a_aff);
+    }
 
-    Ok((G1ADD_BASE, out_bytes.into()))
+    let mut p_aff: blst_p1_affine = Default::default();
+    // SAFETY: p_aff and p are blst values.
+    unsafe {
+        blst_p1_to_affine(&mut p_aff, &p);
+    }
+
+    let mut out = [0u8; OUTPUT_LENGTH];
+    encode_g1_point(&mut out, &p_aff);
+
+    Ok((G1ADD_BASE, out.into()))
 }
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G1MUL precompile.
@@ -208,23 +206,31 @@ pub fn g1_mul(input: &Bytes, gas_limit: u64) -> PrecompileResult {
         )));
     }
 
-    let p0 = extract_g1_input(&input[..INPUT_ITEM_LENGTH])?;
-    let p0_projective: G1Projective = p0.into();
+    let mut p0_aff: blst_p1_affine = Default::default();
+    let p0_aff = extract_g1_input(&mut p0_aff, &input[..INPUT_ITEM_LENGTH])?;
+    let mut p0: blst_p1 = Default::default();
+    // SAFETY: p0 and p0_aff are blst values.
+    unsafe {
+        blst_p1_from_affine(&mut p0, p0_aff);
+    }
 
     let input_scalar0 = extract_scalar_input(&input[INPUT_ITEM_LENGTH..])?;
 
-    let out = mul_g1_projective_scalar(p0_projective, input_scalar0);
-    let out: G1Affine = out.into();
+    let mut p: blst_p1 = Default::default();
+    // SAFETY: input_scalar0.b has fixed size, p and p0 are blst values.
+    unsafe {
+        blst_p1_mult(&mut p, &p0, input_scalar0.b.as_ptr(), G1MUL_OUTPUT_LENGTH);
+    }
+    let mut p_aff: blst_p1_affine = Default::default();
+    // SAFETY: p_aff and p are blst values.
+    unsafe {
+        blst_p1_to_affine(&mut p_aff, &p);
+    }
 
-    // take into account point of infinity encoding
-    // https://eips.ethereum.org/EIPS/eip-2537#point-of-infinity-encoding
-    let out_bytes = if out.is_identity().into() {
-        [0u8; OUTPUT_LENGTH]
-    } else {
-        set_padding(out.to_uncompressed())
-    };
+    let mut out = [0u8; OUTPUT_LENGTH];
+    encode_g1_point(&mut out, &p_aff);
 
-    Ok((G1MUL_BASE, out_bytes.into()))
+    Ok((G1MUL_BASE, out.into()))
 }
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G1MULTIEXP precompile.
@@ -360,7 +366,7 @@ mod test {
     #[rstest]
     #[case::g1_add(g1_add, "blsG1Add.json")]
     #[case::g1_mul(g1_mul, "blsG1Mul.json")]
-    fn test_g1_add(
+    fn test_bls(
         #[case] precompile: fn(input: &Bytes, gas_limit: u64) -> PrecompileResult,
         #[case] file_name: &str,
     ) {
