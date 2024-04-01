@@ -444,6 +444,15 @@ dependencies = [
 [[package]]
 name = "alphanet-testing"
 version = "0.0.0"
+dependencies = [
+ "alphanet-instructions",
+ "eyre",
+ "revm",
+ "revm-primitives",
+ "serde",
+ "serde_derive",
+ "serde_json",
+]
 
 [[package]]
 name = "android-tzdata"

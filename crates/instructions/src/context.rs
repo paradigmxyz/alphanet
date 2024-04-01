@@ -83,7 +83,7 @@ mod tests {
                 let reader_context = to_capture_instructions.clone();
                 let reader_instruction = Box::new(
                     move |_interp: &mut Interpreter, _host: &mut Evm<'_, (), InMemoryDB>| {
-                        // read from context variable and clear.
+                        // read from context variable.
                         assert_eq!(reader_context.get(key).unwrap(), vec![0x01, 0x02]);
                     },
                 );
