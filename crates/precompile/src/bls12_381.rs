@@ -55,8 +55,8 @@ fn fp_to_bytes(out: &mut [u8], input: *const blst_fp) {
     if out.len() != PADDED_FP_LENGTH {
         return;
     }
-    for i in 0..PADDING_LENGTH {
-        out[i] = 0;
+    for item in out.iter_mut().take(PADDING_LENGTH) {
+        *item = 0;
     }
     unsafe {
         blst_bendian_from_fp(out[PADDING_LENGTH..].as_mut_ptr(), input);
