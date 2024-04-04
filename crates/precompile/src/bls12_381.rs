@@ -7,7 +7,8 @@ use blst::{
     blst_bendian_from_fp, blst_fp, blst_fp_from_bendian, blst_p1, blst_p1_add_or_double_affine,
     blst_p1_affine, blst_p1_affine_in_g1, blst_p1_from_affine, blst_p1_mult, blst_p1_to_affine,
     blst_p2, blst_p2_add_or_double_affine, blst_p2_affine, blst_p2_affine_in_g2,
-    blst_p2_from_affine, blst_p2_to_affine, blst_scalar, blst_scalar_from_bendian, p1_affines,
+    blst_p2_from_affine, blst_p2_mult, blst_p2_to_affine, blst_scalar, blst_scalar_from_bendian,
+    p1_affines,
 };
 use revm_precompile::{u64_to_address, Precompile, PrecompileWithAddress};
 use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
@@ -23,6 +24,8 @@ const G2ADD_BASE: u64 = 800;
 const G2ADD_INPUT_LENGTH: usize = 512;
 const G2_INPUT_ITEM_LENGTH: usize = 256;
 const G2_OUTPUT_LENGTH: usize = 256;
+const G2MUL_INPUT_LENGTH: usize = 288;
+const G2MUL_BASE: u64 = 45000;
 const FP_LENGTH: usize = 48;
 const PADDED_INPUT_LENGTH: usize = 64;
 const PADDING_LENGTH: usize = 16;
@@ -437,13 +440,49 @@ fn g2_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
 const BLS12_G2MUL: PrecompileWithAddress =
     PrecompileWithAddress(u64_to_address(BLS12_G2MUL_ADDRESS), Precompile::Standard(g2_mul));
 
-fn g2_mul(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
-    const G2MUL_BASE: u64 = 45000;
+/// G2 multiplication call expects `288` bytes as an input that is interpreted as
+/// byte concatenation of encoding of G2 point (`256` bytes) and encoding of a
+/// scalar value (`32` bytes).
+/// Output is an encoding of multiplication operation result - single G2 point
+/// (`256` bytes). See EIP-2537:
+///
+/// <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g2-multiplication>
+fn g2_mul(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     if G2MUL_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
     }
-    let result = 1;
-    Ok((G2MUL_BASE, B256::with_last_byte(result as u8).into()))
+    if input.len() != G2MUL_INPUT_LENGTH {
+        return Err(PrecompileError::Other(format!(
+            "G2MUL Input should be {G2MUL_INPUT_LENGTH} bits, was {}",
+            input.len()
+        )));
+    }
+
+    let mut p0_aff: blst_p2_affine = Default::default();
+    let p0_aff = extract_g2_input(&mut p0_aff, &input[..G2_INPUT_ITEM_LENGTH])?;
+    let mut p0: blst_p2 = Default::default();
+    // SAFETY: p0 and p0_aff are blst values.
+    unsafe {
+        blst_p2_from_affine(&mut p0, p0_aff);
+    }
+
+    let input_scalar0 = extract_scalar_input(&input[G2_INPUT_ITEM_LENGTH..])?;
+
+    let mut p: blst_p2 = Default::default();
+    // SAFETY: input_scalar0.b has fixed size, p and p0 are blst values.
+    unsafe {
+        blst_p2_mult(&mut p, &p0, input_scalar0.b.as_ptr(), NBITS);
+    }
+    let mut p_aff: blst_p2_affine = Default::default();
+    // SAFETY: p_aff and p are blst values.
+    unsafe {
+        blst_p2_to_affine(&mut p_aff, &p);
+    }
+
+    let mut out = [0u8; G2_OUTPUT_LENGTH];
+    encode_g2_point(&mut out, &p_aff);
+
+    Ok((G2MUL_BASE, out.into()))
 }
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G2MULTIEXP precompile.
@@ -539,6 +578,7 @@ mod test {
     #[case::g1_mul(g1_mul, "blsG1Mul.json")]
     #[case::g1_multiexp(g1_multiexp, "blsG1MultiExp.json")]
     #[case::g2_add(g2_add, "blsG2Add.json")]
+    #[case::g2_mul(g2_mul, "blsG2Mul.json")]
     fn test_bls(
         #[case] precompile: fn(input: &Bytes, gas_limit: u64) -> PrecompileResult,
         #[case] file_name: &str,
