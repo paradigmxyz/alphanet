@@ -6,18 +6,23 @@ use crate::addresses::{
 use blst::{
     blst_bendian_from_fp, blst_fp, blst_fp_from_bendian, blst_p1, blst_p1_add_or_double_affine,
     blst_p1_affine, blst_p1_affine_in_g1, blst_p1_from_affine, blst_p1_mult, blst_p1_to_affine,
-    blst_scalar, blst_scalar_from_bendian, p1_affines,
+    blst_p2, blst_p2_add_or_double_affine, blst_p2_affine, blst_p2_affine_in_g2,
+    blst_p2_from_affine, blst_p2_to_affine, blst_scalar, blst_scalar_from_bendian, p1_affines,
 };
 use revm_precompile::{u64_to_address, Precompile, PrecompileWithAddress};
 use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
 
 const G1ADD_BASE: u64 = 500;
-const G1MUL_BASE: u64 = 12000;
 const G1ADD_INPUT_LENGTH: usize = 256;
+const G1_INPUT_ITEM_LENGTH: usize = 128;
+const G1_OUTPUT_LENGTH: usize = 128;
+const G1MUL_BASE: u64 = 12000;
 const G1MUL_INPUT_LENGTH: usize = 160;
-const G1MUL_OUTPUT_LENGTH: usize = 256;
-const INPUT_ITEM_LENGTH: usize = 128;
-const OUTPUT_LENGTH: usize = 128;
+const NBITS: usize = 256;
+const G2ADD_BASE: u64 = 800;
+const G2ADD_INPUT_LENGTH: usize = 512;
+const G2_INPUT_ITEM_LENGTH: usize = 256;
+const G2_OUTPUT_LENGTH: usize = 256;
 const FP_LENGTH: usize = 48;
 const PADDED_INPUT_LENGTH: usize = 64;
 const PADDING_LENGTH: usize = 16;
@@ -59,6 +64,16 @@ fn encode_g1_point(out: &mut [u8], input: *const blst_p1_affine) {
     unsafe {
         fp_to_bytes(&mut out[..PADDED_FP_LENGTH], &(*input).x);
         fp_to_bytes(&mut out[PADDED_FP_LENGTH..], &(*input).y);
+    }
+}
+
+fn encode_g2_point(out: &mut [u8], input: *const blst_p2_affine) {
+    // SAFETY: out comes from fixed length array, input is a blst value.
+    unsafe {
+        fp_to_bytes(&mut out[..PADDED_FP_LENGTH], &(*input).x.fp[0]);
+        fp_to_bytes(&mut out[PADDED_FP_LENGTH..2 * PADDED_FP_LENGTH], &(*input).x.fp[1]);
+        fp_to_bytes(&mut out[2 * PADDED_FP_LENGTH..3 * PADDED_FP_LENGTH], &(*input).y.fp[0]);
+        fp_to_bytes(&mut out[3 * PADDED_FP_LENGTH..4 * PADDED_FP_LENGTH], &(*input).y.fp[1]);
     }
 }
 
@@ -116,9 +131,9 @@ fn extract_g1_input(
     out: *mut blst_p1_affine,
     input: &[u8],
 ) -> Result<*mut blst_p1_affine, PrecompileError> {
-    if input.len() != INPUT_ITEM_LENGTH {
+    if input.len() != G1_INPUT_ITEM_LENGTH {
         return Err(PrecompileError::Other(format!(
-            "Input should be {INPUT_ITEM_LENGTH} bits, was {}",
+            "Input should be {G1_INPUT_ITEM_LENGTH} bits, was {}",
             input.len()
         )));
     }
@@ -127,7 +142,7 @@ fn extract_g1_input(
         Ok(input_p0_x) => input_p0_x,
         Err(e) => return Err(e),
     };
-    let input_p0_y = match remove_padding(&input[PADDED_INPUT_LENGTH..INPUT_ITEM_LENGTH]) {
+    let input_p0_y = match remove_padding(&input[PADDED_INPUT_LENGTH..G1_INPUT_ITEM_LENGTH]) {
         Ok(input_p0_y) => input_p0_y,
         Err(e) => return Err(e),
     };
@@ -141,6 +156,43 @@ fn extract_g1_input(
     unsafe {
         if !blst_p1_affine_in_g1(out) {
             return Err(PrecompileError::Other("Element not in G1".to_string()));
+        }
+    }
+    Ok(out)
+}
+
+// Extracts a G2 point in Affine format from a 256 byte slice representation.
+fn extract_g2_input(
+    out: *mut blst_p2_affine,
+    input: &[u8],
+) -> Result<*mut blst_p2_affine, PrecompileError> {
+    if input.len() != G2_INPUT_ITEM_LENGTH {
+        return Err(PrecompileError::Other(format!(
+            "Input should be {G2_INPUT_ITEM_LENGTH} bits, was {}",
+            input.len()
+        )));
+    }
+
+    let mut input_fps: [[u8; FP_LENGTH]; 4] = [[0; FP_LENGTH]; 4];
+    for i in 0..4 {
+        input_fps[i] =
+            match remove_padding(&input[i * PADDED_INPUT_LENGTH..(i + 1) * PADDED_INPUT_LENGTH]) {
+                Ok(fp_0) => fp_0,
+                Err(e) => return Err(e),
+            };
+    }
+
+    // SAFETY: items in fps have fixed length, out is a blst value.
+    unsafe {
+        blst_fp_from_bendian(&mut (*out).x.fp[0], input_fps[0].as_ptr());
+        blst_fp_from_bendian(&mut (*out).x.fp[1], input_fps[1].as_ptr());
+        blst_fp_from_bendian(&mut (*out).y.fp[0], input_fps[2].as_ptr());
+        blst_fp_from_bendian(&mut (*out).y.fp[1], input_fps[3].as_ptr());
+    }
+    // SAFETY: out is a blst value.
+    unsafe {
+        if !blst_p2_affine_in_g2(out) {
+            return Err(PrecompileError::Other("Element not in G2".to_string()));
         }
     }
     Ok(out)
@@ -165,10 +217,10 @@ pub fn g1_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     }
 
     let mut a_aff: blst_p1_affine = Default::default();
-    let a_aff = extract_g1_input(&mut a_aff, &input[..INPUT_ITEM_LENGTH])?;
+    let a_aff = extract_g1_input(&mut a_aff, &input[..G1_INPUT_ITEM_LENGTH])?;
 
     let mut b_aff: blst_p1_affine = Default::default();
-    let b_aff = extract_g1_input(&mut b_aff, &input[INPUT_ITEM_LENGTH..])?;
+    let b_aff = extract_g1_input(&mut b_aff, &input[G1_INPUT_ITEM_LENGTH..])?;
 
     let mut b: blst_p1 = Default::default();
     // SAFETY: b and b_aff are blst values.
@@ -188,7 +240,7 @@ pub fn g1_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
         blst_p1_to_affine(&mut p_aff, &p);
     }
 
-    let mut out = [0u8; OUTPUT_LENGTH];
+    let mut out = [0u8; G1_OUTPUT_LENGTH];
     encode_g1_point(&mut out, &p_aff);
 
     Ok((G1ADD_BASE, out.into()))
@@ -217,19 +269,19 @@ pub fn g1_mul(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     }
 
     let mut p0_aff: blst_p1_affine = Default::default();
-    let p0_aff = extract_g1_input(&mut p0_aff, &input[..INPUT_ITEM_LENGTH])?;
+    let p0_aff = extract_g1_input(&mut p0_aff, &input[..G1_INPUT_ITEM_LENGTH])?;
     let mut p0: blst_p1 = Default::default();
     // SAFETY: p0 and p0_aff are blst values.
     unsafe {
         blst_p1_from_affine(&mut p0, p0_aff);
     }
 
-    let input_scalar0 = extract_scalar_input(&input[INPUT_ITEM_LENGTH..])?;
+    let input_scalar0 = extract_scalar_input(&input[G1_INPUT_ITEM_LENGTH..])?;
 
     let mut p: blst_p1 = Default::default();
     // SAFETY: input_scalar0.b has fixed size, p and p0 are blst values.
     unsafe {
-        blst_p1_mult(&mut p, &p0, input_scalar0.b.as_ptr(), G1MUL_OUTPUT_LENGTH);
+        blst_p1_mult(&mut p, &p0, input_scalar0.b.as_ptr(), NBITS);
     }
     let mut p_aff: blst_p1_affine = Default::default();
     // SAFETY: p_aff and p are blst values.
@@ -237,7 +289,7 @@ pub fn g1_mul(input: &Bytes, gas_limit: u64) -> PrecompileResult {
         blst_p1_to_affine(&mut p_aff, &p);
     }
 
-    let mut out = [0u8; OUTPUT_LENGTH];
+    let mut out = [0u8; G1_OUTPUT_LENGTH];
     encode_g1_point(&mut out, &p_aff);
 
     Ok((G1MUL_BASE, out.into()))
@@ -296,7 +348,7 @@ fn g1_multiexp(input: &Bytes, gas_limit: u64) -> PrecompileResult {
         let mut p0_aff: blst_p1_affine = Default::default();
         let p0_aff = extract_g1_input(
             &mut p0_aff,
-            &input[i * G1MUL_INPUT_LENGTH..i * G1MUL_INPUT_LENGTH + INPUT_ITEM_LENGTH],
+            &input[i * G1MUL_INPUT_LENGTH..i * G1MUL_INPUT_LENGTH + G1_INPUT_ITEM_LENGTH],
         )?;
         let mut p0: blst_p1 = Default::default();
         // SAFETY: p0 and p0_aff are blst values.
@@ -308,15 +360,15 @@ fn g1_multiexp(input: &Bytes, gas_limit: u64) -> PrecompileResult {
 
         scalars.extend_from_slice(
             &extract_scalar_input(
-                &input[i * G1MUL_INPUT_LENGTH + INPUT_ITEM_LENGTH
-                    ..i * G1MUL_INPUT_LENGTH + INPUT_ITEM_LENGTH + SCALAR_LENGTH],
+                &input[i * G1MUL_INPUT_LENGTH + G1_INPUT_ITEM_LENGTH
+                    ..i * G1MUL_INPUT_LENGTH + G1_INPUT_ITEM_LENGTH + SCALAR_LENGTH],
             )?
             .b,
         );
     }
 
     let points = p1_affines::from(&g1_points);
-    let multiexp = points.mult(&scalars, G1MUL_OUTPUT_LENGTH);
+    let multiexp = points.mult(&scalars, NBITS);
 
     let mut multiexp_aff: blst_p1_affine = Default::default();
     // SAFETY: multiexp_aff and multiexp are blst values.
@@ -324,7 +376,7 @@ fn g1_multiexp(input: &Bytes, gas_limit: u64) -> PrecompileResult {
         blst_p1_to_affine(&mut multiexp_aff, &multiexp);
     }
 
-    let mut out = [0u8; OUTPUT_LENGTH];
+    let mut out = [0u8; G1_OUTPUT_LENGTH];
     encode_g1_point(&mut out, &multiexp_aff);
 
     Ok((required_gas, out.into()))
@@ -334,13 +386,51 @@ fn g1_multiexp(input: &Bytes, gas_limit: u64) -> PrecompileResult {
 const BLS12_G2ADD: PrecompileWithAddress =
     PrecompileWithAddress(u64_to_address(BLS12_G2ADD_ADDRESS), Precompile::Standard(g2_add));
 
-fn g2_add(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
-    const G2ADD_BASE: u64 = 800;
+/// G2 addition call expects `512` bytes as an input that is interpreted as byte
+/// concatenation of two G2 points (`256` bytes each).
+///
+/// > Output is an encoding of addition operation result - single G2 point (`256`
+/// bytes).
+fn g2_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     if G2ADD_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
     }
-    let result = 1;
-    Ok((G2ADD_BASE, B256::with_last_byte(result as u8).into()))
+
+    if input.len() != G2ADD_INPUT_LENGTH {
+        return Err(PrecompileError::Other(format!(
+            "G2ADD Input should be {G2ADD_INPUT_LENGTH} bits, was {}",
+            input.len()
+        )));
+    }
+
+    let mut a_aff: blst_p2_affine = Default::default();
+    let a_aff = extract_g2_input(&mut a_aff, &input[..G2_INPUT_ITEM_LENGTH])?;
+
+    let mut b_aff: blst_p2_affine = Default::default();
+    let b_aff = extract_g2_input(&mut b_aff, &input[G2_INPUT_ITEM_LENGTH..])?;
+
+    let mut b: blst_p2 = Default::default();
+    // SAFETY: b and b_aff are blst values.
+    unsafe {
+        blst_p2_from_affine(&mut b, b_aff);
+    }
+
+    let mut p: blst_p2 = Default::default();
+    // SAFETY: p, b and a_aff are blst values.
+    unsafe {
+        blst_p2_add_or_double_affine(&mut p, &b, a_aff);
+    }
+
+    let mut p_aff: blst_p2_affine = Default::default();
+    // SAFETY: p_aff and p are blst values.
+    unsafe {
+        blst_p2_to_affine(&mut p_aff, &p);
+    }
+
+    let mut out = [0u8; G2_OUTPUT_LENGTH];
+    encode_g2_point(&mut out, &p_aff);
+
+    Ok((G2ADD_BASE, out.into()))
 }
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G2MUL precompile.
@@ -448,6 +538,7 @@ mod test {
     #[case::g1_add(g1_add, "blsG1Add.json")]
     #[case::g1_mul(g1_mul, "blsG1Mul.json")]
     #[case::g1_multiexp(g1_multiexp, "blsG1MultiExp.json")]
+    #[case::g2_add(g2_add, "blsG2Add.json")]
     fn test_bls(
         #[case] precompile: fn(input: &Bytes, gas_limit: u64) -> PrecompileResult,
         #[case] file_name: &str,
