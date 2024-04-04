@@ -8,7 +8,7 @@ use blst::{
     blst_p1_affine, blst_p1_affine_in_g1, blst_p1_from_affine, blst_p1_mult, blst_p1_to_affine,
     blst_p2, blst_p2_add_or_double_affine, blst_p2_affine, blst_p2_affine_in_g2,
     blst_p2_from_affine, blst_p2_mult, blst_p2_to_affine, blst_scalar, blst_scalar_from_bendian,
-    p1_affines,
+    p1_affines, p2_affines,
 };
 use revm_precompile::{u64_to_address, Precompile, PrecompileWithAddress};
 use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
@@ -491,14 +491,67 @@ const BLS12_G2MULTIEXP: PrecompileWithAddress = PrecompileWithAddress(
     Precompile::Standard(g2_multiexp),
 );
 
-fn g2_multiexp(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
-    // TODO: make gas base depend on input k
-    const G2MULTIEXP_BASE: u64 = 12000;
-    if G2MULTIEXP_BASE > gas_limit {
+/// Implements EIP-2537 G2MultiExp precompile.
+/// G2 multiplication call expects `288*k` bytes as an input that is interpreted
+/// as byte concatenation of `k` slices each of them being a byte concatenation
+/// of encoding of G1 point (`256` bytes) and encoding of a scalar value (`32`
+/// bytes).
+/// Output is an encoding of multiexponentiation operation result - single G2
+/// point (`256` bytes). See also:
+///
+/// <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g2-multiexponentiation>
+fn g2_multiexp(input: &Bytes, gas_limit: u64) -> PrecompileResult {
+    let input_len = input.len();
+    if input_len == 0 || input_len % G2MUL_INPUT_LENGTH != 0 {
+        return Err(PrecompileError::Other(format!(
+            "G2MultiExp input length should be multiple of {G2MUL_INPUT_LENGTH}, was {input_len}"
+        )));
+    }
+
+    let k = input_len / G2MUL_INPUT_LENGTH;
+    let required_gas = multiexp_required_gas(k, G2MUL_BASE);
+    if required_gas > gas_limit {
         return Err(PrecompileError::OutOfGas);
     }
-    let result = 1;
-    Ok((G2MULTIEXP_BASE, B256::with_last_byte(result as u8).into()))
+
+    let mut g2_points: Vec<blst_p2> = Vec::with_capacity(k);
+    let mut scalars: Vec<u8> = Vec::with_capacity(k * SCALAR_LENGTH);
+    for i in 0..k {
+        let mut p0_aff: blst_p2_affine = Default::default();
+        let p0_aff = extract_g2_input(
+            &mut p0_aff,
+            &input[i * G2MUL_INPUT_LENGTH..i * G2MUL_INPUT_LENGTH + G2_INPUT_ITEM_LENGTH],
+        )?;
+        let mut p0: blst_p2 = Default::default();
+        // SAFETY: p0 and p0_aff are blst values.
+        unsafe {
+            blst_p2_from_affine(&mut p0, p0_aff);
+        }
+
+        g2_points.push(p0);
+
+        scalars.extend_from_slice(
+            &extract_scalar_input(
+                &input[i * G2MUL_INPUT_LENGTH + G2_INPUT_ITEM_LENGTH
+                    ..i * G2MUL_INPUT_LENGTH + G2_INPUT_ITEM_LENGTH + SCALAR_LENGTH],
+            )?
+            .b,
+        );
+    }
+
+    let points = p2_affines::from(&g2_points);
+    let multiexp = points.mult(&scalars, NBITS);
+
+    let mut multiexp_aff: blst_p2_affine = Default::default();
+    // SAFETY: multiexp_aff and multiexp are blst values.
+    unsafe {
+        blst_p2_to_affine(&mut multiexp_aff, &multiexp);
+    }
+
+    let mut out = [0u8; G2_OUTPUT_LENGTH];
+    encode_g2_point(&mut out, &multiexp_aff);
+
+    Ok((required_gas, out.into()))
 }
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_PAIRING precompile.
@@ -579,6 +632,7 @@ mod test {
     #[case::g1_multiexp(g1_multiexp, "blsG1MultiExp.json")]
     #[case::g2_add(g2_add, "blsG2Add.json")]
     #[case::g2_mul(g2_mul, "blsG2Mul.json")]
+    #[case::g2_multiexp(g2_multiexp, "blsG2MultiExp.json")]
     fn test_bls(
         #[case] precompile: fn(input: &Bytes, gas_limit: u64) -> PrecompileResult,
         #[case] file_name: &str,
