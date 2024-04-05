@@ -44,6 +44,8 @@ const MULTIEXP_DISCOUNT_TABLE: [u64; 128] = [
 ];
 const MULTIEXP_MULTIPLIER: u64 = 1000;
 const PAIRING_INPUT_LENGTH: usize = 384;
+const PAIRING_MULTIPLIER_BASE: u64 = 43000;
+const PAIRING_OFFSET_BASE: u64 = 65000;
 const MAP_FP_TO_G1_BASE: u64 = 5500;
 const MAP_FP2_TO_G2_BASE: u64 = 75000;
 
@@ -583,7 +585,7 @@ fn pairing(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     }
 
     let k = input_len / PAIRING_INPUT_LENGTH;
-    let required_gas: u64 = 43000 * k as u64 + 65000;
+    let required_gas: u64 = PAIRING_MULTIPLIER_BASE * k as u64 + PAIRING_OFFSET_BASE;
     if required_gas > gas_limit {
         return Err(PrecompileError::OutOfGas);
     }
