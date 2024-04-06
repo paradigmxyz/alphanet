@@ -1,3 +1,5 @@
+//! EIP-3074 custom instructions.
+
 use crate::{context::InstructionsContext, BoxedInstructionWithOpCode};
 use revm::{Database, Evm};
 use revm_interpreter::{
@@ -11,15 +13,25 @@ use revm_primitives::{
     alloy_primitives::B512, keccak256, spec_to_generic, Address, SpecId, B256, U256,
 };
 
+/// Numeric OP code for the `AUTH` mnemonic.
 const AUTH_OPCODE: u8 = 0xF6;
+/// Numeric OP code for the `AUTHCALL` mnemonic.
 const AUTHCALL_OPCODE: u8 = 0xF7;
+/// Constant used to compose the message expected by `AUTH`
 const MAGIC: u8 = 0x04;
+/// Gas to charge when the authority has been previously loaded.
 const WARM_AUTHORITY_GAS: u64 = 100;
+/// Gas to charge when the authority has not been previously loaded.
 const COLD_AUTHORITY_GAS: u64 = 2600;
+/// Fixed gas to charge.
 const FIXED_FEE_GAS: u64 = 3100;
+/// Context variable name to store (AUTH) and retrieve (AUTHCALL) the validated
+/// authority.
 const AUTHORIZED_VAR_NAME: &str = "authorized";
 
-/// eip3074 boxed instructions.
+/// Generates an iterator over EIP3074 boxed instructions. Defining the
+/// instructions inside a `Box<>` allows them to capture variables defined
+/// in its environment.
 pub fn boxed_instructions<'a, EXT: 'a, DB: Database + 'a>(
     context: InstructionsContext,
 ) -> impl Iterator<Item = BoxedInstructionWithOpCode<'a, Evm<'a, EXT, DB>>> {
@@ -49,7 +61,8 @@ pub fn boxed_instructions<'a, EXT: 'a, DB: Database + 'a>(
     .into_iter()
 }
 
-// keccak256(MAGIC || chainId || nonce || invokerAddress || commit)
+/// Composes the message expected by the AUTH instruction in this format:
+/// `keccak256(MAGIC || chainId || nonce || invokerAddress || commit)`
 fn compose_msg(chain_id: u64, nonce: u64, invoker_address: Address, commit: B256) -> B256 {
     let mut msg = [0u8; 129];
     msg[0] = MAGIC;
@@ -60,9 +73,10 @@ fn compose_msg(chain_id: u64, nonce: u64, invoker_address: Address, commit: B256
     keccak256(msg.as_slice())
 }
 
-// AUTH instruction, see EIP-3074:
-//
-// <https://eips.ethereum.org/EIPS/eip-3074#auth-0xf6>
+/// `AUTH` instruction, interprets data from the stack and memory to validate an
+/// `authority` account for subsequent `AUTHCALL` invocations. See also:
+///
+/// <https://eips.ethereum.org/EIPS/eip-3074#auth-0xf6>
 fn auth_instruction<EXT, DB: Database>(
     interp: &mut Interpreter,
     evm: &mut Evm<'_, EXT, DB>,
@@ -127,9 +141,11 @@ fn auth_instruction<EXT, DB: Database>(
     }
 }
 
-// AUTHCALL instruction, see EIP-3074:
-//
-// <https://eips.ethereum.org/EIPS/eip-3074#authcall-0xf7>
+/// `AUTHCALL` instruction, tries to read a context variable set by a previous
+/// `AUTH` incocation and, if present, uses it as the `caller` in a `CALL`
+/// executed as the next action. See also:
+///
+/// <https://eips.ethereum.org/EIPS/eip-3074#authcall-0xf7>
 fn authcall_instruction<EXT, DB: Database>(
     interp: &mut Interpreter,
     evm: &mut Evm<'_, EXT, DB>,
