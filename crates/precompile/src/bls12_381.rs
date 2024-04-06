@@ -609,6 +609,7 @@ fn map_fp_to_g1(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     let mut p: blst_p1 = Default::default();
     // SAFETY: p and fp are blst values.
     unsafe {
+        // third argument is unused if null.
         blst_map_to_g1(&mut p, &fp, std::ptr::null());
     }
 
@@ -673,6 +674,7 @@ fn map_fp2_to_g2(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     let mut p: blst_p2 = Default::default();
     // SAFETY: p and fp2 are blst values.
     unsafe {
+        // third argument is unused if null.
         blst_map_to_g2(&mut p, &fp2, std::ptr::null());
     }
 
