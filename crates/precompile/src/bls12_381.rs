@@ -604,6 +604,9 @@ fn pairing(input: &Bytes, gas_limit: u64) -> PrecompileResult {
                 ..i * PAIRING_INPUT_LENGTH + G1_INPUT_ITEM_LENGTH + G2_INPUT_ITEM_LENGTH],
         )? as *const blst_p2_affine;
         if i > 0 {
+            // after the first slice (i>0) we use cur_ml to store the current
+            // miller loop and accumulate with the previous results using a fp12
+            // multiplication.
             let mut cur_ml: blst_fp12 = Default::default();
             // SAFETY: ret, cur_ml, p1_aff and p2_aff are blst values.
             unsafe {
@@ -611,6 +614,8 @@ fn pairing(input: &Bytes, gas_limit: u64) -> PrecompileResult {
                 blst_fp12_mul(&mut ret, &ret, &cur_ml);
             }
         } else {
+            // on the first slice (i==0) there is no previous results and no need
+            // to accumulate.
             // SAFETY: ret, p1_aff and p2_aff are blst values.
             unsafe {
                 blst_miller_loop(&mut ret, p2_aff, p1_aff);
