@@ -4,11 +4,11 @@ use crate::addresses::{
     BLS12_MAP_FP_TO_G1_ADDRESS, BLS12_PAIRING_ADDRESS,
 };
 use blst::{
-    blst_bendian_from_fp, blst_fp, blst_fp_from_bendian, blst_map_to_g1, blst_p1,
-    blst_p1_add_or_double_affine, blst_p1_affine, blst_p1_affine_in_g1, blst_p1_from_affine,
-    blst_p1_mult, blst_p1_to_affine, blst_p2, blst_p2_add_or_double_affine, blst_p2_affine,
-    blst_p2_affine_in_g2, blst_p2_from_affine, blst_p2_mult, blst_p2_to_affine, blst_scalar,
-    blst_scalar_from_bendian, p1_affines, p2_affines,
+    blst_bendian_from_fp, blst_fp, blst_fp2, blst_fp_from_bendian, blst_map_to_g1, blst_map_to_g2,
+    blst_p1, blst_p1_add_or_double_affine, blst_p1_affine, blst_p1_affine_in_g1,
+    blst_p1_from_affine, blst_p1_mult, blst_p1_to_affine, blst_p2, blst_p2_add_or_double_affine,
+    blst_p2_affine, blst_p2_affine_in_g2, blst_p2_from_affine, blst_p2_mult, blst_p2_to_affine,
+    blst_scalar, blst_scalar_from_bendian, p1_affines, p2_affines,
 };
 use revm_precompile::{u64_to_address, Precompile, PrecompileWithAddress};
 use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
@@ -31,6 +31,7 @@ const PADDED_INPUT_LENGTH: usize = 64;
 const PADDING_LENGTH: usize = 16;
 const SCALAR_LENGTH: usize = 32;
 const PADDED_FP_LENGTH: usize = 64;
+const PADDED_FP2_LENGTH: usize = 128;
 const MULTIEXP_DISCOUNT_TABLE: [u64; 128] = [
     1200, 888, 764, 641, 594, 547, 500, 453, 438, 423, 408, 394, 379, 364, 349, 334, 330, 326, 322,
     318, 314, 310, 306, 302, 298, 294, 289, 285, 281, 277, 273, 269, 268, 266, 265, 263, 262, 260,
@@ -42,6 +43,7 @@ const MULTIEXP_DISCOUNT_TABLE: [u64; 128] = [
 ];
 const MULTIEXP_MULTIPLIER: u64 = 1000;
 const MAP_FP_TO_G1_BASE: u64 = 5500;
+const MAP_FP2_TO_G2_BASE: u64 = 75000;
 
 /// bls12381 precompiles
 pub fn precompiles() -> impl Iterator<Item = PrecompileWithAddress> {
@@ -607,6 +609,7 @@ fn map_fp_to_g1(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     let mut p: blst_p1 = Default::default();
     // SAFETY: p and fp are blst values.
     unsafe {
+        // third argument is unused if null.
         blst_map_to_g1(&mut p, &fp, std::ptr::null());
     }
 
@@ -628,14 +631,63 @@ const BLS12_MAP_FP2_TO_G2: PrecompileWithAddress = PrecompileWithAddress(
     Precompile::Standard(map_fp2_to_g2),
 );
 
-fn map_fp2_to_g2(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
-    // TODO: make gas base depend on input k
-    const MAP_FP2_TO_G2_BASE: u64 = 12000;
+/// Field-to-curve call expects 128 bytes as an input that is interpreted as a
+/// an element of Fp2. Output of this call is 256 bytes and is an encoded G2
+/// point. See also:
+///
+/// <https://eips.ethereum.org/EIPS/eip-2537#abi-for-mapping-fp2-element-to-g2-point>
+fn map_fp2_to_g2(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     if MAP_FP2_TO_G2_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
     }
-    let result = 1;
-    Ok((MAP_FP2_TO_G2_BASE, B256::with_last_byte(result as u8).into()))
+
+    if input.len() != PADDED_FP2_LENGTH {
+        return Err(PrecompileError::Other(format!(
+            "MAP_FP2_TO_G2 Input should be {PADDED_FP2_LENGTH} bits, was {}",
+            input.len()
+        )));
+    }
+
+    let input_p0_x = match remove_padding(&input[..PADDED_FP_LENGTH]) {
+        Ok(input_p0_x) => input_p0_x,
+        Err(e) => return Err(e),
+    };
+    let input_p0_y = match remove_padding(&input[PADDED_FP_LENGTH..PADDED_FP2_LENGTH]) {
+        Ok(input_p0_y) => input_p0_y,
+        Err(e) => return Err(e),
+    };
+
+    let mut fp2: blst_fp2 = Default::default();
+    let mut fp_x: blst_fp = Default::default();
+    let mut fp_y: blst_fp = Default::default();
+    // SAFETY: input_p0_x has fixed length, fp_x is a blst value.
+    unsafe {
+        blst_fp_from_bendian(&mut fp_x, input_p0_x.as_ptr());
+    }
+    // SAFETY: input_p0_y has fixed length, fp_y is a blst value.
+    unsafe {
+        blst_fp_from_bendian(&mut fp_y, input_p0_y.as_ptr());
+    }
+    fp2.fp[0] = fp_x;
+    fp2.fp[1] = fp_y;
+
+    let mut p: blst_p2 = Default::default();
+    // SAFETY: p and fp2 are blst values.
+    unsafe {
+        // third argument is unused if null.
+        blst_map_to_g2(&mut p, &fp2, std::ptr::null());
+    }
+
+    let mut p_aff: blst_p2_affine = Default::default();
+    // SAFETY: p_aff and p are blst values.
+    unsafe {
+        blst_p2_to_affine(&mut p_aff, &p);
+    }
+
+    let mut out = [0u8; G2_OUTPUT_LENGTH];
+    encode_g2_point(&mut out, &p_aff);
+
+    Ok((MAP_FP2_TO_G2_BASE, out.into()))
 }
 
 #[cfg(test)]
@@ -672,6 +724,7 @@ mod test {
     #[case::g2_mul(g2_mul, "blsG2Mul.json")]
     #[case::g2_multiexp(g2_multiexp, "blsG2MultiExp.json")]
     #[case::map_fp_to_g1(map_fp_to_g1, "blsMapG1.json")]
+    #[case::map_fp2_to_g2(map_fp2_to_g2, "blsMapG2.json")]
     fn test_bls(
         #[case] precompile: fn(input: &Bytes, gas_limit: u64) -> PrecompileResult,
         #[case] file_name: &str,
