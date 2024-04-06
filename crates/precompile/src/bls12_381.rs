@@ -4,11 +4,12 @@ use crate::addresses::{
     BLS12_MAP_FP_TO_G1_ADDRESS, BLS12_PAIRING_ADDRESS,
 };
 use blst::{
-    blst_bendian_from_fp, blst_fp, blst_fp2, blst_fp_from_bendian, blst_map_to_g1, blst_map_to_g2,
-    blst_p1, blst_p1_add_or_double_affine, blst_p1_affine, blst_p1_affine_in_g1,
-    blst_p1_from_affine, blst_p1_mult, blst_p1_to_affine, blst_p2, blst_p2_add_or_double_affine,
-    blst_p2_affine, blst_p2_affine_in_g2, blst_p2_from_affine, blst_p2_mult, blst_p2_to_affine,
-    blst_scalar, blst_scalar_from_bendian, p1_affines, p2_affines,
+    blst_bendian_from_fp, blst_final_exp, blst_fp, blst_fp12, blst_fp12_is_one, blst_fp12_mul,
+    blst_fp2, blst_fp_from_bendian, blst_map_to_g1, blst_map_to_g2, blst_miller_loop, blst_p1,
+    blst_p1_add_or_double_affine, blst_p1_affine, blst_p1_affine_in_g1, blst_p1_from_affine,
+    blst_p1_mult, blst_p1_to_affine, blst_p2, blst_p2_add_or_double_affine, blst_p2_affine,
+    blst_p2_affine_in_g2, blst_p2_from_affine, blst_p2_mult, blst_p2_to_affine, blst_scalar,
+    blst_scalar_from_bendian, p1_affines, p2_affines,
 };
 use revm_precompile::{u64_to_address, Precompile, PrecompileWithAddress};
 use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
@@ -42,6 +43,9 @@ const MULTIEXP_DISCOUNT_TABLE: [u64; 128] = [
     184, 183, 182, 182, 181, 180, 179, 179, 178, 177, 176, 176, 175, 174,
 ];
 const MULTIEXP_MULTIPLIER: u64 = 1000;
+const PAIRING_INPUT_LENGTH: usize = 384;
+const PAIRING_MULTIPLIER_BASE: u64 = 43000;
+const PAIRING_OFFSET_BASE: u64 = 65000;
 const MAP_FP_TO_G1_BASE: u64 = 5500;
 const MAP_FP2_TO_G2_BASE: u64 = 75000;
 
@@ -561,14 +565,76 @@ fn g2_multiexp(input: &Bytes, gas_limit: u64) -> PrecompileResult {
 const BLS12_PAIRING: PrecompileWithAddress =
     PrecompileWithAddress(u64_to_address(BLS12_PAIRING_ADDRESS), Precompile::Standard(pairing));
 
-fn pairing(_input: &Bytes, gas_limit: u64) -> PrecompileResult {
-    // TODO: make gas base depend on input k
-    const PAIRING_BASE: u64 = 12000;
-    if PAIRING_BASE > gas_limit {
+/// Pairing call expects 384*k (k being a positive integer) bytes as an inputs
+/// that is interpreted as byte concatenation of k slices. Each slice has the
+/// following structure:
+///    * 128 bytes of G1 point encoding
+///    * 256 bytes of G2 point encoding
+/// Each point is expected to be in the subgroup of order q.
+/// Output is a 32 bytes where first 31 bytes are equal to 0x00 and the last byte
+/// is 0x01 if pairing result is equal to the multiplicative identity in a pairing
+/// target field and 0x00 otherwise. See also:
+///
+/// <https://eips.ethereum.org/EIPS/eip-2537#abi-for-pairing>
+fn pairing(input: &Bytes, gas_limit: u64) -> PrecompileResult {
+    let input_len = input.len();
+    if input_len == 0 || input_len % PAIRING_INPUT_LENGTH != 0 {
+        return Err(PrecompileError::Other(format!(
+            "Pairing input length should be multiple of {PAIRING_INPUT_LENGTH}, was {input_len}"
+        )));
+    }
+
+    let k = input_len / PAIRING_INPUT_LENGTH;
+    let required_gas: u64 = PAIRING_MULTIPLIER_BASE * k as u64 + PAIRING_OFFSET_BASE;
+    if required_gas > gas_limit {
         return Err(PrecompileError::OutOfGas);
     }
-    let result = 1;
-    Ok((PAIRING_BASE, B256::with_last_byte(result as u8).into()))
+
+    let mut ret: blst_fp12 = Default::default();
+    for i in 0..k {
+        let mut p1_aff: blst_p1_affine = Default::default();
+        let p1_aff = extract_g1_input(
+            &mut p1_aff,
+            &input[i * PAIRING_INPUT_LENGTH..i * PAIRING_INPUT_LENGTH + G1_INPUT_ITEM_LENGTH],
+        )? as *const blst_p1_affine;
+        let mut p2_aff: blst_p2_affine = Default::default();
+        let p2_aff = extract_g2_input(
+            &mut p2_aff,
+            &input[i * PAIRING_INPUT_LENGTH + G1_INPUT_ITEM_LENGTH
+                ..i * PAIRING_INPUT_LENGTH + G1_INPUT_ITEM_LENGTH + G2_INPUT_ITEM_LENGTH],
+        )? as *const blst_p2_affine;
+        if i > 0 {
+            // after the first slice (i>0) we use cur_ml to store the current
+            // miller loop and accumulate with the previous results using a fp12
+            // multiplication.
+            let mut cur_ml: blst_fp12 = Default::default();
+            // SAFETY: ret, cur_ml, p1_aff and p2_aff are blst values.
+            unsafe {
+                blst_miller_loop(&mut cur_ml, p2_aff, p1_aff);
+                blst_fp12_mul(&mut ret, &ret, &cur_ml);
+            }
+        } else {
+            // on the first slice (i==0) there is no previous results and no need
+            // to accumulate.
+            // SAFETY: ret, p1_aff and p2_aff are blst values.
+            unsafe {
+                blst_miller_loop(&mut ret, p2_aff, p1_aff);
+            }
+        }
+    }
+    // SAFETY: ret is  blst value.
+    unsafe {
+        blst_final_exp(&mut ret, &ret);
+    }
+
+    let mut result: u8 = 0;
+    // SAFETY: ret is a blst value.
+    unsafe {
+        if blst_fp12_is_one(&ret) {
+            result = 1;
+        }
+    }
+    Ok((required_gas, B256::with_last_byte(result).into()))
 }
 
 /// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_MAP_FP_TO_G1 precompile.
@@ -723,6 +789,7 @@ mod test {
     #[case::g2_add(g2_add, "blsG2Add.json")]
     #[case::g2_mul(g2_mul, "blsG2Mul.json")]
     #[case::g2_multiexp(g2_multiexp, "blsG2MultiExp.json")]
+    #[case::pairing(pairing, "blsPairing.json")]
     #[case::map_fp_to_g1(map_fp_to_g1, "blsMapG1.json")]
     #[case::map_fp2_to_g2(map_fp2_to_g2, "blsMapG2.json")]
     fn test_bls(
