@@ -2,6 +2,14 @@
 //!
 //! The precompile can be inserted in a custom EVM like this:
 //! ```
+//! use alphanet_precompile::secp256r1;
+//! use reth::primitives::{ChainSpec, Transaction, U256};
+//! use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
+//! use revm::{Database, Evm, EvmBuilder};
+//! use revm_precompile::{PrecompileSpecId, Precompiles};
+//! use revm_primitives::{Address, Bytes, CfgEnvWithHandlerCfg, TxEnv};
+//! use std::sync::Arc;
+//!
 //! #[derive(Debug, Clone, Copy, Default)]
 //! #[non_exhaustive]
 //! struct AlphaNetEvmConfig;
@@ -13,16 +21,37 @@
 //!             .append_handler_register(|handler| {
 //!                 let spec_id = handler.cfg.spec_id;
 //!                 handler.pre_execution.load_precompiles = Arc::new(move || {
-//!                     let mut precompiles = Precompiles::new(PrecompileSpecId::from_spec_id(spec_id)).clone();
-//!                     for precompile_with_address secp256r1::precompiles() {
-//!                         precompiles.inner.insert(precompile_with_address.0, precompile_with_address.1);
+//!                     let mut precompiles =
+//!                         Precompiles::new(PrecompileSpecId::from_spec_id(spec_id)).clone();
+//!                     for precompile_with_address in secp256r1::precompiles() {
+//!                         precompiles
+//!                             .inner
+//!                             .insert(precompile_with_address.0, precompile_with_address.1);
 //!                     }
 //!                     precompiles.into()
 //!                 });
 //!             })
 //!             .build()
-//!         }
 //!     }
+//! }
+//!
+//! impl ConfigureEvmEnv for AlphaNetEvmConfig {
+//!     type TxMeta = Bytes;
+//!     fn fill_tx_env<T>(_: &mut TxEnv, _: T, _: Address, _: <Self as ConfigureEvmEnv>::TxMeta)
+//!     where
+//!         T: AsRef<Transaction>,
+//!     {
+//!         todo!()
+//!     }
+//!     fn fill_cfg_env(
+//!         _: &mut CfgEnvWithHandlerCfg,
+//!         _: &ChainSpec,
+//!         _: &reth::primitives::Header,
+//!         _: U256,
+//!     ) {
+//!         todo!()
+//!     }
+//! }
 //! ```
 use crate::addresses::P256VERIFY_ADDRESS;
 use p256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};

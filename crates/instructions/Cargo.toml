@@ -16,6 +16,8 @@ revm-precompile.workspace = true
 revm-primitives.workspace = true
 
 [dev-dependencies]
+reth.workspace = true
+reth-node-api.workspace = true
 secp256k1 = { version = "0.28.2", default-features = false, features = [
     "alloc",
     "recovery",

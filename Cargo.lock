@@ -374,6 +374,8 @@ dependencies = [
 name = "alphanet-instructions"
 version = "0.0.0"
 dependencies = [
+ "reth",
+ "reth-node-api",
  "revm",
  "revm-interpreter",
  "revm-precompile",
@@ -404,6 +406,9 @@ dependencies = [
  "criterion",
  "eyre",
  "p256",
+ "reth",
+ "reth-node-api",
+ "revm",
  "revm-precompile",
  "revm-primitives",
  "rstest",

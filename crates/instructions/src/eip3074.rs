@@ -4,6 +4,13 @@
 //! and passed to the instructions themselves. It should be cleared at the end
 //! of each transaction, like this:
 //! ```
+//! use alphanet_instructions::{context::InstructionsContext, eip3074};
+//! use reth::primitives::{ChainSpec, Transaction, U256};
+//! use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
+//! use revm::{Database, Evm, EvmBuilder};
+//! use revm_primitives::{Address, Bytes, CfgEnvWithHandlerCfg, TxEnv};
+//! use std::sync::Arc;
+//!
 //! #[derive(Debug, Clone, Copy, Default)]
 //! #[non_exhaustive]
 //! struct AlphaNetEvmConfig;
@@ -12,25 +19,47 @@
 //!     fn evm<'a, DB: Database + 'a>(&self, db: DB) -> Evm<'a, (), DB> {
 //!         // this instructions context will allow to set the `authorized` context variable.
 //!         let instructions_context = InstructionsContext::default();
+//!         let to_capture_instructions = instructions_context.clone();
+//!         let to_capture_post_execution = instructions_context.clone();
 //!         EvmBuilder::default()
 //!             .with_db(db)
-//!             .append_handler_register_box(Box::new(|handler| {
-//!                 let mut table = handler.take_instruction_table();
-//!                 for boxed_instruction_with_opcode in
-//!                     eip3074::boxed_instructions(instructions_context.clone())
-//!                 {
-//!                     table.insert_boxed(
-//!                         boxed_instruction_with_opcode.opcode,
-//!                         boxed_instruction_with_opcode.boxed_instruction,
-//!                     );
+//!             .append_handler_register_box(Box::new(move |handler| {
+//!                 if let Some(ref mut table) = handler.instruction_table {
+//!                     for boxed_instruction_with_opcode in
+//!                         eip3074::boxed_instructions(to_capture_instructions.clone())
+//!                     {
+//!                         table.insert_boxed(
+//!                             boxed_instruction_with_opcode.opcode,
+//!                             boxed_instruction_with_opcode.boxed_instruction,
+//!                         );
+//!                     }
 //!                 }
+//!                 let post_execution_context = instructions_context.clone();
 //!                 handler.post_execution.end = Arc::new(move |_, outcome: _| {
-//!                     // at the end if the transaction execution we clear the instructions context.
-//!                     instructions_context.clear();
+//!                     // at the end if the transaction execution we clear the instructions
+//!                     post_execution_context.clear();
 //!                     outcome
 //!                 });
 //!             }))
 //!             .build()
+//!     }
+//! }
+//!
+//! impl ConfigureEvmEnv for AlphaNetEvmConfig {
+//!     type TxMeta = Bytes;
+//!     fn fill_tx_env<T>(_: &mut TxEnv, _: T, _: Address, _: <Self as ConfigureEvmEnv>::TxMeta)
+//!     where
+//!         T: AsRef<Transaction>,
+//!     {
+//!         todo!()
+//!     }
+//!     fn fill_cfg_env(
+//!         _: &mut CfgEnvWithHandlerCfg,
+//!         _: &ChainSpec,
+//!         _: &reth::primitives::Header,
+//!         _: U256,
+//!     ) {
+//!         todo!()
 //!     }
 //! }
 //! ```

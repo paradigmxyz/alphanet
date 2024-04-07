@@ -2,7 +2,7 @@
 //!
 //! Collection of custom OP codes for AlphaNet and related functionality.
 
-#![warn(unused_crate_dependencies)]
+#![cfg_attr(not(test), warn(unused_crate_dependencies))]
 
 use revm_interpreter::opcode::BoxedInstruction;
 
