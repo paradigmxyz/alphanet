@@ -1,4 +1,29 @@
 //! EIP-2537 BLS12-381 precompiles.
+//!
+//! The precompiles can be inserted in a custom EVM like this:
+//! ```
+//! #[derive(Debug, Clone, Copy, Default)]
+//! #[non_exhaustive]
+//! struct AlphaNetEvmConfig;
+//!
+//! impl ConfigureEvm for AlphaNetEvmConfig {
+//!     fn evm<'a, DB: Database + 'a>(&self, db: DB) -> Evm<'a, (), DB> {
+//!         EvmBuilder::default()
+//!             .with_db(db)
+//!             .append_handler_register(|handler| {
+//!                 let spec_id = handler.cfg.spec_id;
+//!                 handler.pre_execution.load_precompiles = Arc::new(move || {
+//!                     let mut precompiles = Precompiles::new(PrecompileSpecId::from_spec_id(spec_id)).clone();
+//!                     for precompile_with_address bls12_381::precompiles() {
+//!                         precompiles.inner.insert(precompile_with_address.0, precompile_with_address.1);
+//!                     }
+//!                     precompiles.into()
+//!                 });
+//!             })
+//!             .build()
+//!         }
+//!     }
+//! ```
 
 use crate::addresses::{
     BLS12_G1ADD_ADDRESS, BLS12_G1MULTIEXP_ADDRESS, BLS12_G1MUL_ADDRESS, BLS12_G2ADD_ADDRESS,

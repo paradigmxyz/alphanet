@@ -1,5 +1,29 @@
 //! EIP-7212 secp256r1 precompile.
-
+//!
+//! The precompile can be inserted in a custom EVM like this:
+//! ```
+//! #[derive(Debug, Clone, Copy, Default)]
+//! #[non_exhaustive]
+//! struct AlphaNetEvmConfig;
+//!
+//! impl ConfigureEvm for AlphaNetEvmConfig {
+//!     fn evm<'a, DB: Database + 'a>(&self, db: DB) -> Evm<'a, (), DB> {
+//!         EvmBuilder::default()
+//!             .with_db(db)
+//!             .append_handler_register(|handler| {
+//!                 let spec_id = handler.cfg.spec_id;
+//!                 handler.pre_execution.load_precompiles = Arc::new(move || {
+//!                     let mut precompiles = Precompiles::new(PrecompileSpecId::from_spec_id(spec_id)).clone();
+//!                     for precompile_with_address secp256r1::precompiles() {
+//!                         precompiles.inner.insert(precompile_with_address.0, precompile_with_address.1);
+//!                     }
+//!                     precompiles.into()
+//!                 });
+//!             })
+//!             .build()
+//!         }
+//!     }
+//! ```
 use crate::addresses::P256VERIFY_ADDRESS;
 use p256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
 use revm_precompile::{u64_to_address, Precompile, PrecompileWithAddress};
@@ -9,6 +33,7 @@ use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
 const P256VERIFY_BASE: u64 = 3_450;
 
 /// Returns the secp256r1 precompile with its address.
+
 pub fn precompiles() -> impl Iterator<Item = PrecompileWithAddress> {
     [P256VERIFY].into_iter()
 }

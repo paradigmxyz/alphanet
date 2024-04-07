@@ -1,5 +1,39 @@
 //! EIP-3074 custom instructions.
-
+//!
+//! To isert the instructions in a custom EVM a instructions context must be
+//! and passed to the instructions themselves. It should be cleared at the end
+//! of each transaction, like this:
+//! ```
+//! #[derive(Debug, Clone, Copy, Default)]
+//! #[non_exhaustive]
+//! struct AlphaNetEvmConfig;
+//!
+//! impl ConfigureEvm for AlphaNetEvmConfig {
+//!     fn evm<'a, DB: Database + 'a>(&self, db: DB) -> Evm<'a, (), DB> {
+//!         // this instructions context will allow to set the `authorized` context variable.
+//!         let instructions_context = InstructionsContext::default();
+//!         EvmBuilder::default()
+//!             .with_db(db)
+//!             .append_handler_register(|handler| {
+//!                 let mut table = handler.take_instruction_table();
+//!                 for boxed_instruction_with_opcode in
+//!                     eip3074::boxed_instructions(instructions_context.clone())
+//!                 {
+//!                     table.insert_boxed(
+//!                         boxed_instruction_with_opcode.opcode,
+//!                         boxed_instruction_with_opcode.boxed_instruction,
+//!                     );
+//!                 }
+//!                 handler.post_execution.end = Arc::new(move |_, outcome: _| {
+//!                     // at the end if the transaction execution we clear the instructions context.
+//!                     instructions_context.clear();
+//!                     outcome
+//!                 });
+//!             })
+//!             .build()
+//!     }
+//! }
+//! ```
 use crate::{context::InstructionsContext, BoxedInstructionWithOpCode};
 use revm::{Database, Evm};
 use revm_interpreter::{
@@ -30,8 +64,8 @@ const FIXED_FEE_GAS: u64 = 3100;
 const AUTHORIZED_VAR_NAME: &str = "authorized";
 
 /// Generates an iterator over EIP3074 boxed instructions. Defining the
-/// instructions inside a `Box<>` allows them to capture variables defined
-/// in its environment.
+/// instructions inside a `Box<>` allows them to capture variables defined in its
+/// environment.
 pub fn boxed_instructions<'a, EXT: 'a, DB: Database + 'a>(
     context: InstructionsContext,
 ) -> impl Iterator<Item = BoxedInstructionWithOpCode<'a, Evm<'a, EXT, DB>>> {

@@ -6,9 +6,8 @@
 
 use revm_interpreter::opcode::BoxedInstruction;
 
-pub mod eip3074;
-
 pub mod context;
+pub mod eip3074;
 
 /// Association of OP codes and correspondent boxed instruction.
 pub struct BoxedInstructionWithOpCode<'a, H> {
