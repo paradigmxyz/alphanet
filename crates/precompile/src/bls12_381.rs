@@ -240,9 +240,8 @@ fn extract_g2_input(
 /// G1 addition call expects `256` bytes as an input that is interpreted as byte
 /// concatenation of two G1 points (`128` bytes each).
 /// Output is an encoding of addition operation result - single G1 point (`128`
-/// bytes). See EIP-2537:
-///
-/// <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g1-addition>
+/// bytes).
+/// See also: <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g1-addition>
 pub fn g1_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     if G1ADD_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
@@ -293,9 +292,8 @@ const BLS12_G1MUL: PrecompileWithAddress =
 /// byte concatenation of encoding of G1 point (`128` bytes) and encoding of a
 /// scalar value (`32` bytes).
 /// Output is an encoding of multiplication operation result - single G1 point
-/// (`128` bytes). See EIP-2537:
-///
-/// <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g1-multiplication>
+/// (`128` bytes).
+/// See also: <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g1-multiplication>
 pub fn g1_mul(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     if G1MUL_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
@@ -341,9 +339,7 @@ const BLS12_G1MULTIEXP: PrecompileWithAddress = PrecompileWithAddress(
 );
 
 /// Implements the gas schedule for G1/G2 Multiexponentiation assuming 30
-/// MGas/second, see also:
-///
-/// <https://eips.ethereum.org/EIPS/eip-2537#g1g2-multiexponentiation>
+/// MGas/second, see also: <https://eips.ethereum.org/EIPS/eip-2537#g1g2-multiexponentiation>
 fn multiexp_required_gas(k: usize, multiplication_cost: u64) -> u64 {
     if k == 0 {
         return 0;
@@ -364,9 +360,8 @@ fn multiexp_required_gas(k: usize, multiplication_cost: u64) -> u64 {
 /// of encoding of G1 point (`128` bytes) and encoding of a scalar value (`32`
 /// bytes).
 /// Output is an encoding of multiexponentiation operation result - single G1
-/// point (`128` bytes). See also:
-///
-/// <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g1-multiexponentiation>
+/// point (`128` bytes).
+/// See also: <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g1-multiexponentiation>
 fn g1_multiexp(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     let input_len = input.len();
     if input_len == 0 || input_len % G1MUL_INPUT_LENGTH != 0 {
@@ -428,8 +423,9 @@ const BLS12_G2ADD: PrecompileWithAddress =
 /// G2 addition call expects `512` bytes as an input that is interpreted as byte
 /// concatenation of two G2 points (`256` bytes each).
 ///
-/// > Output is an encoding of addition operation result - single G2 point (`256`
+/// Output is an encoding of addition operation result - single G2 point (`256`
 /// bytes).
+/// See also <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g2-addition>
 fn g2_add(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     if G2ADD_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
@@ -480,9 +476,8 @@ const BLS12_G2MUL: PrecompileWithAddress =
 /// byte concatenation of encoding of G2 point (`256` bytes) and encoding of a
 /// scalar value (`32` bytes).
 /// Output is an encoding of multiplication operation result - single G2 point
-/// (`256` bytes). See EIP-2537:
-///
-/// <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g2-multiplication>
+/// (`256` bytes).
+/// See also: <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g2-multiplication>
 fn g2_mul(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     if G2MUL_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
@@ -533,9 +528,8 @@ const BLS12_G2MULTIEXP: PrecompileWithAddress = PrecompileWithAddress(
 /// of encoding of G2 point (`256` bytes) and encoding of a scalar value (`32`
 /// bytes).
 /// Output is an encoding of multiexponentiation operation result - single G2
-/// point (`256` bytes). See also:
-///
-/// <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g2-multiexponentiation>
+/// point (`256` bytes).
+/// See also: <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g2-multiexponentiation>
 fn g2_multiexp(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     let input_len = input.len();
     if input_len == 0 || input_len % G2MUL_INPUT_LENGTH != 0 {
@@ -602,9 +596,8 @@ const BLS12_PAIRING: PrecompileWithAddress =
 /// Each point is expected to be in the subgroup of order q.
 /// Output is a 32 bytes where first 31 bytes are equal to 0x00 and the last byte
 /// is 0x01 if pairing result is equal to the multiplicative identity in a pairing
-/// target field and 0x00 otherwise. See also:
-///
-/// <https://eips.ethereum.org/EIPS/eip-2537#abi-for-pairing>
+/// target field and 0x00 otherwise.
+/// See also: <https://eips.ethereum.org/EIPS/eip-2537#abi-for-pairing>
 fn pairing(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     let input_len = input.len();
     if input_len == 0 || input_len % PAIRING_INPUT_LENGTH != 0 {
@@ -674,9 +667,7 @@ const BLS12_MAP_FP_TO_G1: PrecompileWithAddress = PrecompileWithAddress(
 
 /// Field-to-curve call expects 64 bytes as an input that is interpreted as an
 /// element of Fp. Output of this call is 128 bytes and is an encoded G1 point.
-/// See also:
-///
-/// <https://eips.ethereum.org/EIPS/eip-2537#abi-for-mapping-fp-element-to-g1-point>
+/// See also: <https://eips.ethereum.org/EIPS/eip-2537#abi-for-mapping-fp-element-to-g1-point>
 fn map_fp_to_g1(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     if MAP_FP_TO_G1_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
@@ -728,9 +719,8 @@ const BLS12_MAP_FP2_TO_G2: PrecompileWithAddress = PrecompileWithAddress(
 
 /// Field-to-curve call expects 128 bytes as an input that is interpreted as a
 /// an element of Fp2. Output of this call is 256 bytes and is an encoded G2
-/// point. See also:
-///
-/// <https://eips.ethereum.org/EIPS/eip-2537#abi-for-mapping-fp2-element-to-g2-point>
+/// point.
+/// See also: <https://eips.ethereum.org/EIPS/eip-2537#abi-for-mapping-fp2-element-to-g2-point>
 fn map_fp2_to_g2(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     if MAP_FP2_TO_G2_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
