@@ -14,7 +14,7 @@
 //!         let instructions_context = InstructionsContext::default();
 //!         EvmBuilder::default()
 //!             .with_db(db)
-//!             .append_handler_register(|handler| {
+//!             .append_handler_register_box(Box::new(|handler| {
 //!                 let mut table = handler.take_instruction_table();
 //!                 for boxed_instruction_with_opcode in
 //!                     eip3074::boxed_instructions(instructions_context.clone())
@@ -29,7 +29,7 @@
 //!                     instructions_context.clear();
 //!                     outcome
 //!                 });
-//!             })
+//!             }))
 //!             .build()
 //!     }
 //! }
