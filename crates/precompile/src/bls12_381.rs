@@ -1,3 +1,5 @@
+//! EIP-2537 BLS12-381 precompiles.
+
 use crate::addresses::{
     BLS12_G1ADD_ADDRESS, BLS12_G1MULTIEXP_ADDRESS, BLS12_G1MUL_ADDRESS, BLS12_G2ADD_ADDRESS,
     BLS12_G2MULTIEXP_ADDRESS, BLS12_G2MUL_ADDRESS, BLS12_MAP_FP2_TO_G2_ADDRESS,
@@ -14,25 +16,55 @@ use blst::{
 use revm_precompile::{u64_to_address, Precompile, PrecompileWithAddress};
 use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
 
-const G1ADD_BASE: u64 = 500;
-const G1ADD_INPUT_LENGTH: usize = 256;
-const G1_INPUT_ITEM_LENGTH: usize = 128;
-const G1_OUTPUT_LENGTH: usize = 128;
-const G1MUL_BASE: u64 = 12000;
-const G1MUL_INPUT_LENGTH: usize = 160;
+/// Number of bits used in the BLS12-381 curve finite field elements.
 const NBITS: usize = 256;
+/// Base gas fee for BLS12-381 g1_add operation.
+const G1ADD_BASE: u64 = 500;
+/// Base gas fee for BLS12-381 g1_mul operation.
+const G1MUL_BASE: u64 = 12000;
+/// Base gas fee for BLS12-381 g2_add operation.
 const G2ADD_BASE: u64 = 800;
-const G2ADD_INPUT_LENGTH: usize = 512;
-const G2_INPUT_ITEM_LENGTH: usize = 256;
-const G2_OUTPUT_LENGTH: usize = 256;
-const G2MUL_INPUT_LENGTH: usize = 288;
+/// Base gas fee for BLS12-381 g2_mul operation.
 const G2MUL_BASE: u64 = 45000;
+/// Multiplier gas fee for BLS12-381 pairing operation.
+const PAIRING_MULTIPLIER_BASE: u64 = 43000;
+/// Offset gas fee for BLS12-381 pairing operation.
+const PAIRING_OFFSET_BASE: u64 = 65000;
+/// Base gas fee for BLS12-381 map_fp_to_g1 operation.
+const MAP_FP_TO_G1_BASE: u64 = 5500;
+/// Base gas fee for BLS12-381 map_fp2_to_g2 operation.
+const MAP_FP2_TO_G2_BASE: u64 = 75000;
+/// Amount used to calculate the multiexp discount.
+const MULTIEXP_MULTIPLIER: u64 = 1000;
+/// Input length of g1_add operation.
+const G1ADD_INPUT_LENGTH: usize = 256;
+/// Input length of g1_mul operation.
+const G1MUL_INPUT_LENGTH: usize = 160;
+/// Length of each of the elements in a g1 operation input.
+const G1_INPUT_ITEM_LENGTH: usize = 128;
+/// Input length of g2_add operation.
+const G2ADD_INPUT_LENGTH: usize = 512;
+/// Input length of g2_mul operation.
+const G2MUL_INPUT_LENGTH: usize = 288;
+/// Length of each of the elements in a g2 operation input.
+const G2_INPUT_ITEM_LENGTH: usize = 256;
+/// Input length of paitring operation.
+const PAIRING_INPUT_LENGTH: usize = 384;
+/// Output length of a g1 operation.
+const G1_OUTPUT_LENGTH: usize = 128;
+/// Output length of a g2 operation.
+const G2_OUTPUT_LENGTH: usize = 256;
+/// Finite field element input length.
 const FP_LENGTH: usize = 48;
-const PADDED_INPUT_LENGTH: usize = 64;
-const PADDING_LENGTH: usize = 16;
-const SCALAR_LENGTH: usize = 32;
+/// Finite field element padded input length.
 const PADDED_FP_LENGTH: usize = 64;
+/// Quadratic extension of finite field element input length.
 const PADDED_FP2_LENGTH: usize = 128;
+/// Input elements padding length.
+const PADDING_LENGTH: usize = 16;
+/// Scalar length.
+const SCALAR_LENGTH: usize = 32;
+/// Table of gas discounts for multiexponentiation operations.
 const MULTIEXP_DISCOUNT_TABLE: [u64; 128] = [
     1200, 888, 764, 641, 594, 547, 500, 453, 438, 423, 408, 394, 379, 364, 349, 334, 330, 326, 322,
     318, 314, 310, 306, 302, 298, 294, 289, 285, 281, 277, 273, 269, 268, 266, 265, 263, 262, 260,
@@ -42,14 +74,8 @@ const MULTIEXP_DISCOUNT_TABLE: [u64; 128] = [
     198, 197, 196, 196, 195, 194, 193, 193, 192, 191, 191, 190, 189, 188, 188, 187, 186, 185, 185,
     184, 183, 182, 182, 181, 180, 179, 179, 178, 177, 176, 176, 175, 174,
 ];
-const MULTIEXP_MULTIPLIER: u64 = 1000;
-const PAIRING_INPUT_LENGTH: usize = 384;
-const PAIRING_MULTIPLIER_BASE: u64 = 43000;
-const PAIRING_OFFSET_BASE: u64 = 65000;
-const MAP_FP_TO_G1_BASE: u64 = 5500;
-const MAP_FP2_TO_G2_BASE: u64 = 75000;
 
-/// bls12381 precompiles
+/// Returns the bls12381 precompiles with their addresses.
 pub fn precompiles() -> impl Iterator<Item = PrecompileWithAddress> {
     [
         BLS12_G1ADD,
@@ -69,6 +95,7 @@ pub fn precompiles() -> impl Iterator<Item = PrecompileWithAddress> {
 const BLS12_G1ADD: PrecompileWithAddress =
     PrecompileWithAddress(u64_to_address(BLS12_G1ADD_ADDRESS), Precompile::Standard(g1_add));
 
+/// Encodes a G1 point in affine format into a byte slice with padded elements.
 fn encode_g1_point(out: &mut [u8], input: *const blst_p1_affine) {
     // SAFETY: out comes from fixed length array, x and y are blst values.
     unsafe {
@@ -77,6 +104,7 @@ fn encode_g1_point(out: &mut [u8], input: *const blst_p1_affine) {
     }
 }
 
+/// Encodes a G2 point in affine format into a byte slice with padded elements.
 fn encode_g2_point(out: &mut [u8], input: *const blst_p2_affine) {
     // SAFETY: out comes from fixed length array, input is a blst value.
     unsafe {
@@ -87,6 +115,7 @@ fn encode_g2_point(out: &mut [u8], input: *const blst_p2_affine) {
     }
 }
 
+/// Encodes a single finite field element into a byte slice with padding.
 fn fp_to_bytes(out: &mut [u8], input: *const blst_fp) {
     if out.len() != PADDED_FP_LENGTH {
         return;
@@ -100,11 +129,11 @@ fn fp_to_bytes(out: &mut [u8], input: *const blst_fp) {
     }
 }
 
-// Removes zeros with which the precompile inputs are left padded to 64 bytes.
+/// Removes zeros with which the precompile inputs are left padded to 64 bytes.
 fn remove_padding(input: &[u8]) -> Result<[u8; FP_LENGTH], PrecompileError> {
-    if input.len() != PADDED_INPUT_LENGTH {
+    if input.len() != PADDED_FP_LENGTH {
         return Err(PrecompileError::Other(format!(
-            "Padded Input should be {PADDED_INPUT_LENGTH} bits, was {}",
+            "Padded Input should be {PADDED_FP_LENGTH} bits, was {}",
             input.len()
         )));
     }
@@ -114,11 +143,11 @@ fn remove_padding(input: &[u8]) -> Result<[u8; FP_LENGTH], PrecompileError> {
         )));
     }
 
-    let sliced = &input[PADDING_LENGTH..PADDED_INPUT_LENGTH];
+    let sliced = &input[PADDING_LENGTH..PADDED_FP_LENGTH];
     <[u8; FP_LENGTH]>::try_from(sliced).map_err(|e| PrecompileError::Other(format!("{e}")))
 }
 
-// Extracts an Scalar from a 32 byte slice representation.
+/// Extracts an Scalar from a 32 byte slice representation.
 fn extract_scalar_input(input: &[u8]) -> Result<blst_scalar, PrecompileError> {
     if input.len() != SCALAR_LENGTH {
         return Err(PrecompileError::Other(format!(
@@ -136,7 +165,7 @@ fn extract_scalar_input(input: &[u8]) -> Result<blst_scalar, PrecompileError> {
     Ok(out)
 }
 
-// Extracts a G1 point in Affine format from a 128 byte slice representation.
+/// Extracts a G1 point in Affine format from a 128 byte slice representation.
 fn extract_g1_input(
     out: *mut blst_p1_affine,
     input: &[u8],
@@ -148,11 +177,11 @@ fn extract_g1_input(
         )));
     }
 
-    let input_p0_x = match remove_padding(&input[..PADDED_INPUT_LENGTH]) {
+    let input_p0_x = match remove_padding(&input[..PADDED_FP_LENGTH]) {
         Ok(input_p0_x) => input_p0_x,
         Err(e) => return Err(e),
     };
-    let input_p0_y = match remove_padding(&input[PADDED_INPUT_LENGTH..G1_INPUT_ITEM_LENGTH]) {
+    let input_p0_y = match remove_padding(&input[PADDED_FP_LENGTH..G1_INPUT_ITEM_LENGTH]) {
         Ok(input_p0_y) => input_p0_y,
         Err(e) => return Err(e),
     };
@@ -171,7 +200,7 @@ fn extract_g1_input(
     Ok(out)
 }
 
-// Extracts a G2 point in Affine format from a 256 byte slice representation.
+/// Extracts a G2 point in Affine format from a 256 byte slice representation.
 fn extract_g2_input(
     out: *mut blst_p2_affine,
     input: &[u8],
@@ -186,7 +215,7 @@ fn extract_g2_input(
     let mut input_fps: [[u8; FP_LENGTH]; 4] = [[0; FP_LENGTH]; 4];
     for i in 0..4 {
         input_fps[i] =
-            match remove_padding(&input[i * PADDED_INPUT_LENGTH..(i + 1) * PADDED_INPUT_LENGTH]) {
+            match remove_padding(&input[i * PADDED_FP_LENGTH..(i + 1) * PADDED_FP_LENGTH]) {
                 Ok(fp_0) => fp_0,
                 Err(e) => return Err(e),
             };

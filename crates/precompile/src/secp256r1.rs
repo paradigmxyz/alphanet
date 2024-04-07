@@ -1,9 +1,14 @@
+//! EIP-7212 secp256r1 precompile.
+
 use crate::addresses::P256VERIFY_ADDRESS;
 use p256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
 use revm_precompile::{u64_to_address, Precompile, PrecompileWithAddress};
 use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
 
-/// secp256r1 precompiles
+/// Base gas fee for secp256r1 p256verify operation.
+const P256VERIFY_BASE: u64 = 3_450;
+
+/// Returns the secp256r1 precompile with its address.
 pub fn precompiles() -> impl Iterator<Item = PrecompileWithAddress> {
     [P256VERIFY].into_iter()
 }
@@ -12,11 +17,16 @@ pub fn precompiles() -> impl Iterator<Item = PrecompileWithAddress> {
 const P256VERIFY: PrecompileWithAddress =
     PrecompileWithAddress(u64_to_address(P256VERIFY_ADDRESS), Precompile::Standard(p256_verify));
 
+/// secp256r1 precompile logic. It takes the input bytes sent to the precompile
+/// and the gas limit. The output represents the result of verifying the
+/// secp256r1 signature of the input.
+///
 /// The input is encoded as follows:
-/// | signed msg hash |  r  |  s  | pk x | pk y |
-/// |        32       | 32  | 32  |  32  |  32  |
+///
+/// | signed message hash |  r  |  s  | public key x | public key y |
+/// | :-----------------: | :-: | :-: | :----------: | :----------: |
+/// |          32         | 32  | 32  |     32       |      32      |
 fn p256_verify(input: &Bytes, gas_limit: u64) -> PrecompileResult {
-    const P256VERIFY_BASE: u64 = 3_450;
     if P256VERIFY_BASE > gas_limit {
         return Err(PrecompileError::OutOfGas);
     }
@@ -24,7 +34,8 @@ fn p256_verify(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     Ok((P256VERIFY_BASE, B256::with_last_byte(result as u8).into()))
 }
 
-/// Returns `Some(())` if the signature is valid, `None` otherwise.
+/// Returns `Some(())` if the signature included in the input byte slice is
+/// valid, `None` otherwise.
 fn verify_impl(input: &[u8]) -> Option<()> {
     if input.len() < 160 {
         return None;
