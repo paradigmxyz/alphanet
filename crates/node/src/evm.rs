@@ -1,3 +1,5 @@
+//! Implementation of the ConfigureEvmEnv trait.
+
 use alphanet_instructions::{context::InstructionsContext, eip3074, BoxedInstructionWithOpCode};
 use alphanet_precompile::{bls12_381, secp256r1};
 use reth::primitives::{
@@ -20,7 +22,7 @@ use std::sync::Arc;
 #[non_exhaustive]
 pub struct AlphaNetEvmConfig;
 
-// Inserts the given precompiles with address in the context precompiles.
+/// Inserts the given precompiles with address in the context precompiles.
 fn insert_precompiles<I>(precompiles: &mut Precompiles, precompiles_with_address: I)
 where
     I: Iterator<Item = PrecompileWithAddress>,
@@ -30,7 +32,7 @@ where
     }
 }
 
-// Inserts the given boxed instructions with opcodes in the instructions table.
+/// Inserts the given boxed instructions with opcodes in the instructions table.
 fn insert_boxed_instructions<'a, I, H>(
     table: &mut InstructionTables<'a, H>,
     boxed_instructions_with_opcodes: I,

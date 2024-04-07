@@ -1,3 +1,5 @@
+//! Node types config.
+
 use crate::evm::AlphaNetEvmConfig;
 use reth::builder::NodeTypes;
 use reth_node_optimism::OptimismEngineTypes;
