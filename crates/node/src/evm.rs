@@ -1,4 +1,14 @@
-//! Implementation of the ConfigureEvmEnv trait.
+//! # AlphaNet EVM configuration
+//!
+//! The [AlphaNetEvmConfig] type implements the [ConfigureEvm] and [ConfigureEvmEnv] traits,
+//! configuring the custom AlphaNet precompiles and instructions.
+//!
+//! These trait implementations allow for custom precompiles and instructions to be implemented and
+//! integrated in a reth node only with importing, without the need to fork the node or EVM
+//! implementation.
+//!
+//! This currently configures the instructions defined by [`alphanet_instructions`], and the
+//! precompiles defined by [`alphanet_precompile`].
 
 use alphanet_instructions::{context::InstructionsContext, eip3074, BoxedInstructionWithOpCode};
 use alphanet_precompile::{bls12_381, secp256r1};

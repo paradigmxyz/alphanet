@@ -1,4 +1,7 @@
-//! Node types config.
+//! # AlphaNet Node types configuration
+//!
+//! The [AlphaNetNode] type implements the [NodeTypes] trait, and configures the engine types
+//! required for the optimism engine API.
 
 use crate::evm::AlphaNetEvmConfig;
 use reth::builder::NodeTypes;
