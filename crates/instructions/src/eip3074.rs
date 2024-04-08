@@ -1,6 +1,6 @@
 //! EIP-3074 custom instructions.
 //!
-//! To isert the instructions in a custom EVM a instructions context must be
+//! To insert the instructions in a custom EVM an instructions context must be
 //! and passed to the instructions themselves. It should be cleared at the end
 //! of each transaction, like this:
 //! ```
