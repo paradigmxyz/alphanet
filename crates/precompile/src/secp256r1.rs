@@ -1,4 +1,11 @@
-//! EIP-7212 secp256r1 precompile.
+//! # EIP-7212 secp256r1 Precompile
+//!
+//! This module implements the [EIP-7212](https://eips.ethereum.org/EIPS/eip-7212) precompile for
+//! secp256r1 curve support.
+//!
+//! The main purpose of this precompile is to verify ECDSA signatures that use the secp256r1, or
+//! P256 elliptic curve. The [`P256VERIFY`](crate::secp256r1::P256VERIFY) const represents the
+//! implementation of this precompile, with the address that it is currently deployed at.
 //!
 //! The precompile can be inserted in a custom EVM like this:
 //! ```
@@ -68,7 +75,7 @@ pub fn precompiles() -> impl Iterator<Item = PrecompileWithAddress> {
 }
 
 /// [EIP-7212](https://eips.ethereum.org/EIPS/eip-7212#specification) secp256r1 precompile.
-const P256VERIFY: PrecompileWithAddress =
+pub const P256VERIFY: PrecompileWithAddress =
     PrecompileWithAddress(u64_to_address(P256VERIFY_ADDRESS), Precompile::Standard(p256_verify));
 
 /// secp256r1 precompile logic. It takes the input bytes sent to the precompile

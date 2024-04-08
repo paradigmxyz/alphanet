@@ -28,7 +28,7 @@ default = [
   "reth-node-optimism/optimism",
 ]
 
-asm-keccak = []
+asm-keccak = ["reth/asm-keccak"]
 
 jemalloc = ["dep:tikv-jemallocator"]
 jemalloc-prof = ["jemalloc", "tikv-jemallocator?/profiling"]
