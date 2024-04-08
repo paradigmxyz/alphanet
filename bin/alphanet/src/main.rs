@@ -1,7 +1,7 @@
 //! # Reth AlphaNet
 //!
 //! Reth AlphaNet is a testnet OP Stack rollup aimed at enabling experimentation of bleeding edge
-//! Ethereum Research. It aims to showcase how Reth's plugable and modularized architecture can
+//! Ethereum Research. It aims to showcase how Reth's pluggable and modularized architecture can
 //! serve as a distribution channel for research ideas.
 
 #![warn(unused_crate_dependencies)]
