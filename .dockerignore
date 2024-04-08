@@ -22,7 +22,7 @@
 !LICENSE-*
 
 # include L2 genesis files
-!etc/alphanet-genesis
+!/etc/alphanet-genesis.json
 
 # include example files
 !/examples
