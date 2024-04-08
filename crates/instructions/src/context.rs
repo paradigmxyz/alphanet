@@ -1,7 +1,7 @@
 //! Ephemeral context for custom instructions.
 //!
-//! Management of variables available for custom instructions during the
-//! execution of a single transaction.
+//! Management of state available for custom instructions during the execution
+//! of a single transaction.
 
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
