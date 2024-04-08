@@ -1,7 +1,7 @@
 //! EIP-3074 custom instructions.
 //!
 //! To insert the instructions in a custom EVM an instructions context must be
-//! and passed to the instructions themselves. It should be cleared at the end
+//! constructed and passed to the instructions themselves. It should be cleared at the end
 //! of each transaction, like this:
 //! ```
 //! use alphanet_instructions::{context::InstructionsContext, eip3074};
@@ -76,9 +76,9 @@ use revm_primitives::{
     alloy_primitives::B512, keccak256, spec_to_generic, Address, SpecId, B256, U256,
 };
 
-/// Numeric OP code for the `AUTH` mnemonic.
+/// Numeric op code for the `AUTH` mnemonic.
 const AUTH_OPCODE: u8 = 0xF6;
-/// Numeric OP code for the `AUTHCALL` mnemonic.
+/// Numeric op code for the `AUTHCALL` mnemonic.
 const AUTHCALL_OPCODE: u8 = 0xF7;
 /// Constant used to compose the message expected by `AUTH`
 const MAGIC: u8 = 0x04;
@@ -93,7 +93,7 @@ const FIXED_FEE_GAS: u64 = 3100;
 const AUTHORIZED_VAR_NAME: &str = "authorized";
 
 /// Generates an iterator over EIP3074 boxed instructions. Defining the
-/// instructions inside a `Box<>` allows them to capture variables defined in its
+/// instructions inside a `Box` allows them to capture variables defined in its
 /// environment.
 pub fn boxed_instructions<'a, EXT: 'a, DB: Database + 'a>(
     context: InstructionsContext,
@@ -205,7 +205,7 @@ fn auth_instruction<EXT, DB: Database>(
 }
 
 /// `AUTHCALL` instruction, tries to read a context variable set by a previous
-/// `AUTH` incocation and, if present, uses it as the `caller` in a `CALL`
+/// `AUTH` invocation and, if present, uses it as the `caller` in a `CALL`
 /// executed as the next action. See also:
 ///
 /// <https://eips.ethereum.org/EIPS/eip-3074#authcall-0xf7>
