@@ -1,18 +1,15 @@
-//! # alphanet-instructions
+//! # AlphaNet instructions
 //!
-//! Custom instructions for Alphanet.
+//! Collection of custom OP codes for AlphaNet and related functionality.
 
-#![warn(unused_crate_dependencies)]
+#![cfg_attr(not(test), warn(unused_crate_dependencies))]
 
 use revm_interpreter::opcode::BoxedInstruction;
 
-/// EIP-3074 custom instructions.
+pub mod context;
 pub mod eip3074;
 
-/// Instructions context.
-pub mod context;
-
-/// Association of OpCode and correspondent boxed instruction.
+/// Association of OP codes and correspondent boxed instruction.
 pub struct BoxedInstructionWithOpCode<'a, H> {
     /// Opcode.
     pub opcode: u8,

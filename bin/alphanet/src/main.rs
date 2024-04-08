@@ -1,7 +1,8 @@
-//! # Reth Alphanet
+//! # Reth AlphaNet
 //!
 //! Reth AlphaNet is a testnet OP Stack rollup aimed at enabling experimentation of bleeding edge
-//! Ethereum Research.
+//! Ethereum Research. It aims to showcase how Reth's pluggable and modularized architecture can
+//! serve as a distribution channel for research ideas.
 
 #![warn(unused_crate_dependencies)]
 
@@ -17,9 +18,11 @@ use reth_node_optimism::{args::RollupArgs, OptimismEngineTypes, OptimismNode};
 
 // We use jemalloc for performance reasons.
 #[cfg(all(feature = "jemalloc", unix))]
+#[doc(hidden)]
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
+#[doc(hidden)]
 fn main() {
     reth::sigsegv_handler::install();
 

@@ -1,3 +1,8 @@
+//! Ephemeral context for custom instructions.
+//!
+//! Management of state available for custom instructions during the execution
+//! of a single transaction.
+
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 #[derive(Clone, Default)]

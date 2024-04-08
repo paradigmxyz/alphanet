@@ -1,3 +1,5 @@
+//! Implementation of the ConfigureEvmEnv trait.
+
 use alphanet_instructions::{context::InstructionsContext, eip3074, BoxedInstructionWithOpCode};
 use alphanet_precompile::{bls12_381, secp256r1};
 use reth::primitives::{
@@ -20,7 +22,7 @@ use std::sync::Arc;
 #[non_exhaustive]
 pub struct AlphaNetEvmConfig;
 
-// Inserts the given precompiles with address in the context precompiles.
+/// Inserts the given precompiles with address in the context precompiles.
 fn insert_precompiles<I>(precompiles: &mut Precompiles, precompiles_with_address: I)
 where
     I: Iterator<Item = PrecompileWithAddress>,
@@ -30,7 +32,7 @@ where
     }
 }
 
-// Inserts the given boxed instructions with opcodes in the instructions table.
+/// Inserts the given boxed instructions with opcodes in the instructions table.
 fn insert_boxed_instructions<'a, I, H>(
     table: &mut InstructionTables<'a, H>,
     boxed_instructions_with_opcodes: I,
@@ -76,13 +78,13 @@ impl AlphaNetEvmConfig {
     /// [ConfigureEvm::evm_with_inspector]
     ///
     /// This will use the default mainnet instructions and append additional instructions.
-    fn append_custom_instructions<EXT, DB>(handler: &mut EvmHandler<'_, EXT, DB>)
-    where
+    fn append_custom_instructions<EXT, DB>(
+        handler: &mut EvmHandler<'_, EXT, DB>,
+        instructions_context: InstructionsContext,
+    ) where
         DB: Database,
     {
         if let Some(ref mut table) = handler.instruction_table {
-            let instructions_context = InstructionsContext::default();
-
             insert_boxed_instructions(
                 table,
                 eip3074::boxed_instructions(instructions_context.clone()),
@@ -95,23 +97,45 @@ impl AlphaNetEvmConfig {
 
 impl ConfigureEvm for AlphaNetEvmConfig {
     fn evm<'a, DB: Database + 'a>(&self, db: DB) -> Evm<'a, (), DB> {
+        let instructions_context = InstructionsContext::default();
         EvmBuilder::default()
             .with_db(db)
             // add additional precompiles
             .append_handler_register(Self::set_precompiles)
             // add custom instructions
-            .append_handler_register(Self::append_custom_instructions)
+            .append_handler_register_box(Box::new(move |h| {
+                Self::append_custom_instructions(h, instructions_context.clone());
+                let post_execution_context = instructions_context.clone();
+                #[allow(clippy::arc_with_non_send_sync)]
+                {
+                    h.post_execution.end = Arc::new(move |_, outcome: _| {
+                        post_execution_context.clear();
+                        outcome
+                    });
+                }
+            }))
             .build()
     }
 
     fn evm_with_inspector<'a, DB: Database + 'a, I>(&self, db: DB, inspector: I) -> Evm<'a, I, DB> {
+        let instructions_context = InstructionsContext::default();
         EvmBuilder::default()
             .with_db(db)
             .with_external_context(inspector)
             // add additional precompiles
             .append_handler_register(Self::set_precompiles)
             // add custom instructions
-            .append_handler_register(Self::append_custom_instructions)
+            .append_handler_register_box(Box::new(move |h| {
+                Self::append_custom_instructions(h, instructions_context.clone());
+                let post_execution_context = instructions_context.clone();
+                #[allow(clippy::arc_with_non_send_sync)]
+                {
+                    h.post_execution.end = Arc::new(move |_, outcome: _| {
+                        post_execution_context.clear();
+                        outcome
+                    });
+                }
+            }))
             .build()
     }
 }
