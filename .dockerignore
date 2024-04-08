@@ -1,0 +1,28 @@
+# exclude everything
+*
+
+# include source files
+!/bin
+!/crates
+!/testing
+!book.toml
+!Cargo.lock
+!Cargo.toml
+!Cross.toml
+!deny.toml
+!Makefile
+
+# include for vergen constants
+!/.git
+
+# include dist directory, where the alphanet binary is located after compilation
+!/dist
+
+# include licenses
+!LICENSE-*
+
+# include L2 genesis files
+!etc/alphanet-genesis
+
+# include example files
+!/examples
