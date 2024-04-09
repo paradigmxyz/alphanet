@@ -19,7 +19,9 @@ Specifically, AlphaNet currently implements the following EIPs:
 
 ### Why AlphaNet?
 
-AlphaNet aims to showcase how Reth's modular architecture can serve as a distribution channel for research ideas. Specifically,
+AlphaNet has 2 goals:
+1. Showcase Reth's performance at the extremes. We intend to launch a hosted version of AlphaNet on [Conduit](https://conduit.xyz/), targeting 50mgas/s, and eventually ramping up to 1ggas/s and beyond. In the process we hope to hit the state growth performance bottleneck, and discover ways to solve it. If our hosted chains end up getting too big, we may possibly restart the experiment from zero, and try again.
+1. Showcase how Reth's modular architecture can serve as a distribution channel for research ideas. Specifically,
 AlphaNet's node extensions were chosen for their ability to enable applications that enhance the onchain user experience, and
 drastically reduce cost for existing applications that improve UX.
 
