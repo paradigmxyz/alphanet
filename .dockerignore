@@ -1,0 +1,23 @@
+# exclude everything
+*
+
+# include source files
+!/bin
+!/crates
+!Cargo.lock
+!Cargo.toml
+!Cross.toml
+!deny.toml
+!Makefile
+
+# include for vergen constants
+!/.git
+
+# include licenses
+!LICENSE-*
+
+# include L2 genesis files
+!/etc/alphanet-genesis.json
+
+# include example files
+!/examples
