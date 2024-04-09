@@ -307,8 +307,8 @@ mod tests {
             B256::ZERO.into(),
         );
 
-        let interpreter = Interpreter::new(Box::new(contract), 3000000, false);
-        assert_eq!(interpreter.gas.spend(), 0);
+        let interpreter = Interpreter::new(contract, 3000000, false);
+        assert_eq!(interpreter.gas.spent(), 0);
 
         interpreter
     }
@@ -393,7 +393,7 @@ mod tests {
 
         // check gas
         let expected_gas = FIXED_FEE_GAS;
-        assert_eq!(expected_gas, interpreter.gas.spend());
+        assert_eq!(expected_gas, interpreter.gas.spent());
     }
 
     #[test]
@@ -422,7 +422,7 @@ mod tests {
 
         // check gas
         let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS;
-        assert_eq!(expected_gas, interpreter.gas.spend());
+        assert_eq!(expected_gas, interpreter.gas.spent());
 
         assert_eq!(context.get(AUTHORIZED_VAR_NAME).unwrap(), authority.to_vec());
     }
@@ -444,7 +444,7 @@ mod tests {
 
         // check gas
         let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS + 12; // fixed_fee + cold authority + memory expansion
-        assert_eq!(expected_gas, interpreter.gas.spend());
+        assert_eq!(expected_gas, interpreter.gas.spent());
     }
 
     #[test]
@@ -498,7 +498,7 @@ mod tests {
 
         // check gas
         let expected_gas = FIXED_FEE_GAS + WARM_AUTHORITY_GAS;
-        assert_eq!(expected_gas, interpreter.gas.spend());
+        assert_eq!(expected_gas, interpreter.gas.spent());
     }
 
     #[test]
@@ -524,7 +524,7 @@ mod tests {
 
         // check gas
         let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS;
-        assert_eq!(expected_gas, interpreter.gas.spend());
+        assert_eq!(expected_gas, interpreter.gas.spent());
     }
 
     #[test]
@@ -537,7 +537,7 @@ mod tests {
 
         // check gas
         let expected_gas = 0;
-        assert_eq!(expected_gas, interpreter.gas.spend());
+        assert_eq!(expected_gas, interpreter.gas.spent());
     }
 
     #[test]
@@ -554,7 +554,7 @@ mod tests {
 
         // check gas
         let expected_gas = 0;
-        assert_eq!(expected_gas, interpreter.gas.spend());
+        assert_eq!(expected_gas, interpreter.gas.spent());
     }
 
     #[test]
@@ -576,7 +576,7 @@ mod tests {
 
         // check gas
         let expected_gas = 66612;
-        assert_eq!(expected_gas, interpreter.gas.spend());
+        assert_eq!(expected_gas, interpreter.gas.spent());
 
         // check next action
         let value = U256::from(value);
