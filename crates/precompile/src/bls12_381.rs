@@ -8,13 +8,13 @@
 //! - G1 point addition, with [`BLS12_G1ADD`](crate::bls12_381::BLS12_G1ADD)
 //! - Multiplication between a G1 point and a scalar, with
 //! [`BLS12_G1MUL`](crate::bls12_381::BLS12_G1MUL)
-//! - Multiexponentiation of G1 points, with
-//! [`BLS12_G1MULTIEXP`](crate::bls12_381::BLS12_G1MULTIEXP)
+//! - Multi-scalar-multiplication of G1 points, with
+//! [`BLS12_G1MSM`](crate::bls12_381::BLS12_G1MSM)
 //! - G2 point addition, with [`BLS12_G2ADD`](crate::bls12_381::BLS12_G2ADD)
 //! - Multiplication between a G2 point and a scalar, with
 //! [`BLS12_G2MUL`](crate::bls12_381::BLS12_G2MUL)
-//! - Multiexponentiation of G2 points, with
-//! [`BLS12_G2MULTIEXP`](crate::bls12_381::BLS12_G2MULTIEXP)
+//! - Multi-scalar-multiplication of G2 points, with
+//! [`BLS12_G2MSM`](crate::bls12_381::BLS12_G2MSM)
 //! - The BLS12-381 pairing operation, with [`BLS12_PAIRING`](crate::bls12_381::BLS12_PAIRING)
 //! - Mapping a `F_p` to a G1 point, with
 //! [`BLS12_MAP_FP_TO_G1`](crate::bls12_381::BLS12_MAP_FP_TO_G1)
@@ -76,8 +76,8 @@
 //! ```
 
 use crate::addresses::{
-    BLS12_G1ADD_ADDRESS, BLS12_G1MULTIEXP_ADDRESS, BLS12_G1MUL_ADDRESS, BLS12_G2ADD_ADDRESS,
-    BLS12_G2MULTIEXP_ADDRESS, BLS12_G2MUL_ADDRESS, BLS12_MAP_FP2_TO_G2_ADDRESS,
+    BLS12_G1ADD_ADDRESS, BLS12_G1MSM_ADDRESS, BLS12_G1MUL_ADDRESS, BLS12_G2ADD_ADDRESS,
+    BLS12_G2MSM_ADDRESS, BLS12_G2MUL_ADDRESS, BLS12_MAP_FP2_TO_G2_ADDRESS,
     BLS12_MAP_FP_TO_G1_ADDRESS, BLS12_PAIRING_ADDRESS,
 };
 use blst::{
@@ -109,8 +109,8 @@ const PAIRING_OFFSET_BASE: u64 = 65000;
 const MAP_FP_TO_G1_BASE: u64 = 5500;
 /// Base gas fee for BLS12-381 map_fp2_to_g2 operation.
 const MAP_FP2_TO_G2_BASE: u64 = 75000;
-/// Amount used to calculate the multiexp discount.
-const MULTIEXP_MULTIPLIER: u64 = 1000;
+/// Amount used to calculate the multi-scalar-multiplication discount.
+const MSM_MULTIPLIER: u64 = 1000;
 /// Input length of g1_add operation.
 const G1ADD_INPUT_LENGTH: usize = 256;
 /// Input length of g1_mul operation.
@@ -139,8 +139,8 @@ const PADDED_FP2_LENGTH: usize = 128;
 const PADDING_LENGTH: usize = 16;
 /// Scalar length.
 const SCALAR_LENGTH: usize = 32;
-/// Table of gas discounts for multiexponentiation operations.
-const MULTIEXP_DISCOUNT_TABLE: [u64; 128] = [
+/// Table of gas discounts for multi-scalar-multiplication operations.
+const MSM_DISCOUNT_TABLE: [u64; 128] = [
     1200, 888, 764, 641, 594, 547, 500, 453, 438, 423, 408, 394, 379, 364, 349, 334, 330, 326, 322,
     318, 314, 310, 306, 302, 298, 294, 289, 285, 281, 277, 273, 269, 268, 266, 265, 263, 262, 260,
     259, 257, 256, 254, 253, 251, 250, 248, 247, 245, 244, 242, 241, 239, 238, 236, 235, 233, 232,
@@ -155,10 +155,10 @@ pub fn precompiles() -> impl Iterator<Item = PrecompileWithAddress> {
     [
         BLS12_G1ADD,
         BLS12_G1MUL,
-        BLS12_G1MULTIEXP,
+        BLS12_G1MSM,
         BLS12_G2ADD,
         BLS12_G2MUL,
-        BLS12_G2MULTIEXP,
+        BLS12_G2MSM,
         BLS12_PAIRING,
         BLS12_MAP_FP_TO_G1,
         BLS12_MAP_FP2_TO_G2,
@@ -407,46 +407,44 @@ pub fn g1_mul(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     Ok((G1MUL_BASE, out.into()))
 }
 
-/// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G1MULTIEXP precompile.
-pub const BLS12_G1MULTIEXP: PrecompileWithAddress = PrecompileWithAddress(
-    u64_to_address(BLS12_G1MULTIEXP_ADDRESS),
-    Precompile::Standard(g1_multiexp),
-);
+/// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G1MSM precompile.
+pub const BLS12_G1MSM: PrecompileWithAddress =
+    PrecompileWithAddress(u64_to_address(BLS12_G1MSM_ADDRESS), Precompile::Standard(g1_msm));
 
-/// Implements the gas schedule for G1/G2 Multiexponentiation assuming 30
+/// Implements the gas schedule for G1/G2 Multiscalar-multiplication assuming 30
 /// MGas/second, see also: <https://eips.ethereum.org/EIPS/eip-2537#g1g2-multiexponentiation>
-fn multiexp_required_gas(k: usize, multiplication_cost: u64) -> u64 {
+fn msm_required_gas(k: usize, multiplication_cost: u64) -> u64 {
     if k == 0 {
         return 0;
     }
 
-    let discount = if k < MULTIEXP_DISCOUNT_TABLE.len() {
-        MULTIEXP_DISCOUNT_TABLE[k - 1]
+    let discount = if k < MSM_DISCOUNT_TABLE.len() {
+        MSM_DISCOUNT_TABLE[k - 1]
     } else {
-        MULTIEXP_DISCOUNT_TABLE[MULTIEXP_DISCOUNT_TABLE.len() - 1]
+        MSM_DISCOUNT_TABLE[MSM_DISCOUNT_TABLE.len() - 1]
     };
 
-    (k as u64 * discount * multiplication_cost) / MULTIEXP_MULTIPLIER
+    (k as u64 * discount * multiplication_cost) / MSM_MULTIPLIER
 }
 
-/// Implements EIP-2537 G1MultiExp precompile.
-/// G1 multiplication call expects `160*k` bytes as an input that is interpreted
+/// Implements EIP-2537 G1MSM precompile.
+/// G1 multi-scalar-multiplication call expects `160*k` bytes as an input that is interpreted
 /// as byte concatenation of `k` slices each of them being a byte concatenation
 /// of encoding of G1 point (`128` bytes) and encoding of a scalar value (`32`
 /// bytes).
-/// Output is an encoding of multiexponentiation operation result - single G1
+/// Output is an encoding of multi-scalar-multiplication operation result - single G1
 /// point (`128` bytes).
 /// See also: <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g1-multiexponentiation>
-fn g1_multiexp(input: &Bytes, gas_limit: u64) -> PrecompileResult {
+fn g1_msm(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     let input_len = input.len();
     if input_len == 0 || input_len % G1MUL_INPUT_LENGTH != 0 {
         return Err(PrecompileError::Other(format!(
-            "G1MultiExp input length should be multiple of {G1MUL_INPUT_LENGTH}, was {input_len}"
+            "G1MSM input length should be multiple of {G1MUL_INPUT_LENGTH}, was {input_len}"
         )));
     }
 
     let k = input_len / G1MUL_INPUT_LENGTH;
-    let required_gas = multiexp_required_gas(k, G1MUL_BASE);
+    let required_gas = msm_required_gas(k, G1MUL_BASE);
     if required_gas > gas_limit {
         return Err(PrecompileError::OutOfGas);
     }
@@ -591,30 +589,28 @@ fn g2_mul(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     Ok((G2MUL_BASE, out.into()))
 }
 
-/// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G2MULTIEXP precompile.
-pub const BLS12_G2MULTIEXP: PrecompileWithAddress = PrecompileWithAddress(
-    u64_to_address(BLS12_G2MULTIEXP_ADDRESS),
-    Precompile::Standard(g2_multiexp),
-);
+/// [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537#specification) BLS12_G2MSM precompile.
+pub const BLS12_G2MSM: PrecompileWithAddress =
+    PrecompileWithAddress(u64_to_address(BLS12_G2MSM_ADDRESS), Precompile::Standard(g2_msm));
 
-/// Implements EIP-2537 G2MultiExp precompile.
-/// G2 multiplication call expects `288*k` bytes as an input that is interpreted
+/// Implements EIP-2537 G2MSM precompile.
+/// G2 multi-scalar-multiplication call expects `288*k` bytes as an input that is interpreted
 /// as byte concatenation of `k` slices each of them being a byte concatenation
 /// of encoding of G2 point (`256` bytes) and encoding of a scalar value (`32`
 /// bytes).
-/// Output is an encoding of multiexponentiation operation result - single G2
+/// Output is an encoding of multi-scalar-multiplication operation result - single G2
 /// point (`256` bytes).
 /// See also: <https://eips.ethereum.org/EIPS/eip-2537#abi-for-g2-multiexponentiation>
-fn g2_multiexp(input: &Bytes, gas_limit: u64) -> PrecompileResult {
+fn g2_msm(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     let input_len = input.len();
     if input_len == 0 || input_len % G2MUL_INPUT_LENGTH != 0 {
         return Err(PrecompileError::Other(format!(
-            "G2MultiExp input length should be multiple of {G2MUL_INPUT_LENGTH}, was {input_len}"
+            "G2MSM input length should be multiple of {G2MUL_INPUT_LENGTH}, was {input_len}"
         )));
     }
 
     let k = input_len / G2MUL_INPUT_LENGTH;
-    let required_gas = multiexp_required_gas(k, G2MUL_BASE);
+    let required_gas = msm_required_gas(k, G2MUL_BASE);
     if required_gas > gas_limit {
         return Err(PrecompileError::OutOfGas);
     }
@@ -879,10 +875,10 @@ mod test {
     #[rstest]
     #[case::g1_add(g1_add, "blsG1Add.json")]
     #[case::g1_mul(g1_mul, "blsG1Mul.json")]
-    #[case::g1_multiexp(g1_multiexp, "blsG1MultiExp.json")]
+    #[case::g1_msm(g1_msm, "blsG1MSM.json")]
     #[case::g2_add(g2_add, "blsG2Add.json")]
     #[case::g2_mul(g2_mul, "blsG2Mul.json")]
-    #[case::g2_multiexp(g2_multiexp, "blsG2MultiExp.json")]
+    #[case::g2_msm(g2_msm, "blsG2MSM.json")]
     #[case::pairing(pairing, "blsPairing.json")]
     #[case::map_fp_to_g1(map_fp_to_g1, "blsMapG1.json")]
     #[case::map_fp2_to_g2(map_fp2_to_g2, "blsMapG2.json")]
@@ -934,7 +930,7 @@ mod test {
     ) {
         let k = input_len / G1MUL_INPUT_LENGTH;
 
-        let actual_output = multiexp_required_gas(k, multiplication_cost);
+        let actual_output = msm_required_gas(k, multiplication_cost);
 
         assert_eq!(expected_output, actual_output);
     }
