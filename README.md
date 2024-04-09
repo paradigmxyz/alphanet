@@ -30,7 +30,7 @@ running the AlphaNet OP-stack node only.
 
 For instructions on running the full AlphaNet OP stack, including the L1 node, see the [Reth book section on running the OP stack](https://paradigmxyz.github.io/reth/run/optimism.html), using the `alphanet` binary instead of `op-reth`.
 
-#### From source
+#### Running the alphanet execution node
 
 To run AlphaNet from source, clone the repository and run the following commands:
 
