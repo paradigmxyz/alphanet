@@ -15,7 +15,7 @@ AlphaNet implements traits provided by the [reth node builder API](https://parad
 Specifically, AlphaNet currently implements the following EIPs:
  - [EIP-3074](https://eips.ethereum.org/EIPS/eip-3074): `AUTH` and `AUTHCALL` instructions.
  - [EIP-7212](https://eips.ethereum.org/EIPS/eip-7212): Precompile for secp256r1 curve support.
- - [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537): Precompile for BLS12-381 curve operations.
+ - [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537): Precompiles for BLS12-381 curve operations.
 
 ### Why AlphaNet?
 
@@ -27,7 +27,7 @@ drastically reduce cost for existing applications that improve UX.
 
 ### Running AlphaNet
 
-Running alphanet will require running additional infrastructure for the archival L1 node. These instructions are a guide for
+Running AlphaNet will require running additional infrastructure for the archival L1 node. These instructions are a guide for
 running the AlphaNet OP-stack node only.
 
 For instructions on running the full AlphaNet OP stack, including the L1 node, see the [Reth book section on running the OP stack](https://paradigmxyz.github.io/reth/run/optimism.html), using the `alphanet` binary instead of `op-reth`.
