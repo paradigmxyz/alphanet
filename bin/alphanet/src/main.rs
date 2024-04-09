@@ -33,7 +33,10 @@ use reth::{
     providers::BlockReaderIdExt,
     rpc::{api::EngineApiClient, types::engine::ForkchoiceState},
 };
-use reth_node_optimism::{args::RollupArgs, OptimismEngineTypes, OptimismNode};
+use reth_node_optimism::{
+    args::RollupArgs, rpc::SequencerClient, OptimismEngineTypes, OptimismNode,
+};
+use std::sync::Arc;
 
 // We use jemalloc for performance reasons.
 #[cfg(all(feature = "jemalloc", unix))]
@@ -51,11 +54,21 @@ fn main() {
     }
 
     if let Err(err) = Cli::<RollupArgs>::parse().run(|builder, rollup_args| async move {
-        let builder = builder
+        let NodeHandle { node, node_exit_future } = builder
             .with_types(AlphaNetNode::default())
-            .with_components(OptimismNode::components(rollup_args.clone()));
+            .with_components(OptimismNode::components(rollup_args.clone()))
+            .extend_rpc_modules(move |ctx| {
+                // register sequencer tx forwarder
+                if let Some(sequencer_http) = rollup_args.sequencer_http.clone() {
+                    ctx.registry.set_eth_raw_transaction_forwarder(Arc::new(SequencerClient::new(
+                        sequencer_http,
+                    )));
+                }
 
-        let NodeHandle { node, node_exit_future } = builder.launch().await?;
+                Ok(())
+            })
+            .launch()
+            .await?;
 
         // If `enable_genesis_walkback` is set to true, the rollup client will need to
         // perform the derivation pipeline from genesis, validating the data dir.

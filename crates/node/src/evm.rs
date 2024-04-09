@@ -12,19 +12,18 @@
 
 use alphanet_instructions::{context::InstructionsContext, eip3074, BoxedInstructionWithOpCode};
 use alphanet_precompile::{bls12_381, secp256r1};
-use reth::primitives::{
-    revm::{config::revm_spec, env::fill_op_tx_env},
-    Address, Bytes, ChainSpec, Head, Header, Transaction, U256,
-};
+use reth::primitives::{Address, Bytes, ChainSpec, Header, Transaction, U256};
 use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
+use reth_node_optimism::OptimismEvmConfig;
 use revm::{
     handler::register::EvmHandler,
+    inspector_handle_register,
     precompile::{PrecompileSpecId, Precompiles},
-    Database, Evm, EvmBuilder,
+    Database, Evm, EvmBuilder, GetInspector,
 };
 use revm_interpreter::{opcode::InstructionTables, Host};
 use revm_precompile::PrecompileWithAddress;
-use revm_primitives::{AnalysisKind, CfgEnvWithHandlerCfg, TxEnv};
+use revm_primitives::{CfgEnvWithHandlerCfg, TxEnv};
 use std::sync::Arc;
 
 /// Custom EVM configuration
@@ -110,6 +109,7 @@ impl ConfigureEvm for AlphaNetEvmConfig {
         let instructions_context = InstructionsContext::default();
         EvmBuilder::default()
             .with_db(db)
+            .optimism()
             // add additional precompiles
             .append_handler_register(Self::set_precompiles)
             // add custom instructions
@@ -127,11 +127,16 @@ impl ConfigureEvm for AlphaNetEvmConfig {
             .build()
     }
 
-    fn evm_with_inspector<'a, DB: Database + 'a, I>(&self, db: DB, inspector: I) -> Evm<'a, I, DB> {
+    fn evm_with_inspector<'a, DB, I>(&self, db: DB, inspector: I) -> Evm<'a, I, DB>
+    where
+        DB: Database + 'a,
+        I: GetInspector<DB>,
+    {
         let instructions_context = InstructionsContext::default();
         EvmBuilder::default()
             .with_db(db)
             .with_external_context(inspector)
+            .optimism()
             // add additional precompiles
             .append_handler_register(Self::set_precompiles)
             // add custom instructions
@@ -146,6 +151,7 @@ impl ConfigureEvm for AlphaNetEvmConfig {
                     });
                 }
             }))
+            .append_handler_register(inspector_handle_register)
             .build()
     }
 }
@@ -157,7 +163,7 @@ impl ConfigureEvmEnv for AlphaNetEvmConfig {
     where
         T: AsRef<Transaction>,
     {
-        fill_op_tx_env(tx_env, transaction, sender, meta)
+        OptimismEvmConfig::fill_tx_env(tx_env, transaction, sender, meta)
     }
 
     fn fill_cfg_env(
@@ -166,32 +172,18 @@ impl ConfigureEvmEnv for AlphaNetEvmConfig {
         header: &Header,
         total_difficulty: U256,
     ) {
-        let spec_id = revm_spec(
-            chain_spec,
-            Head {
-                number: header.number,
-                timestamp: header.timestamp,
-                difficulty: header.difficulty,
-                total_difficulty,
-                hash: Default::default(),
-            },
-        );
-
-        cfg_env.chain_id = chain_spec.chain().id();
-        cfg_env.perf_analyse_created_bytecodes = AnalysisKind::Analyse;
-
-        cfg_env.handler_cfg.spec_id = spec_id;
-        cfg_env.handler_cfg.is_optimism = chain_spec.is_optimism();
+        OptimismEvmConfig::fill_cfg_env(cfg_env, chain_spec, header, total_difficulty);
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use reth::primitives::{
         revm_primitives::{BlockEnv, CfgEnv, SpecId},
         Chain, ChainSpecBuilder, ForkCondition, Genesis, Hardfork,
     };
+
+    use super::*;
 
     #[test]
     fn test_fill_cfg_and_block_env() {
