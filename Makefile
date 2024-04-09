@@ -1,5 +1,32 @@
+# Heavily inspired by Lighthouse: https://github.com/sigp/lighthouse/blob/693886b94176faa4cb450f024696cb69cda2fe58/Makefile
+#
+# and Reth: https://github.com/paradigmxyz/reth/blob/2e87b2a8d57813ce61f8898cf89d7b0dda2ab27d/Makefile
+.DEFAULT_GOAL := help
+
+GIT_TAG ?= $(shell git describe --tags --abbrev=0)
+BIN_DIR = "dist/bin"
+
+# Cargo profile for builds. Default is for local builds, CI uses an override.
+PROFILE ?= release
+
 # The docker image name
 DOCKER_IMAGE_NAME ?= ghcr.io/paradigmxyz/alphanet
+
+BUILD_PATH = "target"
+
+# List of features to use when building. Can be overridden via the environment.
+# No jemalloc on Windows
+ifeq ($(OS),Windows_NT)
+    FEATURES ?=
+else
+    FEATURES ?= jemalloc asm-keccak
+endif
+
+##@ Help
+
+.PHONY: help
+help: ## Display this help.
+	@awk 'BEGIN {FS = ":.*##"; printf "Usage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 .PHONY: build-eip3074-bytecode
 build-eip3074-bytecode:
@@ -35,11 +62,25 @@ check-eip3074-bytecode: build-eip3074-bytecode
 build-aarch64-unknown-linux-gnu: FEATURES := $(filter-out asm-keccak,$(FEATURES))
 build-aarch64-unknown-linux-gnu: export JEMALLOC_SYS_WITH_LG_PAGE=16
 
-op-build-aarch64-unknown-linux-gnu: FEATURES := $(filter-out asm-keccak,$(FEATURES))
-op-build-aarch64-unknown-linux-gnu: export JEMALLOC_SYS_WITH_LG_PAGE=16
-
 # No jemalloc on Windows
 build-x86_64-pc-windows-gnu: FEATURES := $(filter-out jemalloc jemalloc-prof,$(FEATURES))
+
+# Note: The additional rustc compiler flags are for intrinsics needed by MDBX.
+# See: https://github.com/cross-rs/cross/wiki/FAQ#undefined-reference-with-build-std
+build-%:
+	RUSTFLAGS="-C link-arg=-lgcc -Clink-arg=-static-libgcc" \
+		cross build --bin alphanet --target $* --features "$(FEATURES)" --profile "$(PROFILE)"
+
+# Unfortunately we can't easily use cross to build for Darwin because of licensing issues.
+# If we wanted to, we would need to build a custom Docker image with the SDK available.
+#
+# Note: You must set `SDKROOT` and `MACOSX_DEPLOYMENT_TARGET`. These can be found using `xcrun`.
+#
+# `SDKROOT=$(xcrun -sdk macosx --show-sdk-path) MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)`
+build-x86_64-apple-darwin:
+	$(MAKE) build-native-x86_64-apple-darwin
+build-aarch64-apple-darwin:
+	$(MAKE) build-native-aarch64-apple-darwin
 
 ##@ Docker
 
