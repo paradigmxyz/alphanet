@@ -47,5 +47,5 @@ COPY LICENSE-* ./
 # Copy the genesis file
 ADD etc/alphanet-genesis.json ./etc/alphanet-genesis.json
 
-EXPOSE 30303 30303/udp 9001 8545 8546
+EXPOSE 30303 30303/udp 9001 8545 9000 8546
 ENTRYPOINT ["/usr/local/bin/alphanet", "--chain", "./etc/alphanet-genesis.json"]
