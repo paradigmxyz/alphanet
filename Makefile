@@ -3,7 +3,9 @@
 # and Reth: https://github.com/paradigmxyz/reth/blob/2e87b2a8d57813ce61f8898cf89d7b0dda2ab27d/Makefile
 .DEFAULT_GOAL := help
 
-GIT_TAG ?= $(shell git describe --tags --abbrev=0)
+# TODO: replace when we have a tag
+# GIT_TAG ?= $(shell git describe --tags --abbrev=0)
+GIT_TAG ?= latest
 BIN_DIR = "dist/bin"
 
 # Cargo profile for builds. Default is for local builds, CI uses an override.
