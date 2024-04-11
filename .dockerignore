@@ -16,6 +16,9 @@
 # include licenses
 !LICENSE-*
 
+# include dist directory, where the reth binary is located after compilation
+!/dist
+
 # include L2 genesis files
 !/etc/alphanet-genesis.json
 
