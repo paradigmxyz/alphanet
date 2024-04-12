@@ -29,8 +29,9 @@ mod tests {
 
     #[test]
     fn test_eip3074_integration() {
-        let test_data = load_test_data("resources/eip3074/out/BaseAuth.sol/BaseAuth.json")
-            .expect("could not read test data");
+        let test_data =
+            load_test_data("resources/eip3074/out/GasSponsorInvoker.sol/GasSponsorInvoker.json")
+                .expect("could not read test data");
 
         let raw_bytecode = Bytes::from(test_data.bytecode.object);
         let code = Bytecode::new_raw(raw_bytecode);
