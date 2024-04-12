@@ -35,7 +35,7 @@ build-eip3074-bytecode:
 	docker run --rm \
 		-v $$(pwd)/crates/testing/resources/eip3074:/app/foundry \
 		-u $$(id -u):$$(id -g) \
-		ghcr.io/fgimenez/eip3074-tools:latest \
+		ghcr.io/fgimenez/eip3074-tools@sha256:c7396387b5ad4a3f335e3b83ce9a8c66873eea239384cb5c7690c9f9200bf913 \
 		--foundry-directory /app/foundry \
 		--foundry-command build
 
