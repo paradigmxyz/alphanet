@@ -25,7 +25,21 @@ AlphaNet has 2 goals:
 AlphaNet's node extensions were chosen for their ability to enable applications that enhance the onchain user experience, and
 drastically reduce cost for existing applications that improve UX.
 
+### AlphaNet Local Development
+
+AlphaNet does not yet have a running testnet, but can be run locally for development and testing purposes. To do this, the binary can be run with the `--dev` flag, which will start the node with a development configuration.
+
+```bash
+alphanet node --chain etc/alphanet-genesis.json --dev --http --http.api all
+```
+
+This will start the node with a development configuration, and expose the HTTP API on `http://localhost:8545`.
+
+To use 3074-enabled foundry, use [eip-3074-foundry](https://github.com/clabby/eip-3074-foundry) and follow installation instructions.
+
 ### Running AlphaNet
+
+⚠️ AlphaNet does not yet have a running testnet, please use the local development instructions above! ⚠️
 
 Running AlphaNet will require running additional infrastructure for the archival L1 node. These instructions are a guide for
 running the AlphaNet OP-stack node only.
