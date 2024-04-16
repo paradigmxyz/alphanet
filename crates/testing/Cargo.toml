@@ -12,13 +12,16 @@ categories.workspace = true
 [dev-dependencies]
 alphanet-instructions.workspace = true
 
+alloy.workspace = true
+
 revm.workspace = true
 revm-primitives.workspace = true
 
-eyre.workspace = true
-serde.workspace = true
-serde_derive.workspace = true
-serde_json.workspace = true
+[features]
+default = [
+  "alphanet-instructions/optimism",
+  "revm/optimism",
+]
 
 [lints]
 workspace = true

@@ -45,6 +45,10 @@ alphanet-instructions = { path = "crates/instructions" }
 alphanet-node = { path = "crates/node" }
 alphanet-precompile = { path = "crates/precompile" }
 
+alloy = { git = "https://github.com/alloy-rs/alloy", rev = "bfd0fda", features = [
+    "contract",
+] }
+
 # tokio
 tokio = { version = "1.21", default-features = false }
 

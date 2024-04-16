@@ -4,36 +4,22 @@
 
 #[cfg(test)]
 mod tests {
-
+    use alloy::sol;
     use alphanet_instructions::{context::InstructionsContext, eip3074};
-    use eyre::Result;
     use revm::{Evm, InMemoryDB};
     use revm_primitives::{address, AccountInfo, Bytecode, Bytes, TransactTo, U256};
-    use serde_derive::{Deserialize, Serialize};
-    use std::{fs, path::Path, sync::Arc};
+    use std::sync::Arc;
 
-    #[derive(Serialize, Deserialize, Debug)]
-    struct TestData {
-        bytecode: TestBytecode,
-    }
-
-    #[derive(Serialize, Deserialize, Debug)]
-    struct TestBytecode {
-        object: String,
-    }
-
-    fn load_test_data<P: AsRef<Path>>(path: P) -> Result<TestData> {
-        let file_contents = fs::read_to_string(path)?;
-        Ok(serde_json::from_str(&file_contents)?)
-    }
+    sol!(
+        #[allow(missing_docs)]
+        #[sol(rpc)]
+        GasSponsorInvoker,
+        "resources/eip3074/out/GasSponsorInvoker.sol/GasSponsorInvoker.json"
+    );
 
     #[test]
     fn test_eip3074_integration() {
-        let test_data =
-            load_test_data("resources/eip3074/out/GasSponsorInvoker.sol/GasSponsorInvoker.json")
-                .expect("could not read test data");
-
-        let raw_bytecode = Bytes::from(test_data.bytecode.object);
+        let raw_bytecode = Bytes::from(GasSponsorInvoker::BYTECODE.clone());
         let code = Bytecode::new_raw(raw_bytecode);
         let code_hash = code.hash_slow();
         let to_addr = address!("ffffffffffffffffffffffffffffffffffffffff");
