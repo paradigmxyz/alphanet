@@ -13,6 +13,7 @@ use reth_node_optimism::{args::RollupArgs, OptimismNode};
 use url::Url;
 
 sol!(
+    #[allow(clippy::too_many_arguments)]
     #[allow(missing_docs)]
     #[sol(rpc)]
     GasSponsorInvoker,
@@ -20,6 +21,7 @@ sol!(
 );
 
 sol!(
+    #[allow(clippy::too_many_arguments)]
     #[allow(missing_docs)]
     #[sol(rpc)]
     MockContract,

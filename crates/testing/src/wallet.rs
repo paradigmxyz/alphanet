@@ -14,8 +14,8 @@ impl Wallet {
         Self { inner }
     }
 }
-impl Into<EthereumSigner> for Wallet {
-    fn into(self) -> EthereumSigner {
-        self.inner.clone().into()
+impl From<Wallet> for EthereumSigner {
+    fn from(val: Wallet) -> Self {
+        val.inner.clone().into()
     }
 }
