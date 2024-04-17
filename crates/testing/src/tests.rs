@@ -28,8 +28,6 @@ sol!(
     "resources/eip3074/out/MockContract.sol/MockContract.json"
 );
 
-const ALPHANET_CHAIN_ID: u64 = 41144114;
-
 #[tokio::test]
 async fn test_eip3074_integration() {
     reth_tracing::init_test_tracing();
@@ -52,7 +50,7 @@ async fn test_eip3074_integration() {
     let rpc_url = node.rpc_server_handle().http_url().unwrap();
     let signer = test_suite.signer();
     let provider = ProviderBuilder::new()
-        .with_chain_id(ALPHANET_CHAIN_ID)
+        .with_recommended_fillers()
         .signer(signer)
         .on_http(Url::parse(&rpc_url).unwrap())
         .unwrap();
