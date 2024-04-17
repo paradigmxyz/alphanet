@@ -3,9 +3,9 @@
 pragma solidity ^0.8.23;
 
 contract MockContract {
-    event Message(address sender, string message);
+    address public lastSender;
 
-    function sendMessage(string calldata message) external {
-        emit Message(msg.sender, message);
+    function recordSender() external {
+        lastSender = msg.sender;
     }
 }
