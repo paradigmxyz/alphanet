@@ -13,6 +13,11 @@ impl Wallet {
         let inner = MnemonicBuilder::<English>::default().phrase(phrase).build().unwrap();
         Self { inner }
     }
+
+    pub(crate) fn random() -> Self {
+        let inner = MnemonicBuilder::<English>::default().build_random().unwrap();
+        Self { inner }
+    }
 }
 impl From<Wallet> for EthereumSigner {
     fn from(val: Wallet) -> Self {

@@ -1,8 +1,9 @@
-use crate::test_suite::TestSuite;
+use crate::{test_suite::TestSuite, wallet::Wallet};
 use alloy::{
     providers::{Provider, ProviderBuilder},
     sol,
 };
+use alloy_network::EthereumSigner;
 use alphanet_node::node::AlphaNetNode;
 use reth::{
     builder::{NodeBuilder, NodeHandle},
@@ -10,7 +11,7 @@ use reth::{
 };
 use reth_node_core::{args::RpcServerArgs, node_config::NodeConfig};
 use reth_node_optimism::{args::RollupArgs, OptimismNode};
-use reth_primitives::{Address, ChainSpec, ChainSpecBuilder};
+use reth_primitives::{Address, ChainSpec, ChainSpecBuilder, U256};
 use std::sync::Arc;
 use url::Url;
 
@@ -44,11 +45,11 @@ async fn test_eip3074_integration() {
         .build()
         .into();
 
+    // spin up alphanet node
     let node_config = NodeConfig::test()
         .dev()
         .with_chain(chain_spec)
         .with_rpc(RpcServerArgs::default().with_unused_ports().with_http());
-
     let NodeHandle { node, .. } = NodeBuilder::new(node_config)
         .testing_node(tasks.executor())
         .with_types(AlphaNetNode::default())
@@ -64,7 +65,6 @@ async fn test_eip3074_integration() {
         .signer(signer)
         .on_http(Url::parse(&rpc_url).unwrap())
         .unwrap();
-
     let base_fee = provider.get_gas_price().await.unwrap();
 
     // Deploy the mock contract.
@@ -79,6 +79,12 @@ async fn test_eip3074_integration() {
     // Deploy the invoker contract.
     let invoker_contract_builder = GasSponsorInvoker::deploy_builder(&provider);
     let estimate = invoker_contract_builder.estimate_gas().await.unwrap();
-    let _invoker_contract_address =
+    let invoker_contract_address =
         invoker_contract_builder.gas(estimate).gas_price(base_fee).nonce(1).deploy().await.unwrap();
+    let invoker_contract = GasSponsorInvoker::new(invoker_contract_address, &provider);
+
+    let signer_account: EthereumSigner = Wallet::random().into();
+    let signer_balance =
+        provider.get_balance(signer_account.default_signer().address(), None).await.unwrap();
+    assert_eq!(signer_balance, U256::ZERO);
 }
