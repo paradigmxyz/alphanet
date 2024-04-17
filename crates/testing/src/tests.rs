@@ -10,7 +10,8 @@ use reth::{
 };
 use reth_node_core::{args::RpcServerArgs, node_config::NodeConfig};
 use reth_node_optimism::{args::RollupArgs, OptimismNode};
-use reth_primitives::ChainSpecBuilder;
+use reth_primitives::{Address, ChainSpec, ChainSpecBuilder};
+use std::sync::Arc;
 use url::Url;
 
 sol!(
@@ -34,10 +35,9 @@ async fn test_eip3074_integration() {
     reth_tracing::init_test_tracing();
     let tasks = TaskManager::current();
     let test_suite = TestSuite::new();
-    let mut chain_spec = test_suite.chain_spec();
+
     // manually set optimism genesis fields, see https://github.com/paradigmxyz/reth/issues/7702
-    let chain_spec_builder = ChainSpecBuilder::from(&chain_spec);
-    chain_spec = chain_spec_builder
+    let chain_spec: Arc<ChainSpec> = ChainSpecBuilder::from(&test_suite.chain_spec())
         .regolith_activated()
         .bedrock_activated()
         .ecotone_activated()
@@ -70,8 +70,11 @@ async fn test_eip3074_integration() {
     // Deploy the mock contract.
     let mock_contract_builder = MockContract::deploy_builder(&provider);
     let estimate = mock_contract_builder.estimate_gas().await.unwrap();
-    let _mock_contract_address =
+    let mock_contract_address =
         mock_contract_builder.gas(estimate).gas_price(base_fee).nonce(0).deploy().await.unwrap();
+    let mock_contract = MockContract::new(mock_contract_address, &provider);
+    let MockContract::lastSenderReturn { _0 } = mock_contract.lastSender().call().await.unwrap();
+    assert_eq!(_0, Address::ZERO);
 
     // Deploy the invoker contract.
     let invoker_contract_builder = GasSponsorInvoker::deploy_builder(&provider);
