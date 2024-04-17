@@ -712,9 +712,7 @@ name = "alphanet-testing"
 version = "0.0.0"
 dependencies = [
  "alloy",
- "alloy-consensus 0.1.0 (git+https://github.com/alloy-rs/alloy?rev=a32e6f7)",
  "alloy-network",
- "alloy-rpc-types 0.1.0 (git+https://github.com/alloy-rs/alloy?rev=a32e6f7)",
  "alloy-signer-wallet",
  "alphanet-node",
  "reth",

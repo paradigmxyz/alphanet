@@ -3,7 +3,6 @@ use alloy::{
     providers::{Provider, ProviderBuilder},
     sol,
 };
-use alloy_network::EthereumSigner;
 use alphanet_node::node::AlphaNetNode;
 use reth::{
     builder::{NodeBuilder, NodeHandle},
@@ -20,6 +19,15 @@ sol!(
     "resources/eip3074/out/GasSponsorInvoker.sol/GasSponsorInvoker.json"
 );
 
+sol!(
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    MockContract,
+    "resources/eip3074/out/MockContract.sol/MockContract.json"
+);
+
+const ALPHANET_CHAIN_ID: u64 = 41144114;
+
 #[tokio::test]
 async fn test_eip3074_integration() {
     reth_tracing::init_test_tracing();
@@ -27,10 +35,11 @@ async fn test_eip3074_integration() {
     let test_suite = TestSuite::new();
 
     let node_config = NodeConfig::test()
+        .dev()
         .with_chain(test_suite.chain_spec())
         .with_rpc(RpcServerArgs::default().with_unused_ports().with_http());
 
-    let NodeHandle { mut node, .. } = NodeBuilder::new(node_config)
+    let NodeHandle { node, .. } = NodeBuilder::new(node_config)
         .testing_node(tasks.executor())
         .with_types(AlphaNetNode::default())
         .with_components(OptimismNode::components(RollupArgs::default()))
@@ -40,20 +49,22 @@ async fn test_eip3074_integration() {
 
     let rpc_url = node.rpc_server_handle().http_url().unwrap();
     let signer = test_suite.signer();
-    let provider =
-        ProviderBuilder::new().signer(signer).on_http(Url::parse(&rpc_url).unwrap()).unwrap();
+    let provider = ProviderBuilder::new()
+        .with_chain_id(ALPHANET_CHAIN_ID)
+        .signer(signer)
+        .on_http(Url::parse(&rpc_url).unwrap())
+        .unwrap();
 
     let base_fee = provider.get_gas_price().await.unwrap();
 
-    // Deploy the contract.
-    let contract_builder = GasSponsorInvoker::deploy_builder(&provider);
-    let estimate = contract_builder.estimate_gas().await.unwrap();
-    let contract_address = contract_builder
-        .gas(estimate)
-        .gas_price(base_fee)
-        .nonce(0)
-        .legacy()
-        .deploy()
-        .await
-        .unwrap();
+    // Deploy the mock contract.
+    let mock_contract_builder = MockContract::deploy_builder(&provider);
+    let estimate = mock_contract_builder.estimate_gas().await.unwrap();
+    let _mock_contract_address =
+        mock_contract_builder.gas(estimate).gas_price(base_fee).nonce(0).deploy().await.unwrap();
+
+    let invoker_contract_builder = GasSponsorInvoker::deploy_builder(&provider);
+    let estimate = invoker_contract_builder.estimate_gas().await.unwrap();
+    let _invoker_contract_address =
+        invoker_contract_builder.gas(estimate).gas_price(base_fee).nonce(1).deploy().await.unwrap();
 }

@@ -1,6 +1,6 @@
 use crate::{chain_spec_builder::ChainSpecBuilder, wallet::Wallet};
-use alloy_network::{eip2718::Encodable2718, EthereumSigner};
-use reth_primitives::{Bytes, ChainSpec, B256};
+use alloy_network::EthereumSigner;
+use reth_primitives::ChainSpec;
 use std::sync::Arc;
 
 /// Mnemonic used to derive the test accounts

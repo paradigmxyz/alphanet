@@ -50,9 +50,7 @@ alloy = { git = "https://github.com/alloy-rs/alloy", rev = "a32e6f7", features =
     "providers",
     "provider-http",
 ] }
-alloy-consensus = { git = "https://github.com/alloy-rs/alloy", rev = "a32e6f7" }
 alloy-network = { git = "https://github.com/alloy-rs/alloy", rev = "a32e6f7" }
-alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy", rev = "a32e6f7" }
 alloy-signer-wallet = { git = "https://github.com/alloy-rs/alloy", rev = "a32e6f7" }
 
 # tokio

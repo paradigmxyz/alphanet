@@ -13,9 +13,7 @@ categories.workspace = true
 alphanet-node.workspace = true
 
 alloy.workspace = true
-alloy-consensus.workspace = true
 alloy-network.workspace = true
-alloy-rpc-types.workspace = true
 alloy-signer-wallet = { workspace = true, features = ["mnemonic"] }
 
 reth.workspace = true
