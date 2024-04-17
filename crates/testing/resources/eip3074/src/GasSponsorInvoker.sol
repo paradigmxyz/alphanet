@@ -7,8 +7,6 @@ import { BaseAuth } from "./BaseAuth.sol";
 /// @title Gas Sponsor Invoker
 /// @notice Invoker contract using EIP-3074 to sponsor gas for authorized transactions
 contract GasSponsorInvoker is BaseAuth {
-    event CallExecuted(address indexed target, uint256 value, bytes data);
-
     /// @notice Executes a call authorized by an external account (EOA)
     /// @param authority The address of the authorizing external account
     /// @param commit A 32-byte value committing to transaction validity conditions
@@ -26,14 +24,12 @@ contract GasSponsorInvoker is BaseAuth {
         bytes32 s,
         address to,
         bytes calldata data
-    ) external returns (bool success) {
+    ) external pure returns (bool success) {
         // Ensure the transaction is authorized by the signer
         require(authSimple(authority, commit, v, r, s), "Authorization failed");
 
         // Execute the call as authorized by the signer
         success = authCallSimple(to, data, 0, 0);
         require(success, "Call execution failed");
-
-        emit CallExecuted(to, 0, data);
     }
 }
