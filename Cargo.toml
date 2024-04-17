@@ -57,16 +57,16 @@ alloy-signer-wallet = { git = "https://github.com/alloy-rs/alloy", rev = "a32e6f
 tokio = { version = "1.21", default-features = false }
 
 # reth
-reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "5efe173", features = ["optimism"] }
-reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "5efe173" }
-reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "5efe173" }
-reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "5efe173" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "5efe173" }
-reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "5efe173" }
+reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "7cda594", features = ["optimism"] }
+reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "7cda594" }
+reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "7cda594" }
+reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "7cda594" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "7cda594" }
+reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "7cda594" }
 
 # revm
 revm = { version = "8.0.0", features = ["std", "secp256k1"], default-features = false }
-revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "5baa6b3" }
+revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "67f9968" }
 revm-interpreter = { version = "4.0.0", features = ["std"], default-features = false }
 revm-precompile = { version = "6.0.0", features = ["std"], default-features = false }
 revm-primitives = { version = "3.1.0", features = ["std"], default-features = false }
