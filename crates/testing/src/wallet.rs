@@ -1,7 +1,7 @@
 use alloy::signers::Signer;
 use alloy_network::EthereumSigner;
 use alloy_signer_wallet::{coins_bip39::English, LocalWallet, MnemonicBuilder};
-use reth_primitives::{alloy_primitives::Parity, B256, U256};
+use reth_primitives::{B256, U256};
 
 /// One of the accounts of the genesis allocations.
 #[derive(Clone)]
@@ -21,9 +21,9 @@ impl Wallet {
         Self { inner }
     }
 
-    pub(crate) async fn sign_hash(&self, message: B256) -> (Parity, U256, U256) {
+    pub(crate) async fn sign_hash(&self, message: B256) -> (u8, U256, U256) {
         let signature = self.inner.sign_hash(&message).await.unwrap();
-        (signature.v(), signature.r(), signature.s())
+        (signature.v().y_parity_byte() + 27, signature.r(), signature.s())
     }
 }
 impl From<Wallet> for EthereumSigner {

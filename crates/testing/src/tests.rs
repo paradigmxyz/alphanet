@@ -100,18 +100,10 @@ async fn test_eip3074_integration() {
 
     // abi encoded method call.
     let binding = sender_recorder.recordSender();
-    let data = &binding.calldata().0;
+    let data = reth_primitives::Bytes(binding.calldata().0.clone());
 
     let receipt = invoker
-        .sponsorCall(
-            signer_address,
-            commit,
-            v.y_parity_byte(),
-            r.into(),
-            s.into(),
-            sender_recorder_address,
-            reth_primitives::Bytes(data.clone()),
-        )
+        .sponsorCall(signer_address, commit, v, r.into(), s.into(), sender_recorder_address, data)
         .send()
         .await
         .unwrap()
