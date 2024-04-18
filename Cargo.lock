@@ -129,6 +129,7 @@ dependencies = [
  "alloy-provider",
  "alloy-rpc-client",
  "alloy-serde",
+ "alloy-signer",
  "alloy-transport",
  "alloy-transport-http",
  "reqwest 0.12.3",

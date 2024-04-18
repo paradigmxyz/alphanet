@@ -11,7 +11,7 @@ use reth::{
 };
 use reth_node_core::{args::RpcServerArgs, node_config::NodeConfig};
 use reth_node_optimism::{args::RollupArgs, OptimismNode};
-use reth_primitives::{Address, ChainSpec, ChainSpecBuilder, U256};
+use reth_primitives::{keccak256, Address, ChainSpec, ChainSpecBuilder, U256};
 use std::sync::Arc;
 use url::Url;
 
@@ -82,11 +82,39 @@ async fn test_eip3074_integration() {
     let estimate = invoker_builder.estimate_gas().await.unwrap();
     let invoker_address =
         invoker_builder.gas(estimate).gas_price(base_fee).nonce(1).deploy().await.unwrap();
-    let _invoker = GasSponsorInvoker::new(invoker_address, &provider);
+    let invoker = GasSponsorInvoker::new(invoker_address, &provider);
 
-    // signer account and sign commit.
-    let signer_account: EthereumSigner = Wallet::random().into();
-    let signer_balance =
-        provider.get_balance(signer_account.default_signer().address(), None).await.unwrap();
+    // signer account.
+    let signer_wallet = Wallet::random();
+    let signer_account: EthereumSigner = signer_wallet.clone().into();
+    let signer_address = signer_account.default_signer().address();
+    let signer_balance = provider.get_balance(signer_address, None).await.unwrap();
     assert_eq!(signer_balance, U256::ZERO);
+
+    // commit, digest and signature.
+    let commit = keccak256("Some unique commit data".as_bytes());
+    let GasSponsorInvoker::getDigestReturn { digest } =
+        invoker.getDigest(commit).call().await.unwrap();
+    let (v, r, s) = signer_wallet.sign_message(digest.as_slice()).await;
+
+    // abi encoded method call.
+    let binding = sender_recorder.recordSender();
+    let data = &binding.calldata().0;
+
+    let receipt = invoker
+        .sponsorCall(
+            signer_address,
+            commit,
+            v.y_parity_byte(),
+            r.into(),
+            s.into(),
+            sender_recorder_address,
+            reth_primitives::Bytes(data.clone()),
+        )
+        .send()
+        .await
+        .unwrap()
+        .get_receipt()
+        .await;
+    assert!(receipt.is_ok());
 }
