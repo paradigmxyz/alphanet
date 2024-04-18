@@ -59,10 +59,10 @@ async fn test_eip3074_integration() {
         .unwrap();
 
     let rpc_url = node.rpc_server_handle().http_url().unwrap();
-    let signer = test_suite.signer();
+    let deployer = test_suite.signer();
     let provider = ProviderBuilder::new()
         .with_recommended_fillers()
-        .signer(signer)
+        .signer(deployer)
         .on_http(Url::parse(&rpc_url).unwrap())
         .unwrap();
     let base_fee = provider.get_gas_price().await.unwrap();
@@ -90,12 +90,13 @@ async fn test_eip3074_integration() {
     let signer_address = signer_account.default_signer().address();
     let signer_balance = provider.get_balance(signer_address, None).await.unwrap();
     assert_eq!(signer_balance, U256::ZERO);
+    let signer_nonce = provider.get_transaction_count(signer_address, None).await.unwrap();
 
     // commit, digest and signature.
     let commit = keccak256("Some unique commit data".as_bytes());
     let GasSponsorInvoker::getDigestReturn { digest } =
-        invoker.getDigest(commit).call().await.unwrap();
-    let (v, r, s) = signer_wallet.sign_message(digest.as_slice()).await;
+        invoker.getDigest(commit, U256::from(signer_nonce)).call().await.unwrap();
+    let (v, r, s) = signer_wallet.sign_hash(digest).await;
 
     // abi encoded method call.
     let binding = sender_recorder.recordSender();
