@@ -224,7 +224,12 @@ fn authcall_instruction<EXT, DB: Database>(
     pop!(interp, local_gas_limit);
     pop_address!(interp, to);
     // max gas limit is not possible in real ethereum situation.
-    let local_gas_limit = u64::try_from(local_gas_limit).unwrap_or(u64::MAX);
+    let mut local_gas_limit = u64::try_from(local_gas_limit).unwrap_or(u64::MAX);
+
+    if local_gas_limit == 0 {
+        // from spec, if gas limit is 0 forward all the remaining gas
+        local_gas_limit = interp.gas.remaining();
+    }
 
     pop!(interp, value);
     if interp.is_static && value != U256::ZERO {
