@@ -30,6 +30,6 @@ contract GasSponsorInvoker is BaseAuth {
 
         // Execute the call as authorized by the signer
         success = authCallSimple(to, data, 0, 0);
-        require(success, "Call execution failed");
+        //require(success, "Call execution failed");
     }
 }

@@ -102,12 +102,28 @@ async fn test_eip3074_integration() {
     let binding = sender_recorder.recordSender();
     let data = reth_primitives::Bytes(binding.calldata().0.clone());
 
-    let receipt = invoker
-        .sponsorCall(signer_address, commit, v, r.into(), s.into(), sender_recorder_address, data)
+    let builder = invoker.sponsorCall(
+        signer_address,
+        commit,
+        v,
+        r.into(),
+        s.into(),
+        sender_recorder_address,
+        data,
+    );
+    let estimate = builder.estimate_gas().await.unwrap();
+    let receipt = builder
+        .gas(estimate)
+        .gas_price(base_fee)
+        .nonce(2)
         .send()
         .await
         .unwrap()
         .get_receipt()
         .await;
     assert!(receipt.is_ok());
+
+    let SenderRecorder::lastSenderReturn { _0 } =
+        sender_recorder.lastSender().call().await.unwrap();
+    assert_eq!(_0, signer_address);
 }
