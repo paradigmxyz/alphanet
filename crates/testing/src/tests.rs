@@ -27,8 +27,8 @@ sol!(
     #[allow(clippy::too_many_arguments)]
     #[allow(missing_docs)]
     #[sol(rpc)]
-    MockContract,
-    "resources/eip3074/out/MockContract.sol/MockContract.json"
+    SenderRecorder,
+    "resources/eip3074/out/SenderRecorder.sol/SenderRecorder.json"
 );
 
 #[tokio::test]
@@ -67,22 +67,24 @@ async fn test_eip3074_integration() {
         .unwrap();
     let base_fee = provider.get_gas_price().await.unwrap();
 
-    // Deploy the mock contract.
-    let mock_contract_builder = MockContract::deploy_builder(&provider);
-    let estimate = mock_contract_builder.estimate_gas().await.unwrap();
-    let mock_contract_address =
-        mock_contract_builder.gas(estimate).gas_price(base_fee).nonce(0).deploy().await.unwrap();
-    let mock_contract = MockContract::new(mock_contract_address, &provider);
-    let MockContract::lastSenderReturn { _0 } = mock_contract.lastSender().call().await.unwrap();
+    // Deploy sender recorder contract.
+    let sender_recorder_builder = SenderRecorder::deploy_builder(&provider);
+    let estimate = sender_recorder_builder.estimate_gas().await.unwrap();
+    let sender_recorder_address =
+        sender_recorder_builder.gas(estimate).gas_price(base_fee).nonce(0).deploy().await.unwrap();
+    let sender_recorder = SenderRecorder::new(sender_recorder_address, &provider);
+    let SenderRecorder::lastSenderReturn { _0 } =
+        sender_recorder.lastSender().call().await.unwrap();
     assert_eq!(_0, Address::ZERO);
 
-    // Deploy the invoker contract.
-    let invoker_contract_builder = GasSponsorInvoker::deploy_builder(&provider);
-    let estimate = invoker_contract_builder.estimate_gas().await.unwrap();
-    let invoker_contract_address =
-        invoker_contract_builder.gas(estimate).gas_price(base_fee).nonce(1).deploy().await.unwrap();
-    let invoker_contract = GasSponsorInvoker::new(invoker_contract_address, &provider);
+    // Deploy invoker contract.
+    let invoker_builder = GasSponsorInvoker::deploy_builder(&provider);
+    let estimate = invoker_builder.estimate_gas().await.unwrap();
+    let invoker_address =
+        invoker_builder.gas(estimate).gas_price(base_fee).nonce(1).deploy().await.unwrap();
+    let _invoker = GasSponsorInvoker::new(invoker_address, &provider);
 
+    // signer account and sign commit.
     let signer_account: EthereumSigner = Wallet::random().into();
     let signer_balance =
         provider.get_balance(signer_account.default_signer().address(), None).await.unwrap();

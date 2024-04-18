@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.23;
 
-contract MockContract {
+contract SenderRecorder {
     address public lastSender;
 
     function recordSender() external {
