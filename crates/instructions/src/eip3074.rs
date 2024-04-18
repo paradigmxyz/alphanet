@@ -167,15 +167,14 @@ fn auth_instruction<EXT, DB: Database>(
     let s = interp.shared_memory.get_word(offset + 33);
     let commit = interp.shared_memory.get_word(offset + 65);
 
-    let caller_address = evm.context.evm.env.tx.caller;
-    let caller_account = match evm.context.evm.load_account(caller_address) {
-        Ok(caller) => caller,
+    let authority_account = match evm.context.evm.load_account(authority) {
+        Ok(acc) => acc,
         Err(_) => {
             interp.instruction_result = InstructionResult::Stop;
             return;
         }
     };
-    let nonce = caller_account.0.info.nonce;
+    let nonce = authority_account.0.info.nonce;
     let chain_id = evm.context.evm.env.cfg.chain_id;
     let msg = compose_msg(chain_id, nonce, interp.contract.address, commit);
 
@@ -225,11 +224,22 @@ fn authcall_instruction<EXT, DB: Database>(
     pop!(interp, local_gas_limit);
     pop_address!(interp, to);
     // max gas limit is not possible in real ethereum situation.
-    let local_gas_limit = u64::try_from(local_gas_limit).unwrap_or(u64::MAX);
+    let mut local_gas_limit = u64::try_from(local_gas_limit).unwrap_or(u64::MAX);
+
+    if local_gas_limit == 0 {
+        // from spec, if gas limit is 0 forward all the remaining gas
+        local_gas_limit = interp.gas.remaining();
+    }
 
     pop!(interp, value);
     if interp.is_static && value != U256::ZERO {
         interp.instruction_result = InstructionResult::CallNotAllowedInsideStatic;
+        return;
+    }
+    pop!(interp, value_ext);
+    if value_ext != U256::ZERO {
+        // value ext should always be zero
+        interp.instruction_result = InstructionResult::Stop;
         return;
     }
 
@@ -348,6 +358,7 @@ mod tests {
         stack.push(U256::from(ret_offset)).unwrap();
         stack.push(U256::from(args_length)).unwrap();
         stack.push(U256::from(args_offset)).unwrap();
+        stack.push(U256::ZERO).unwrap();
         stack.push(U256::from(value)).unwrap();
         stack.push_b256(B256::left_padding_from(to.as_slice())).unwrap();
         stack.push(U256::from(gas)).unwrap();

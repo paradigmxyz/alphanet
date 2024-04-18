@@ -5,3 +5,4 @@ libs = ["lib"]
 remappings = [
   "forge-std/=lib/forge-std/src/",
 ]
+prague = true

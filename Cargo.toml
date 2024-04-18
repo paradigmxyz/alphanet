@@ -45,18 +45,29 @@ alphanet-instructions = { path = "crates/instructions" }
 alphanet-node = { path = "crates/node" }
 alphanet-precompile = { path = "crates/precompile" }
 
+alloy = { git = "https://github.com/alloy-rs/alloy", rev = "a32e6f7", features = [
+    "contract",
+    "providers",
+    "provider-http",
+    "signers",
+] }
+alloy-network = { git = "https://github.com/alloy-rs/alloy", rev = "a32e6f7" }
+alloy-signer-wallet = { git = "https://github.com/alloy-rs/alloy", rev = "a32e6f7" }
+
 # tokio
 tokio = { version = "1.21", default-features = false }
 
 # reth
-reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "5efe173", features = ["optimism"] }
-reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "5efe173" }
-reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "5efe173" }
-reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "5efe173" }
+reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "7cda594", features = ["optimism"] }
+reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "7cda594" }
+reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "7cda594" }
+reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "7cda594" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "7cda594" }
+reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "7cda594" }
 
 # revm
 revm = { version = "8.0.0", features = ["std", "secp256k1"], default-features = false }
-revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "5baa6b3" }
+revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "67f9968" }
 revm-interpreter = { version = "4.0.0", features = ["std"], default-features = false }
 revm-precompile = { version = "6.0.0", features = ["std"], default-features = false }
 revm-primitives = { version = "3.1.0", features = ["std"], default-features = false }
@@ -65,6 +76,9 @@ revm-primitives = { version = "3.1.0", features = ["std"], default-features = fa
 clap = "4"
 criterion = "0.5.1"
 eyre = "0.6.12"
+serde = "1.0.197"
+serde_derive = "1.0.197"
+serde_json = "1.0.115"
 tracing = "0.1.0"
 
 # misc-testing
