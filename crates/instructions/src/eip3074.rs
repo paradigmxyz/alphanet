@@ -231,6 +231,12 @@ fn authcall_instruction<EXT, DB: Database>(
         interp.instruction_result = InstructionResult::CallNotAllowedInsideStatic;
         return;
     }
+    pop!(interp, value_ext);
+    if value_ext != U256::ZERO {
+        // value ext should always be zero
+        interp.instruction_result = InstructionResult::Stop;
+        return;
+    }
 
     let Some((input, return_memory_offset)) = get_memory_input_and_out_ranges(interp) else {
         return;
