@@ -167,15 +167,14 @@ fn auth_instruction<EXT, DB: Database>(
     let s = interp.shared_memory.get_word(offset + 33);
     let commit = interp.shared_memory.get_word(offset + 65);
 
-    let caller_address = evm.context.evm.env.tx.caller;
-    let caller_account = match evm.context.evm.load_account(caller_address) {
-        Ok(caller) => caller,
+    let authority_account = match evm.context.evm.load_account(authority) {
+        Ok(acc) => acc,
         Err(_) => {
             interp.instruction_result = InstructionResult::Stop;
             return;
         }
     };
-    let nonce = caller_account.0.info.nonce;
+    let nonce = authority_account.0.info.nonce;
     let chain_id = evm.context.evm.env.cfg.chain_id;
     let msg = compose_msg(chain_id, nonce, interp.contract.address, commit);
 
