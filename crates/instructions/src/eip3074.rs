@@ -358,6 +358,7 @@ mod tests {
         stack.push(U256::from(ret_offset)).unwrap();
         stack.push(U256::from(args_length)).unwrap();
         stack.push(U256::from(args_offset)).unwrap();
+        stack.push(U256::ZERO).unwrap();
         stack.push(U256::from(value)).unwrap();
         stack.push_b256(B256::left_padding_from(to.as_slice())).unwrap();
         stack.push(U256::from(gas)).unwrap();
