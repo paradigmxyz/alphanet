@@ -12,7 +12,7 @@ use reth::{
 };
 use reth_node_core::{args::RpcServerArgs, node_config::NodeConfig};
 use reth_node_optimism::{args::RollupArgs, OptimismNode};
-use reth_primitives::{keccak256, Address, BlockId, BlockNumberOrTag, DEV, U256};
+use reth_primitives::{keccak256, Address, BlockId, DEV, U256};
 use url::Url;
 
 sol!(
@@ -81,15 +81,10 @@ async fn test_eip3074_integration() {
     let signer_wallet = Wallet::random();
     let signer_account: EthereumSigner = signer_wallet.clone().into();
     let signer_address = signer_account.default_signer().address();
-    let signer_balance = provider
-        .get_balance(signer_address, BlockId::Number(BlockNumberOrTag::Latest))
-        .await
-        .unwrap();
+    let signer_balance = provider.get_balance(signer_address, BlockId::latest()).await.unwrap();
     assert_eq!(signer_balance, U256::ZERO);
-    let signer_nonce = provider
-        .get_transaction_count(signer_address, BlockId::Number(BlockNumberOrTag::Latest))
-        .await
-        .unwrap();
+    let signer_nonce =
+        provider.get_transaction_count(signer_address, BlockId::latest()).await.unwrap();
 
     // commit, digest and signature.
     let commit = keccak256("Some unique commit data".as_bytes());
