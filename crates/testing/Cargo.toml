@@ -22,7 +22,7 @@ reth-node-optimism.workspace = true
 reth-primitives.workspace = true
 reth-tracing.workspace = true
 
-serde_json.workspace = true
+once_cell = "1.19.0"
 tokio.workspace = true
 url = "2.5.0"
 

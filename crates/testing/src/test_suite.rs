@@ -1,7 +1,5 @@
-use crate::{chain_spec_builder::ChainSpecBuilder, wallet::Wallet};
+use crate::wallet::Wallet;
 use alloy_network::EthereumSigner;
-use reth_primitives::ChainSpec;
-use std::sync::Arc;
 
 /// Mnemonic used to derive the test accounts
 const TEST_MNEMONIC: &str = "test test test test test test test test test test test junk";
@@ -23,14 +21,6 @@ impl TestSuite {
     pub(crate) fn new() -> Self {
         let wallet = Wallet::new(TEST_MNEMONIC);
         Self { wallet }
-    }
-
-    /// Chain spec for e2e eth tests
-    ///
-    /// Includes 20 prefunded accounts with 10_000 ETH each derived from mnemonic "test test test
-    /// test test test test test test test test junk".
-    pub(crate) fn chain_spec(&self) -> Arc<ChainSpec> {
-        ChainSpecBuilder::new().build()
     }
 
     pub(crate) fn signer(&self) -> EthereumSigner {
