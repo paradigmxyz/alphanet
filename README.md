@@ -29,6 +29,13 @@ drastically reduce cost for existing applications that improve UX.
 
 AlphaNet does not yet have a running testnet, but can be run locally for development and testing purposes. To do this, the binary can be run with the `--dev` flag, which will start the node with a development configuration.
 
+First, alphanet should be built locally:
+```bash
+git clone https://github.com/paradigmxyz/alphanet
+cd alphanet
+cargo install --release --path bin/alphanet
+```
+
 ```bash
 alphanet node --chain etc/alphanet-genesis.json --dev --http --http.api all
 ```
@@ -53,7 +60,7 @@ To run AlphaNet from source, clone the repository and run the following commands
 ```bash
 git clone https://github.com/paradigmxyz/alphanet.git
 cd alphanet
-cargo install --release
+cargo install --release --path bin/alphanet
 alphanet node
     --chain etc/alphanet-genesis.json \
     --rollup.sequencer-http <TODO> \
