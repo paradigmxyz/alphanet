@@ -5,14 +5,14 @@ use alloy::{
 };
 use alloy_network::EthereumSigner;
 use alphanet_node::node::AlphaNetNode;
+use once_cell::sync::Lazy;
 use reth::{
     builder::{NodeBuilder, NodeHandle},
     tasks::TaskManager,
 };
 use reth_node_core::{args::RpcServerArgs, node_config::NodeConfig};
 use reth_node_optimism::{args::RollupArgs, OptimismNode};
-use reth_primitives::{keccak256, Address, ChainSpec, ChainSpecBuilder, U256};
-use std::sync::Arc;
+use reth_primitives::{keccak256, Address, BlockId, DEV, U256};
 use url::Url;
 
 sol!(
@@ -37,15 +37,8 @@ async fn test_eip3074_integration() {
     let tasks = TaskManager::current();
     let test_suite = TestSuite::new();
 
-    // manually set optimism genesis fields, see https://github.com/paradigmxyz/reth/issues/7702
-    let chain_spec: Arc<ChainSpec> = ChainSpecBuilder::from(&test_suite.chain_spec())
-        .regolith_activated()
-        .bedrock_activated()
-        .ecotone_activated()
-        .build()
-        .into();
-
     // spin up alphanet node
+    let chain_spec = Lazy::force(&DEV).clone();
     let node_config = NodeConfig::test()
         .dev()
         .with_chain(chain_spec)
@@ -88,9 +81,10 @@ async fn test_eip3074_integration() {
     let signer_wallet = Wallet::random();
     let signer_account: EthereumSigner = signer_wallet.clone().into();
     let signer_address = signer_account.default_signer().address();
-    let signer_balance = provider.get_balance(signer_address, None).await.unwrap();
+    let signer_balance = provider.get_balance(signer_address, BlockId::latest()).await.unwrap();
     assert_eq!(signer_balance, U256::ZERO);
-    let signer_nonce = provider.get_transaction_count(signer_address, None).await.unwrap();
+    let signer_nonce =
+        provider.get_transaction_count(signer_address, BlockId::latest()).await.unwrap();
 
     // commit, digest and signature.
     let commit = keccak256("Some unique commit data".as_bytes());
