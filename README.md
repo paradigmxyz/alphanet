@@ -33,7 +33,7 @@ First, alphanet should be built locally:
 ```bash
 git clone https://github.com/paradigmxyz/alphanet
 cd alphanet
-cargo install --release --path bin/alphanet
+cargo install --path bin/alphanet
 ```
 
 ```bash
@@ -60,7 +60,7 @@ To run AlphaNet from source, clone the repository and run the following commands
 ```bash
 git clone https://github.com/paradigmxyz/alphanet.git
 cd alphanet
-cargo install --release --path bin/alphanet
+cargo install --path bin/alphanet
 alphanet node
     --chain etc/alphanet-genesis.json \
     --rollup.sequencer-http <TODO> \
