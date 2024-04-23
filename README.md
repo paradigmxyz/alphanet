@@ -91,6 +91,22 @@ op-node \
 
 See [SECURITY.md](SECURITY.md).
 
+### Note on EIP-3074 integration tests
+
+If you are modifying the EIP-3074 solidity smart contracts used in the
+`alphanet-testing` crate you should regenerate the built artifacts with:
+```bash
+$ make build-eip3074-bytecode
+```
+This command uses the docker image from the [eip3074-tools] repo which contains
+patched versions of solc and forge compatible with the instructions introduced
+by EIP-3074.
+
+The changes in the artifacts should be committed to this repo, this way we don't
+have to rely on docker being available to generate the artifacts and run the
+tests. There's a CI step that will check if the committed artifacts match the
+smart contracts source code.
+
 #### License
 
 <sup>
@@ -115,3 +131,4 @@ shall be dual licensed as above, without any additional terms or conditions.
 [apache-url]: LICENSE-APACHE
 [actions-badge]: https://github.com/paradigmxyz/alphanet/workflows/unit/badge.svg
 [actions-url]: https://github.com/paradigmxyz/alphanet/actions?query=workflow%3ACI+branch%3Amain
+[eip3074-tools]: https://github.com/fgimenez/eip-3074-tools
