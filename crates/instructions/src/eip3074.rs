@@ -68,12 +68,12 @@ use revm::{Database, Evm};
 use revm_interpreter::{
     gas,
     instructions::host::{calc_call_gas, get_memory_input_and_out_ranges},
-    pop, pop_address, resize_memory, CallContext, CallInputs, CallScheme, InstructionResult,
+    pop, pop_address, push, resize_memory, CallContext, CallInputs, CallScheme, InstructionResult,
     Interpreter, InterpreterAction, Transfer,
 };
 use revm_precompile::secp256k1::ecrecover;
 use revm_primitives::{
-    alloy_primitives::B512, keccak256, spec_to_generic, Address, SpecId, B256, U256,
+    alloy_primitives::B512, keccak256, spec_to_generic, Address, SpecId, B256, KECCAK_EMPTY, U256,
 };
 
 /// Numeric op code for the `AUTH` mnemonic.
@@ -168,7 +168,15 @@ fn auth_instruction<EXT, DB: Database>(
     let commit = interp.shared_memory.get_word(offset + 65);
 
     let authority_account = match evm.context.evm.load_account(authority) {
-        Ok(acc) => acc,
+        Ok(acc) => {
+            if acc.0.info.code_hash != KECCAK_EMPTY {
+                ctx.remove(AUTHORIZED_VAR_NAME);
+                push!(interp, B256::ZERO.into());
+                interp.instruction_result = InstructionResult::Continue;
+                return;
+            }
+            acc
+        }
         Err(_) => {
             interp.instruction_result = InstructionResult::Stop;
             return;
@@ -536,6 +544,37 @@ mod tests {
         // check gas
         let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS;
         assert_eq!(expected_gas, interpreter.gas.spent());
+    }
+
+    #[test]
+    fn test_auth_instruction_extcodesize() {
+        let mut interpreter = setup_interpreter();
+
+        let secp = Secp256k1::new();
+        let (secret_key, authority) = setup_authority(secp.clone());
+
+        setup_auth_stack(&mut interpreter.stack, authority);
+
+        let msg = default_msg();
+
+        let (y_parity, r, s) = generate_signature(secp, secret_key, msg);
+
+        setup_auth_shared_memory(&mut interpreter.shared_memory, y_parity, &r, &s);
+
+        let mut evm = setup_evm();
+        evm.context.evm.journaled_state.state.insert(authority, Account::default());
+        evm.context
+            .evm
+            .journaled_state
+            .set_code(authority, Bytecode::new_raw([AUTH_OPCODE, 0x00].into()));
+
+        let context = InstructionsContext::default();
+        auth_instruction(&mut interpreter, &mut evm, &context);
+
+        assert_eq!(interpreter.instruction_result, InstructionResult::Continue);
+        assert_eq!(context.get(AUTHORIZED_VAR_NAME), None);
+        pop!(interpreter, auth_result);
+        assert_eq!(auth_result.saturating_to::<usize>(), 0);
     }
 
     #[test]

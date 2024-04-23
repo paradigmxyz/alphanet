@@ -27,6 +27,11 @@ impl InstructionsContext {
         self.inner.borrow().get(&key).cloned()
     }
 
+    /// Removes the value for the given key.
+    pub fn remove(&self, key: &'static str) -> Option<Vec<u8>> {
+        self.inner.borrow_mut().remove(&key)
+    }
+
     /// Empties inner state.
     pub fn clear(&self) {
         self.inner.borrow_mut().clear();
