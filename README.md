@@ -98,7 +98,7 @@ If you are modifying the EIP-3074 solidity smart contracts used in the
 ```bash
 $ make build-eip3074-bytecode
 ```
-This command uses the docker image from the [eip3074-tools] repo which contains
+This command uses the docker image from the [foundry-alphanet] repo which contains
 patched versions of solc and forge compatible with the instructions introduced
 by EIP-3074.
 
@@ -131,4 +131,4 @@ shall be dual licensed as above, without any additional terms or conditions.
 [apache-url]: LICENSE-APACHE
 [actions-badge]: https://github.com/paradigmxyz/alphanet/workflows/unit/badge.svg
 [actions-url]: https://github.com/paradigmxyz/alphanet/actions?query=workflow%3ACI+branch%3Amain
-[eip3074-tools]: https://github.com/fgimenez/eip-3074-tools
+[foundry-alphanet]: https://github.com/paradigmxyz/foundry-alphanet
