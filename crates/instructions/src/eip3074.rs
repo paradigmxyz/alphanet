@@ -244,12 +244,6 @@ fn authcall_instruction<EXT, DB: Database>(
         interp.instruction_result = InstructionResult::CallNotAllowedInsideStatic;
         return;
     }
-    pop!(interp, value_ext);
-    if value_ext != U256::ZERO {
-        // value ext should always be zero
-        interp.instruction_result = InstructionResult::Stop;
-        return;
-    }
 
     let Some((input, return_memory_offset)) = get_memory_input_and_out_ranges(interp) else {
         return;
@@ -274,16 +268,11 @@ fn authcall_instruction<EXT, DB: Database>(
 
     gas!(interp, gas_limit);
 
-    // add call stipend if there is value to be transferred.
-    if value != U256::ZERO {
-        gas_limit = gas_limit.saturating_add(gas::CALL_STIPEND);
-    }
-
     // Call host to interact with target contract
     interp.next_action = InterpreterAction::Call {
         inputs: Box::new(CallInputs {
             contract: to,
-            transfer: Transfer { source: interp.contract.address, target: to, value },
+            transfer: Transfer { source: authorized, target: to, value },
             input,
             gas_limit,
             context: CallContext {
