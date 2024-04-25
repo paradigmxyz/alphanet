@@ -251,7 +251,7 @@ fn authcall_instruction<EXT, DB: Database>(
 
     // calc_call_gas requires a generic SPEC argument, spec_to_generic! provides
     // it by using the spec ID set in the evm.
-    let Some(mut gas_limit) = spec_to_generic!(
+    let Some(gas_limit) = spec_to_generic!(
         evm.spec_id(),
         calc_call_gas::<Evm<'_, EXT, DB>, SPEC>(
             interp,
