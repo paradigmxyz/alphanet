@@ -244,12 +244,6 @@ fn authcall_instruction<EXT, DB: Database>(
         interp.instruction_result = InstructionResult::CallNotAllowedInsideStatic;
         return;
     }
-    pop!(interp, value_ext);
-    if value_ext != U256::ZERO {
-        // value ext should always be zero
-        interp.instruction_result = InstructionResult::Stop;
-        return;
-    }
 
     let Some((input, return_memory_offset)) = get_memory_input_and_out_ranges(interp) else {
         return;
@@ -257,7 +251,7 @@ fn authcall_instruction<EXT, DB: Database>(
 
     // calc_call_gas requires a generic SPEC argument, spec_to_generic! provides
     // it by using the spec ID set in the evm.
-    let Some(mut gas_limit) = spec_to_generic!(
+    let Some(gas_limit) = spec_to_generic!(
         evm.spec_id(),
         calc_call_gas::<Evm<'_, EXT, DB>, SPEC>(
             interp,
@@ -274,16 +268,11 @@ fn authcall_instruction<EXT, DB: Database>(
 
     gas!(interp, gas_limit);
 
-    // add call stipend if there is value to be transferred.
-    if value != U256::ZERO {
-        gas_limit = gas_limit.saturating_add(gas::CALL_STIPEND);
-    }
-
     // Call host to interact with target contract
     interp.next_action = InterpreterAction::Call {
         inputs: Box::new(CallInputs {
             contract: to,
-            transfer: Transfer { source: interp.contract.address, target: to, value },
+            transfer: Transfer { source: authorized, target: to, value },
             input,
             gas_limit,
             context: CallContext {
@@ -366,7 +355,6 @@ mod tests {
         stack.push(U256::from(ret_offset)).unwrap();
         stack.push(U256::from(args_length)).unwrap();
         stack.push(U256::from(args_offset)).unwrap();
-        stack.push(U256::ZERO).unwrap();
         stack.push(U256::from(value)).unwrap();
         stack.push_b256(B256::left_padding_from(to.as_slice())).unwrap();
         stack.push(U256::from(gas)).unwrap();
@@ -633,12 +621,9 @@ mod tests {
         match interpreter.next_action {
             InterpreterAction::Call { inputs } => {
                 assert_eq!(inputs.contract, to);
-                assert_eq!(
-                    inputs.transfer,
-                    Transfer { source: interpreter.contract.address, target: to, value }
-                );
+                assert_eq!(inputs.transfer, Transfer { source: authorized, target: to, value });
                 assert_eq!(inputs.input, Bytes::from(&[0_u8; 64]));
-                assert_eq!(inputs.gas_limit, gas_limit + gas::CALL_STIPEND);
+                assert_eq!(inputs.gas_limit, gas_limit);
                 assert_eq!(
                     inputs.context,
                     CallContext {

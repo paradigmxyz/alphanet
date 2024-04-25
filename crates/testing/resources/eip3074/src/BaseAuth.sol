@@ -39,7 +39,7 @@ abstract contract BaseAuth {
         returns (bool success)
     {
         assembly {
-            success := authcall(gasLimit, to, value, 0, add(data, 0x20), mload(data), 0, 0)
+            success := authcall(gasLimit, to, value, add(data, 0x20), mload(data), 0, 0)
         }
     }
 
