@@ -355,7 +355,6 @@ mod tests {
         stack.push(U256::from(ret_offset)).unwrap();
         stack.push(U256::from(args_length)).unwrap();
         stack.push(U256::from(args_offset)).unwrap();
-        stack.push(U256::ZERO).unwrap();
         stack.push(U256::from(value)).unwrap();
         stack.push_b256(B256::left_padding_from(to.as_slice())).unwrap();
         stack.push(U256::from(gas)).unwrap();
@@ -622,12 +621,9 @@ mod tests {
         match interpreter.next_action {
             InterpreterAction::Call { inputs } => {
                 assert_eq!(inputs.contract, to);
-                assert_eq!(
-                    inputs.transfer,
-                    Transfer { source: interpreter.contract.address, target: to, value }
-                );
+                assert_eq!(inputs.transfer, Transfer { source: authorized, target: to, value });
                 assert_eq!(inputs.input, Bytes::from(&[0_u8; 64]));
-                assert_eq!(inputs.gas_limit, gas_limit + gas::CALL_STIPEND);
+                assert_eq!(inputs.gas_limit, gas_limit);
                 assert_eq!(
                     inputs.context,
                     CallContext {
