@@ -1,8 +1,8 @@
 use crate::{test_suite::TestSuite, wallet::Wallet};
 use alloy::{
-    dyn_abi::abi,
     providers::{Provider, ProviderBuilder},
     sol,
+    sol_types::SolValue,
 };
 use alloy_network::EthereumSigner;
 use alphanet_node::node::AlphaNetNode;
@@ -92,7 +92,7 @@ async fn test_eip3074_integration() {
     let data = reth_primitives::Bytes(binding.calldata().0.clone());
 
     // commit, digest and signature.
-    let commit = keccak256(abi::encode(&[sender_recorder_address, data]));
+    let commit = keccak256((sender_recorder_address, data.clone()).abi_encode_sequence());
     let GasSponsorInvoker::getDigestReturn { digest } =
         invoker.getDigest(commit, U256::from(signer_nonce)).call().await.unwrap();
     let (v, r, s) = signer_wallet.sign_hash(digest).await;
