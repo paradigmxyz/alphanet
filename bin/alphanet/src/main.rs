@@ -33,9 +33,7 @@ use reth::{
     providers::BlockReaderIdExt,
     rpc::{api::EngineApiClient, types::engine::ForkchoiceState},
 };
-use reth_node_optimism::{
-    args::RollupArgs, rpc::SequencerClient, OptimismEngineTypes, OptimismNode,
-};
+use reth_node_optimism::{args::RollupArgs, rpc::SequencerClient, OptimismEngineTypes};
 use std::sync::Arc;
 
 // We use jemalloc for performance reasons.
@@ -55,8 +53,7 @@ fn main() {
 
     if let Err(err) = Cli::<RollupArgs>::parse().run(|builder, rollup_args| async move {
         let NodeHandle { node, node_exit_future } = builder
-            .with_types(AlphaNetNode::default())
-            .with_components(OptimismNode::components(rollup_args.clone()))
+            .node(AlphaNetNode::new(rollup_args.clone()))
             .extend_rpc_modules(move |ctx| {
                 // register sequencer tx forwarder
                 if let Some(sequencer_http) = rollup_args.sequencer_http.clone() {
