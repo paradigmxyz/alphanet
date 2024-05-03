@@ -22,6 +22,8 @@
 //! struct AlphaNetEvmConfig;
 //!
 //! impl ConfigureEvm for AlphaNetEvmConfig {
+//!     type DefaultExternalContext<'a> = ();
+//!
 //!     fn evm<'a, DB: Database + 'a>(&self, db: DB) -> Evm<'a, (), DB> {
 //!         EvmBuilder::default()
 //!             .with_db(db)

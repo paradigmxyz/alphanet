@@ -16,6 +16,8 @@
 //! struct AlphaNetEvmConfig;
 //!
 //! impl ConfigureEvm for AlphaNetEvmConfig {
+//!     type DefaultExternalContext<'a> = ();
+//!
 //!     fn evm<'a, DB: Database + 'a>(&self, db: DB) -> Evm<'a, (), DB> {
 //!         // this instructions context will allow to set the `authorized` context variable.
 //!         let instructions_context = InstructionsContext::default();
