@@ -35,9 +35,9 @@ build-eip3074-bytecode:
 	docker run --rm \
 		-v $$(pwd)/crates/testing/resources/eip3074:/app/foundry \
 		-u $$(id -u):$$(id -g) \
-		ghcr.io/paradigmxyz/foundry-alphanet@sha256:64ac81c19b910e766ce750499a2c9de064dce4fa9c4fc1e42368fdd73fc48dde \
+		ghcr.io/paradigmxyz/foundry-alphanet@sha256:dec045ad42b69952cc02800bc8a749caaa899dbae5a73e31674d19cdb057dc14 \
 		--foundry-directory /app/foundry \
-		--foundry-command build
+		--foundry-command "forge build"
 
 .PHONY: check-eip3074-bytecode
 check-eip3074-bytecode: build-eip3074-bytecode
