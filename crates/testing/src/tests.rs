@@ -12,7 +12,6 @@ use reth::{
     tasks::TaskManager,
 };
 use reth_node_core::{args::RpcServerArgs, node_config::NodeConfig};
-use reth_node_optimism::{args::RollupArgs, OptimismNode};
 use reth_primitives::{keccak256, Address, BlockId, DEV, U256};
 use url::Url;
 
@@ -46,8 +45,7 @@ async fn test_eip3074_integration() {
         .with_rpc(RpcServerArgs::default().with_unused_ports().with_http());
     let NodeHandle { node, .. } = NodeBuilder::new(node_config)
         .testing_node(tasks.executor())
-        .with_types(AlphaNetNode::default())
-        .with_components(OptimismNode::components(RollupArgs::default()))
+        .node(AlphaNetNode::default())
         .launch()
         .await
         .unwrap();
@@ -57,8 +55,7 @@ async fn test_eip3074_integration() {
     let provider = ProviderBuilder::new()
         .with_recommended_fillers()
         .signer(deployer)
-        .on_http(Url::parse(&rpc_url).unwrap())
-        .unwrap();
+        .on_http(Url::parse(&rpc_url).unwrap());
     let base_fee = provider.get_gas_price().await.unwrap();
 
     // Deploy sender recorder contract.
