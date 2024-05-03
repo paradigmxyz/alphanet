@@ -2,6 +2,7 @@ use crate::{test_suite::TestSuite, wallet::Wallet};
 use alloy::{
     providers::{Provider, ProviderBuilder},
     sol,
+    sol_types::SolValue,
 };
 use alloy_network::EthereumSigner;
 use alphanet_node::node::AlphaNetNode;
@@ -86,25 +87,18 @@ async fn test_eip3074_integration() {
     let signer_nonce =
         provider.get_transaction_count(signer_address, BlockId::latest()).await.unwrap();
 
-    // commit, digest and signature.
-    let commit = keccak256("Some unique commit data".as_bytes());
-    let GasSponsorInvoker::getDigestReturn { digest } =
-        invoker.getDigest(commit, U256::from(signer_nonce)).call().await.unwrap();
-    let (v, r, s) = signer_wallet.sign_hash(digest).await;
-
     // abi encoded method call.
     let binding = sender_recorder.recordSender();
     let data = reth_primitives::Bytes(binding.calldata().0.clone());
 
-    let builder = invoker.sponsorCall(
-        signer_address,
-        commit,
-        v,
-        r.into(),
-        s.into(),
-        sender_recorder_address,
-        data,
-    );
+    // commit, digest and signature.
+    let commit = keccak256((sender_recorder_address, data.clone()).abi_encode_sequence());
+    let GasSponsorInvoker::getDigestReturn { digest } =
+        invoker.getDigest(commit, U256::from(signer_nonce)).call().await.unwrap();
+    let (v, r, s) = signer_wallet.sign_hash(digest).await;
+
+    let builder =
+        invoker.sponsorCall(signer_address, v, r.into(), s.into(), sender_recorder_address, data);
     let estimate = builder.estimate_gas().await.unwrap();
     let receipt = builder
         .gas(estimate)
