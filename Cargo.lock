@@ -658,7 +658,6 @@ dependencies = [
  "once_cell",
  "reth",
  "reth-node-core",
- "reth-node-optimism",
  "reth-primitives",
  "reth-tracing",
  "tokio",

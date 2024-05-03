@@ -54,8 +54,7 @@ async fn test_eip3074_integration() {
     let provider = ProviderBuilder::new()
         .with_recommended_fillers()
         .signer(deployer)
-        .on_http(Url::parse(&rpc_url).unwrap())
-        .unwrap();
+        .on_http(Url::parse(&rpc_url).unwrap());
     let base_fee = provider.get_gas_price().await.unwrap();
 
     // Deploy sender recorder contract.
