@@ -178,7 +178,7 @@ fn auth_instruction<EXT, DB: Database>(
             acc
         }
         Err(_) => {
-            interp.instruction_result = InstructionResult::Stop;
+            interp.instruction_result = InstructionResult::Revert;
             return;
         }
     };
@@ -193,7 +193,7 @@ fn auth_instruction<EXT, DB: Database>(
     let signer = match ecrecover(&B512::from_slice(&sig), y_parity, &msg) {
         Ok(signer) => signer,
         Err(_) => {
-            interp.instruction_result = InstructionResult::Stop;
+            interp.instruction_result = InstructionResult::Revert;
             return;
         }
     };
@@ -224,7 +224,7 @@ fn authcall_instruction<EXT, DB: Database>(
     let authorized = match ctx.get(AUTHORIZED_VAR_NAME) {
         Some(address) => Address::from_slice(&address),
         None => {
-            interp.instruction_result = InstructionResult::Stop;
+            interp.instruction_result = InstructionResult::Revert;
             return;
         }
     };
@@ -447,7 +447,7 @@ mod tests {
 
         auth_instruction(&mut interpreter, &mut evm, &InstructionsContext::default());
 
-        assert_eq!(interpreter.instruction_result, InstructionResult::Stop);
+        assert_eq!(interpreter.instruction_result, InstructionResult::Revert);
 
         // check gas
         let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS + 12; // fixed_fee + cold authority + memory expansion
@@ -527,7 +527,7 @@ mod tests {
 
         auth_instruction(&mut interpreter, &mut evm, &InstructionsContext::default());
 
-        assert_eq!(interpreter.instruction_result, InstructionResult::Stop);
+        assert_eq!(interpreter.instruction_result, InstructionResult::Revert);
 
         // check gas
         let expected_gas = FIXED_FEE_GAS + COLD_AUTHORITY_GAS;
@@ -571,7 +571,7 @@ mod tests {
         let mut evm = setup_evm();
 
         authcall_instruction(&mut interpreter, &mut evm, &InstructionsContext::default());
-        assert_eq!(interpreter.instruction_result, InstructionResult::Stop);
+        assert_eq!(interpreter.instruction_result, InstructionResult::Revert);
 
         // check gas
         let expected_gas = 0;
