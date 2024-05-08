@@ -30,10 +30,8 @@ sol!(
     SenderRecorder,
     "resources/eip3074/out/SenderRecorder.sol/SenderRecorder.json"
 );
-use serial_test::serial;
 
 #[tokio::test]
-#[serial]
 async fn test_eip3074_integration() {
     reth_tracing::init_test_tracing();
     let tasks = TaskManager::current();
@@ -123,7 +121,6 @@ async fn test_eip3074_integration() {
 }
 
 #[tokio::test]
-#[serial]
 async fn test_eip3074_send_eth() {
     reth_tracing::init_test_tracing();
     let tasks = TaskManager::current();

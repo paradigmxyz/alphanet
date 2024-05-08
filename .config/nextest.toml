@@ -1,0 +1,6 @@
+[test-groups]
+serial-integration = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = 'package(alphanet-testing)'
+test-group = 'serial-integration'
