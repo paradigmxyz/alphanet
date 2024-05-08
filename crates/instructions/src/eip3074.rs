@@ -5,7 +5,7 @@
 //! of each transaction, like this:
 //! ```
 //! use alphanet_instructions::{context::InstructionsContext, eip3074};
-//! use reth::primitives::{ChainSpec, Transaction, U256};
+//! use reth::primitives::{ChainSpec, Transaction, TransactionSigned, U256};
 //! use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
 //! use revm::{Database, Evm, EvmBuilder};
 //! use revm_primitives::{Address, Bytes, CfgEnvWithHandlerCfg, TxEnv};
@@ -48,11 +48,7 @@
 //! }
 //!
 //! impl ConfigureEvmEnv for AlphaNetEvmConfig {
-//!     type TxMeta = Bytes;
-//!     fn fill_tx_env<T>(_: &mut TxEnv, _: T, _: Address, _: <Self as ConfigureEvmEnv>::TxMeta)
-//!     where
-//!         T: AsRef<Transaction>,
-//!     {
+//!     fn fill_tx_env(tx_env: &mut TxEnv, transaction: &TransactionSigned, sender: Address) {
 //!         todo!()
 //!     }
 //!     fn fill_cfg_env(

@@ -12,7 +12,7 @@
 
 use alphanet_instructions::{context::InstructionsContext, eip3074, BoxedInstructionWithOpCode};
 use alphanet_precompile::{bls12_381, secp256r1};
-use reth::primitives::{Address, Bytes, ChainSpec, Header, Transaction, U256};
+use reth::primitives::{Address, ChainSpec, Header, TransactionSigned, U256};
 use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
 use reth_node_optimism::OptimismEvmConfig;
 use revm::{
@@ -159,13 +159,8 @@ impl ConfigureEvm for AlphaNetEvmConfig {
 }
 
 impl ConfigureEvmEnv for AlphaNetEvmConfig {
-    type TxMeta = Bytes;
-
-    fn fill_tx_env<T>(tx_env: &mut TxEnv, transaction: T, sender: Address, meta: Self::TxMeta)
-    where
-        T: AsRef<Transaction>,
-    {
-        OptimismEvmConfig::fill_tx_env(tx_env, transaction, sender, meta)
+    fn fill_tx_env(tx_env: &mut TxEnv, transaction: &TransactionSigned, sender: Address) {
+        OptimismEvmConfig::fill_tx_env(tx_env, transaction, sender)
     }
 
     fn fill_cfg_env(
