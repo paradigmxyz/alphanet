@@ -23,17 +23,10 @@
 //! - `min-debug-logs`: Disables all logs below `debug` level.
 //! - `min-trace-logs`: Disables all logs below `trace` level.
 
-#![warn(unused_crate_dependencies)]
-
 use alphanet_node::node::AlphaNetNode;
 use clap::Parser;
-use reth::{
-    builder::NodeHandle,
-    cli::Cli,
-    providers::BlockReaderIdExt,
-    rpc::{api::EngineApiClient, types::engine::ForkchoiceState},
-};
-use reth_node_optimism::{args::RollupArgs, rpc::SequencerClient, OptimismEngineTypes};
+use reth::cli::Cli;
+use reth_node_optimism::{args::RollupArgs, rpc::SequencerClient};
 use std::sync::Arc;
 
 // We use jemalloc for performance reasons.
@@ -52,7 +45,7 @@ fn main() {
     }
 
     if let Err(err) = Cli::<RollupArgs>::parse().run(|builder, rollup_args| async move {
-        let NodeHandle { node, node_exit_future } = builder
+        let node = builder
             .node(AlphaNetNode::new(rollup_args.clone()))
             .extend_rpc_modules(move |ctx| {
                 // register sequencer tx forwarder
@@ -67,31 +60,7 @@ fn main() {
             .launch()
             .await?;
 
-        // If `enable_genesis_walkback` is set to true, the rollup client will need to
-        // perform the derivation pipeline from genesis, validating the data dir.
-        // When set to false, set the finalized, safe, and unsafe head block hashes
-        // on the rollup client using a fork choice update. This prevents the rollup
-        // client from performing the derivation pipeline from genesis, and instead
-        // starts syncing from the current tip in the DB.
-        if node.chain_spec().is_optimism() && !rollup_args.enable_genesis_walkback {
-            let client = node.rpc_server_handles.auth.http_client();
-            if let Ok(Some(head)) = node.provider.latest_header() {
-                EngineApiClient::<OptimismEngineTypes>::fork_choice_updated_v2(
-                    &client,
-                    ForkchoiceState {
-                        head_block_hash: head.hash(),
-                        safe_block_hash: head.hash(),
-                        finalized_block_hash: head.hash(),
-                    },
-                    None,
-                )
-                .await?;
-            }
-        }
-
-        tracing::info!("AlphaNet node started");
-
-        node_exit_future.await
+        node.wait_for_node_exit().await
     }) {
         eprintln!("Error: {err:?}");
         std::process::exit(1);
