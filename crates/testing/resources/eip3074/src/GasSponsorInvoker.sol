@@ -21,7 +21,8 @@ contract GasSponsorInvoker is BaseAuth {
         bytes32 r,
         bytes32 s,
         address to,
-        bytes calldata data
+        bytes calldata data,
+        uint256 value
     ) external pure returns (bool success) {
         bytes32 commit = keccak256(abi.encode(to, data));
 
@@ -29,7 +30,7 @@ contract GasSponsorInvoker is BaseAuth {
         require(authSimple(authority, commit, v, r, s), "Authorization failed");
 
         // Execute the call as authorized by the signer
-        success = authCallSimple(to, data, 0, 0);
+        success = authCallSimple(to, data, value, 0);
         require(success, "Call execution failed");
     }
 }
