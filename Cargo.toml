@@ -45,32 +45,32 @@ alphanet-instructions = { path = "crates/instructions" }
 alphanet-node = { path = "crates/node" }
 alphanet-precompile = { path = "crates/precompile" }
 
-alloy = { git = "https://github.com/alloy-rs/alloy", rev = "77c1240", features = [
+alloy = { git = "https://github.com/alloy-rs/alloy", rev = "64feb9b", features = [
     "contract",
     "providers",
     "provider-http",
     "signers",
 ] }
-alloy-network = { git = "https://github.com/alloy-rs/alloy", rev = "77c1240" }
-alloy-signer-wallet = { git = "https://github.com/alloy-rs/alloy", rev = "77c1240" }
+alloy-network = { git = "https://github.com/alloy-rs/alloy", rev = "64feb9b" }
+alloy-signer-wallet = { git = "https://github.com/alloy-rs/alloy", rev = "64feb9b" }
 
 # tokio
 tokio = { version = "1.21", default-features = false }
 
 # reth
-reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "a7d8da5", features = ["optimism"] }
-reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "a7d8da5" }
-reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "a7d8da5" }
-reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "a7d8da5" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "a7d8da5" }
-reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "a7d8da5" }
+reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "89e55c4", features = ["optimism"] }
+reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "89e55c4" }
+reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "89e55c4" }
+reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "89e55c4" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "89e55c4" }
+reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "89e55c4" }
 
 # revm
-revm = { version = "8.0.0", features = ["std", "secp256k1"], default-features = false }
-revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "7168ac5" }
-revm-interpreter = { version = "4.0.0", features = ["std"], default-features = false }
-revm-precompile = { version = "6.0.0", features = ["std"], default-features = false }
-revm-primitives = { version = "3.1.0", features = ["std"], default-features = false }
+revm = { version = "9.0.0", features = ["std", "secp256k1", "blst"], default-features = false }
+revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "5a4fd5e" }
+revm-interpreter = { version = "5.0.0", features = ["std"], default-features = false }
+revm-precompile = { version = "7.0.0", features = ["std"], default-features = false }
+revm-primitives = { version = "4.0.0", features = ["std"], default-features = false }
 
 # misc
 clap = "4"

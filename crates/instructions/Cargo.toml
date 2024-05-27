@@ -10,8 +10,8 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
+reth.workspace = true
 revm.workspace = true
-revm-interpreter.workspace = true
 revm-precompile.workspace = true
 revm-primitives.workspace = true
 
@@ -27,7 +27,6 @@ secp256k1 = { version = "0.28.2", default-features = false, features = [
 [features]
 optimism = [
   "revm/optimism",
-  "revm-interpreter/optimism",
   "revm-precompile/optimism",
   "revm-primitives/optimism",
 ]

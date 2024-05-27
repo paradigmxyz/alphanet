@@ -12,18 +12,21 @@
 
 use alphanet_instructions::{context::InstructionsContext, eip3074, BoxedInstructionWithOpCode};
 use alphanet_precompile::{bls12_381, secp256r1};
-use reth::primitives::{Address, ChainSpec, Header, TransactionSigned, U256};
+use reth::{
+    primitives::{
+        revm_primitives::{CfgEnvWithHandlerCfg, TxEnv},
+        Address, ChainSpec, Header, TransactionSigned, U256,
+    },
+    revm::{
+        handler::register::EvmHandler,
+        inspector_handle_register,
+        precompile::{PrecompileSpecId, PrecompileWithAddress, Precompiles},
+        Database, Evm, EvmBuilder, GetInspector,
+    },
+};
 use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
 use reth_node_optimism::OptimismEvmConfig;
-use revm::{
-    handler::register::EvmHandler,
-    inspector_handle_register,
-    precompile::{PrecompileSpecId, Precompiles},
-    Database, Evm, EvmBuilder, GetInspector,
-};
 use revm_interpreter::{opcode::InstructionTables, Host};
-use revm_precompile::PrecompileWithAddress;
-use revm_primitives::{CfgEnvWithHandlerCfg, TxEnv};
 use std::sync::Arc;
 
 /// Custom EVM configuration
@@ -93,21 +96,19 @@ impl AlphaNetEvmConfig {
     ) where
         DB: Database,
     {
-        if let Some(ref mut table) = handler.instruction_table {
-            insert_boxed_instructions(
-                table,
-                eip3074::boxed_instructions(instructions_context.clone()),
-            );
+        insert_boxed_instructions(
+            &mut handler.instruction_table,
+            eip3074::boxed_instructions(instructions_context.clone()),
+        );
 
-            instructions_context.clear();
-        }
+        instructions_context.clear();
     }
 }
 
 impl ConfigureEvm for AlphaNetEvmConfig {
     type DefaultExternalContext<'a> = ();
 
-    fn evm<'a, DB: Database + 'a>(&self, db: DB) -> Evm<'a, (), DB> {
+    fn evm<'a, DB: Database + 'a>(&self, db: DB) -> Evm<'a, Self::DefaultExternalContext<'a>, DB> {
         let instructions_context = InstructionsContext::default();
         EvmBuilder::default()
             .with_db(db)
@@ -175,12 +176,11 @@ impl ConfigureEvmEnv for AlphaNetEvmConfig {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use reth::primitives::{
         revm_primitives::{BlockEnv, CfgEnv, SpecId},
         Chain, ChainSpecBuilder, ForkCondition, Genesis, Hardfork,
     };
-
-    use super::*;
 
     #[test]
     fn test_fill_cfg_and_block_env() {
