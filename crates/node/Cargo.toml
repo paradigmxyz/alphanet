@@ -15,7 +15,6 @@ alphanet-instructions.workspace = true
 reth.workspace = true
 reth-node-api.workspace = true
 reth-node-optimism.workspace = true
-revm-interpreter.workspace = true
 
 eyre.workspace = true
 
@@ -25,7 +24,6 @@ default = [
   "alphanet-instructions/optimism",
   "reth/optimism",
   "reth-node-optimism/optimism",
-  "revm-interpreter/optimism",
 ]
 
 [lints]

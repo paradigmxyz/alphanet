@@ -5,10 +5,14 @@
 //! of each transaction, like this:
 //! ```
 //! use alphanet_instructions::{context::InstructionsContext, eip3074};
-//! use reth::primitives::{ChainSpec, Transaction, TransactionSigned, U256};
+//! use reth::{
+//!     primitives::{ChainSpec, Transaction, TransactionSigned, U256},
+//!     revm::{
+//!         primitives::{Address, Bytes, CfgEnvWithHandlerCfg, TxEnv},
+//!         Database, Evm, EvmBuilder,
+//!     },
+//! };
 //! use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
-//! use revm::{Database, Evm, EvmBuilder};
-//! use revm_primitives::{Address, Bytes, CfgEnvWithHandlerCfg, TxEnv};
 //! use std::sync::Arc;
 //!
 //! #[derive(Debug, Clone, Copy, Default)]
@@ -61,20 +65,22 @@
 //! ```
 
 use crate::{context::InstructionsContext, BoxedInstructionWithOpCode};
-use reth::revm::interpreter::{
-    gas,
-    gas::{warm_cold_cost, NEWACCOUNT},
-    instructions::contract::get_memory_input_and_out_ranges,
-    pop, pop_address, pop_address_ret, push, resize_memory, CallInputs, CallScheme, CallValue,
-    Host, InstructionResult, Interpreter, InterpreterAction, LoadAccountResult,
-};
-use revm::{Context, Database};
-use revm_precompile::secp256k1::ecrecover;
-use revm_primitives::{
-    alloy_primitives::B512,
-    keccak256, spec_to_generic, Address, Spec,
-    SpecId::{self, TANGERINE},
-    B256, KECCAK_EMPTY, U256,
+use reth::revm::{
+    interpreter::{
+        gas,
+        gas::{warm_cold_cost, NEWACCOUNT},
+        instructions::contract::get_memory_input_and_out_ranges,
+        pop, pop_address, pop_address_ret, push, resize_memory, CallInputs, CallScheme, CallValue,
+        Host, InstructionResult, Interpreter, InterpreterAction, LoadAccountResult,
+    },
+    precompile::secp256k1::ecrecover,
+    primitives::{
+        alloy_primitives::B512,
+        keccak256, spec_to_generic, Address, Spec,
+        SpecId::{self, TANGERINE},
+        B256, KECCAK_EMPTY, U256,
+    },
+    Context, Database,
 };
 use std::cmp::min;
 
@@ -107,19 +113,15 @@ pub fn boxed_instructions<'a, EXT: 'a, DB: Database + 'a>(
     let to_capture_for_auth = context.clone();
     let to_capture_for_authcall = context.clone();
 
-    let boxed_auth_instruction = Box::new(
-        move |interpreter: &mut reth::revm::interpreter::Interpreter,
-              evm: &mut Context<EXT, DB>| {
+    let boxed_auth_instruction =
+        Box::new(move |interpreter: &mut Interpreter, evm: &mut Context<EXT, DB>| {
             auth_instruction(interpreter, evm, &to_capture_for_auth);
-        },
-    );
+        });
 
-    let boxed_authcall_instruction = Box::new(
-        move |interpreter: &mut reth::revm::interpreter::Interpreter,
-              evm: &mut Context<EXT, DB>| {
+    let boxed_authcall_instruction =
+        Box::new(move |interpreter: &mut Interpreter, evm: &mut Context<EXT, DB>| {
             authcall_instruction(interpreter, evm, &to_capture_for_authcall);
-        },
-    );
+        });
 
     [
         BoxedInstructionWithOpCode {
@@ -220,7 +222,7 @@ const fn authcall_cost(
 ///
 /// <https://eips.ethereum.org/EIPS/eip-3074#auth-0xf6>
 fn auth_instruction<EXT, DB: Database>(
-    interp: &mut reth::revm::interpreter::Interpreter,
+    interp: &mut Interpreter,
     evm: &mut Context<EXT, DB>,
     ctx: &InstructionsContext,
 ) {
@@ -300,7 +302,7 @@ fn auth_instruction<EXT, DB: Database>(
 /// <https://eips.ethereum.org/EIPS/eip-3074#authcall-0xf7>
 #[allow(clippy::needless_pass_by_ref_mut)]
 fn authcall_instruction<EXT, DB: Database>(
-    interp: &mut reth::revm::interpreter::Interpreter,
+    interp: &mut Interpreter,
     evm: &mut Context<EXT, DB>,
     ctx: &InstructionsContext,
 ) {
@@ -376,12 +378,12 @@ fn authcall_instruction<EXT, DB: Database>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reth::revm::interpreter::{Contract, SharedMemory, Stack};
-    use revm::{
+    use reth::revm::{
         db::{CacheDB, EmptyDBTyped},
+        interpreter::{Contract, SharedMemory, Stack},
+        primitives::{address, Account, Bytecode, Bytes},
         Evm, InMemoryDB,
     };
-    use revm_primitives::{address, Account, Bytecode, Bytes};
     use secp256k1::{rand, Context, Message, PublicKey, Secp256k1, SecretKey, Signing};
     use std::convert::Infallible;
 
@@ -414,7 +416,7 @@ mod tests {
             .build()
     }
 
-    fn setup_context() -> revm::Context<(), CacheDB<EmptyDBTyped<Infallible>>> {
+    fn setup_context() -> reth::revm::Context<(), CacheDB<EmptyDBTyped<Infallible>>> {
         setup_evm().context
     }
 

@@ -20,13 +20,13 @@ use reth::{
     revm::{
         handler::register::EvmHandler,
         inspector_handle_register,
+        interpreter::{opcode::InstructionTables, Host},
         precompile::{PrecompileSpecId, PrecompileWithAddress, Precompiles},
         Database, Evm, EvmBuilder, GetInspector,
     },
 };
 use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
 use reth_node_optimism::OptimismEvmConfig;
-use revm_interpreter::{opcode::InstructionTables, Host};
 use std::sync::Arc;
 
 /// Custom EVM configuration

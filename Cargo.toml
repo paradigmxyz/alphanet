@@ -67,14 +67,9 @@ reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "89e55c4
 
 # revm
 revm = { version = "9.0.0", features = ["std", "secp256k1", "blst"], default-features = false }
-revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "5a4fd5e" }
-revm-interpreter = { version = "5.0.0", features = ["std"], default-features = false }
-revm-precompile = { version = "7.0.0", features = ["std"], default-features = false }
-revm-primitives = { version = "4.0.0", features = ["std"], default-features = false }
 
 # misc
 clap = "4"
-criterion = "0.5.1"
 eyre = "0.6.12"
 serde = "1.0.197"
 serde_derive = "1.0.197"

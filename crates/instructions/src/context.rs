@@ -41,9 +41,11 @@ impl InstructionsContext {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reth::revm::interpreter::Interpreter;
-    use revm::{Context, Evm, InMemoryDB};
-    use revm_primitives::{address, AccountInfo, Bytecode, TransactTo, U256};
+    use reth::revm::{
+        interpreter::Interpreter,
+        primitives::{address, AccountInfo, Bytecode, TransactTo, U256},
+        Context, Evm, InMemoryDB,
+    };
     use std::sync::Arc;
 
     #[test]
