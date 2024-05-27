@@ -643,9 +643,6 @@ dependencies = [
  "reth-node-api",
  "revm",
  "rstest",
- "serde",
- "serde_derive",
- "serde_json",
 ]
 
 [[package]]

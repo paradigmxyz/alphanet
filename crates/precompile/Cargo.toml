@@ -19,9 +19,6 @@ p256 = { version = "0.13.2", features = ["ecdsa"] }
 reth-node-api.workspace = true
 eyre.workspace = true
 rstest.workspace = true
-serde.workspace = true
-serde_derive.workspace = true
-serde_json.workspace = true
 
 [features]
 optimism = [
