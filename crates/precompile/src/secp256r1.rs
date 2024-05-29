@@ -10,11 +10,15 @@
 //! The precompile can be inserted in a custom EVM like this:
 //! ```
 //! use alphanet_precompile::secp256r1;
-//! use reth::primitives::{ChainSpec, TransactionSigned, U256};
+//! use reth::{
+//!     primitives::{ChainSpec, TransactionSigned, U256},
+//!     revm::{
+//!         precompile::{PrecompileSpecId, Precompiles},
+//!         primitives::{Address, Bytes, CfgEnvWithHandlerCfg, TxEnv},
+//!     },
+//! };
 //! use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
 //! use revm::{Database, Evm, EvmBuilder};
-//! use revm_precompile::{PrecompileSpecId, Precompiles};
-//! use revm_primitives::{Address, Bytes, CfgEnvWithHandlerCfg, TxEnv};
 //! use std::sync::Arc;
 //!
 //! #[derive(Debug, Clone, Copy, Default)]
@@ -60,8 +64,10 @@
 //! ```
 use crate::addresses::P256VERIFY_ADDRESS;
 use p256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
-use revm_precompile::{u64_to_address, Precompile, PrecompileWithAddress};
-use revm_primitives::{Bytes, PrecompileError, PrecompileResult, B256};
+use reth::revm::{
+    precompile::{u64_to_address, Precompile, PrecompileWithAddress},
+    primitives::{Bytes, PrecompileError, PrecompileResult, B256},
+};
 
 /// Base gas fee for secp256r1 p256verify operation.
 const P256VERIFY_BASE: u64 = 3_450;
@@ -123,7 +129,7 @@ fn verify_impl(input: &[u8]) -> Option<()> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use revm_primitives::hex::FromHex;
+    use reth::revm::primitives::hex::FromHex;
     use rstest::rstest;
 
     #[rstest]

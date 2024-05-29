@@ -12,7 +12,7 @@ use reth::{
     tasks::TaskManager,
 };
 use reth_node_core::{args::RpcServerArgs, node_config::NodeConfig};
-use reth_primitives::{keccak256, Address, BlockId, DEV, U256};
+use reth_primitives::{keccak256, Address, DEV, U256};
 use url::Url;
 
 sol!(
@@ -79,10 +79,9 @@ async fn test_eip3074_integration() {
     let signer_wallet = Wallet::random();
     let signer_account: EthereumSigner = signer_wallet.clone().into();
     let signer_address = signer_account.default_signer().address();
-    let signer_balance = provider.get_balance(signer_address, BlockId::latest()).await.unwrap();
+    let signer_balance = provider.get_balance(signer_address).await.unwrap();
     assert_eq!(signer_balance, U256::ZERO);
-    let signer_nonce =
-        provider.get_transaction_count(signer_address, BlockId::latest()).await.unwrap();
+    let signer_nonce = provider.get_transaction_count(signer_address).await.unwrap();
 
     // abi encoded method call.
     let binding = sender_recorder.recordSender();
@@ -158,11 +157,9 @@ async fn test_eip3074_send_eth() {
     let signer_wallet = Wallet::new(1);
     let signer_account: EthereumSigner = signer_wallet.clone().into();
     let signer_address = signer_account.default_signer().address();
-    let start_signer_balance =
-        provider.get_balance(signer_address, BlockId::latest()).await.unwrap();
+    let start_signer_balance = provider.get_balance(signer_address).await.unwrap();
     assert!(start_signer_balance.ne(&U256::ZERO));
-    let signer_nonce =
-        provider.get_transaction_count(signer_address, BlockId::latest()).await.unwrap();
+    let signer_nonce = provider.get_transaction_count(signer_address).await.unwrap();
 
     let data = reth_primitives::Bytes::new();
 
@@ -170,7 +167,7 @@ async fn test_eip3074_send_eth() {
     let receiver_wallet = Wallet::random();
     let receiver_account: EthereumSigner = receiver_wallet.clone().into();
     let receiver_address = receiver_account.default_signer().address();
-    let receiver_balance = provider.get_balance(receiver_address, BlockId::latest()).await.unwrap();
+    let receiver_balance = provider.get_balance(receiver_address).await.unwrap();
     assert_eq!(receiver_balance, U256::ZERO);
 
     // commit, digest and signature.
@@ -195,8 +192,8 @@ async fn test_eip3074_send_eth() {
         .await;
     assert!(receipt.is_ok());
 
-    let receiver_balance = provider.get_balance(receiver_address, BlockId::latest()).await.unwrap();
+    let receiver_balance = provider.get_balance(receiver_address).await.unwrap();
     assert_eq!(receiver_balance, amount);
-    let end_signer_balance = provider.get_balance(signer_address, BlockId::latest()).await.unwrap();
+    let end_signer_balance = provider.get_balance(signer_address).await.unwrap();
     assert!(end_signer_balance.eq(&start_signer_balance.saturating_sub(amount)));
 }
