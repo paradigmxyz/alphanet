@@ -70,8 +70,8 @@ use reth::revm::{
         gas,
         gas::{warm_cold_cost, NEWACCOUNT},
         instructions::contract::get_memory_input_and_out_ranges,
-        pop, pop_address, pop_address_ret, push, resize_memory, CallInputs, CallScheme, CallValue,
-        Host, InstructionResult, Interpreter, InterpreterAction, LoadAccountResult,
+        pop, pop_address, push, resize_memory, CallInputs, CallScheme, CallValue, Host,
+        InstructionResult, Interpreter, InterpreterAction, LoadAccountResult,
     },
     precompile::secp256k1::ecrecover,
     primitives::{
