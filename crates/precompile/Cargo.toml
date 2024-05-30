@@ -11,7 +11,6 @@ categories.workspace = true
 
 [dependencies]
 reth.workspace = true
-revm.workspace = true
 
 p256 = { version = "0.13.2", features = ["ecdsa"] }
 
@@ -23,7 +22,6 @@ rstest.workspace = true
 [features]
 optimism = [
   "reth/optimism",
-  "revm/optimism"
 ]
 
 [lints]

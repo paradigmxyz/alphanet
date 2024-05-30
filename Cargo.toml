@@ -65,9 +65,6 @@ reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "7
 reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "76b32c8" }
 reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "76b32c8" }
 
-# revm
-revm = { version = "9", features = ["std", "secp256k1", "blst"], default-features = false }
-
 # misc
 clap = "4"
 eyre = "0.6.12"
