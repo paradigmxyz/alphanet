@@ -11,7 +11,7 @@ env:
 
 jobs:
   clippy-binaries:
-    name: clippy / ${{ matrix.network }}
+    name: clippy
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -52,7 +52,7 @@ jobs:
       - run: cargo hack check
 
   msrv:
-    name: MSRV / ${{ matrix.network }}
+    name: MSRV
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
