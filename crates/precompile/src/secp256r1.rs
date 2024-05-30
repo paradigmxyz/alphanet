@@ -15,10 +15,10 @@
 //!     revm::{
 //!         precompile::{PrecompileSpecId, Precompiles},
 //!         primitives::{Address, Bytes, CfgEnvWithHandlerCfg, TxEnv},
+//!         Database, Evm, EvmBuilder,
 //!     },
 //! };
 //! use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
-//! use revm::{Database, Evm, EvmBuilder};
 //! use std::sync::Arc;
 //!
 //! #[derive(Debug, Clone, Copy, Default)]
