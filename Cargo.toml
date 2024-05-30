@@ -68,7 +68,7 @@ reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "76b32c8
 clap = "4"
 eyre = "0.6.12"
 tracing = "0.1.0"
-eip3074-instructions = { git = "https://github.com/paradigmxyz/eip3074-instructions.git" }
+eip3074-instructions = { git = "https://github.com/paradigmxyz/eip3074-instructions.git", rev = "a9022e4" }
 
 # misc-testing
 rstest = "0.18.2"
