@@ -7,11 +7,13 @@
 //! integrated in a reth node only with importing, without the need to fork the node or EVM
 //! implementation.
 //!
-//! This currently configures the instructions defined by [`alphanet_instructions`], and the
+//! This currently configures the instructions defined in [EIP3074-instructions](https://github.com/paradigmxyz/eip3074-instructions), and the
 //! precompiles defined by [`alphanet_precompile`].
 
-use alphanet_instructions::{context::InstructionsContext, eip3074, BoxedInstructionWithOpCode};
 use alphanet_precompile::{bls12_381, secp256r1};
+use eip3074_instructions::{
+    context::InstructionsContext, instructions as eip3074, BoxedInstructionWithOpCode,
+};
 use reth::{
     primitives::{
         revm_primitives::{CfgEnvWithHandlerCfg, TxEnv},
