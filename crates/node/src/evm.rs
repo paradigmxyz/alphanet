@@ -10,8 +10,10 @@
 //! This currently configures the instructions defined by [`alphanet_instructions`], and the
 //! precompiles defined by [`alphanet_precompile`].
 
-use alphanet_instructions::{context::InstructionsContext, eip3074, BoxedInstructionWithOpCode};
 use alphanet_precompile::{bls12_381, secp256r1};
+use eip3074_instructions::{
+    context::InstructionsContext, instructions as eip3074, BoxedInstructionWithOpCode,
+};
 use reth::{
     primitives::{
         revm_primitives::{CfgEnvWithHandlerCfg, TxEnv},

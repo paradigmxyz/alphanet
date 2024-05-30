@@ -1,5 +1,5 @@
 [workspace]
-members = ["bin/alphanet/", "crates/instructions", "crates/node", "crates/precompile", "crates/testing"]
+members = ["bin/alphanet/", "crates/node", "crates/precompile", "crates/testing"]
 default-members = ["bin/alphanet/"]
 resolver = "2"
 
@@ -41,7 +41,6 @@ incremental = false
 
 [workspace.dependencies]
 # alphanet
-alphanet-instructions = { path = "crates/instructions" }
 alphanet-node = { path = "crates/node" }
 alphanet-precompile = { path = "crates/precompile" }
 
@@ -69,6 +68,7 @@ reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "76b32c8
 clap = "4"
 eyre = "0.6.12"
 tracing = "0.1.0"
+eip3074-instructions = { git = "https://github.com/paradigmxyz/eip3074-instructions.git" }
 
 # misc-testing
 rstest = "0.18.2"

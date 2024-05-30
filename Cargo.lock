@@ -694,20 +694,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "alphanet-instructions"
-version = "0.0.0"
-dependencies = [
- "reth",
- "reth-node-api",
- "secp256k1 0.28.2",
-]
-
-[[package]]
 name = "alphanet-node"
 version = "0.0.0"
 dependencies = [
- "alphanet-instructions",
  "alphanet-precompile",
+ "eip3074-instructions",
  "eyre",
  "reth",
  "reth-node-api",
@@ -2501,6 +2492,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "eip3074-instructions"
+version = "0.1.0"
+source = "git+https://github.com/paradigmxyz/eip3074-instructions.git#a9022e4b9d440c1f8ba4d73af1eff0e91b7dd8ab"
+dependencies = [
+ "reth",
 ]
 
 [[package]]

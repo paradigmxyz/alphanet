@@ -11,17 +11,17 @@ categories.workspace = true
 
 [dependencies]
 alphanet-precompile.workspace = true
-alphanet-instructions.workspace = true
 reth.workspace = true
 reth-node-api.workspace = true
 reth-node-optimism.workspace = true
+
+eip3074-instructions.workspace = true
 
 eyre.workspace = true
 
 [features]
 default = [
   "alphanet-precompile/optimism",
-  "alphanet-instructions/optimism",
   "reth/optimism",
   "reth-node-optimism/optimism",
 ]
