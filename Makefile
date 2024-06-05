@@ -16,6 +16,8 @@ DOCKER_IMAGE_NAME ?= ghcr.io/paradigmxyz/alphanet
 
 BUILD_PATH = "target"
 
+SOLIDITY_BUILD_IMAGE = "ghcr.io/paradigmxyz/foundry-alphanet@sha256:dec045ad42b69952cc02800bc8a749caaa899dbae5a73e31674d19cdb057dc14"
+
 # List of features to use when building. Can be overridden via the environment.
 # No jemalloc on Windows
 ifeq ($(OS),Windows_NT)
@@ -35,7 +37,7 @@ build-eip3074-bytecode:
 	docker run --rm \
 		-v $$(pwd)/crates/testing/resources/eip3074:/app/foundry \
 		-u $$(id -u):$$(id -g) \
-		ghcr.io/paradigmxyz/foundry-alphanet@sha256:dec045ad42b69952cc02800bc8a749caaa899dbae5a73e31674d19cdb057dc14 \
+		$(SOLIDITY_BUILD_IMAGE) \
 		--foundry-directory /app/foundry \
 		--foundry-command "forge build"
 
@@ -45,6 +47,25 @@ check-eip3074-bytecode: build-eip3074-bytecode
 		echo "Error: There are uncommitted changes after the build. Please run 'make build-eip3074-bytecode' and commit the changes"; \
 		exit 1; \
 	fi
+
+.PHONY: build-bls12-381-bytecode
+build-bls12-381-bytecode:
+	docker run --rm \
+		-v $$(pwd)/crates/testing/resources/bls12-381:/app/foundry \
+		-u $$(id -u):$$(id -g) \
+		$(SOLIDITY_BUILD_IMAGE) \
+		--foundry-directory /app/foundry \
+		--foundry-command "forge build"
+
+.PHONY: check-bls12-381-bytecode
+check-bls12-381-bytecode: build-bls12-381-bytecode
+	@if ! git diff --exit-code --quiet; then \
+		echo "Error: There are uncommitted changes after the build. Please run 'make build-bls12-381-bytecode' and commit the changes"; \
+		exit 1; \
+	fi
+
+.PHONY: check-bytecode
+check-bytecode: check-eip3074-bytecode check-bls12-381-bytecode
 
 # The following commands use `cross` to build a cross-compile.
 #
