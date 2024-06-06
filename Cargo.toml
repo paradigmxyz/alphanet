@@ -44,25 +44,25 @@ incremental = false
 alphanet-node = { path = "crates/node" }
 alphanet-precompile = { path = "crates/precompile" }
 
-alloy = { git = "https://github.com/alloy-rs/alloy", rev = "64feb9b", features = [
+alloy = { git = "https://github.com/alloy-rs/alloy", rev = "5796024", features = [
     "contract",
     "providers",
     "provider-http",
     "signers",
 ] }
-alloy-network = { git = "https://github.com/alloy-rs/alloy", rev = "64feb9b" }
-alloy-signer-wallet = { git = "https://github.com/alloy-rs/alloy", rev = "64feb9b" }
+alloy-network = { git = "https://github.com/alloy-rs/alloy", rev = "5796024" }
+alloy-signer-wallet = { git = "https://github.com/alloy-rs/alloy", rev = "5796024" }
 
 # tokio
 tokio = { version = "1.21", default-features = false }
 
 # reth
-reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "76b32c8", features = ["optimism"] }
-reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "76b32c8" }
-reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "76b32c8" }
-reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "76b32c8" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "76b32c8" }
-reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "76b32c8" }
+reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "40d8ac0", features = ["optimism"] }
+reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "40d8ac0" }
+reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "40d8ac0" }
+reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "40d8ac0" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "40d8ac0" }
+reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "40d8ac0" }
 
 # misc
 clap = "4"
