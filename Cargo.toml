@@ -44,37 +44,37 @@ incremental = false
 alphanet-node = { path = "crates/node" }
 alphanet-precompile = { path = "crates/precompile" }
 
-alloy = { git = "https://github.com/alloy-rs/alloy", rev = "5796024", features = [
+alloy = { version = "0.1", features = [
     "contract",
     "providers",
     "provider-http",
     "signers",
 ] }
-alloy-network = { git = "https://github.com/alloy-rs/alloy", rev = "5796024" }
-alloy-signer-wallet = { git = "https://github.com/alloy-rs/alloy", rev = "5796024" }
+alloy-network = "0.1"
+alloy-signer-wallet = "0.1"
 
 # tokio
 tokio = { version = "1.21", default-features = false }
 
 # reth
-reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "40d8ac0", features = ["optimism"] }
-reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "40d8ac0" }
-reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "40d8ac0" }
-reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "40d8ac0" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "40d8ac0" }
-reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "40d8ac0" }
+reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "f137ca8", features = ["optimism"] }
+reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "f137ca8" }
+reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "f137ca8" }
+reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "f137ca8" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "f137ca8" }
+reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "f137ca8" }
 
 # misc
 clap = "4"
 eyre = "0.6.12"
 tracing = "0.1.0"
-eip3074-instructions = { git = "https://github.com/paradigmxyz/eip3074-instructions.git", rev = "a9022e4" }
+eip3074-instructions = { git = "https://github.com/paradigmxyz/eip3074-instructions.git" }
 
 # misc-testing
 rstest = "0.18.2"
 
 [patch.crates-io]
-revm = { git = "https://github.com/bluealloy/revm", rev = "a28a543" }
-revm-interpreter = { git = "https://github.com/bluealloy/revm", rev = "a28a543" }
-revm-precompile = { git = "https://github.com/bluealloy/revm", rev = "a28a543" }
-revm-primitives = { git = "https://github.com/bluealloy/revm", rev = "a28a543" }
+#revm = { git = "https://github.com/bluealloy/revm", rev = "a28a543" }
+#revm-interpreter = { git = "https://github.com/bluealloy/revm", rev = "a28a543" }
+#revm-precompile = { git = "https://github.com/bluealloy/revm", rev = "a28a543" }
+#revm-primitives = { git = "https://github.com/bluealloy/revm", rev = "a28a543" }
