@@ -166,7 +166,7 @@ mod tests {
     use super::*;
     use reth::primitives::{
         revm_primitives::{BlockEnv, CfgEnv, SpecId},
-        ForkCondition, Genesis, Hardfork,
+        ForkCondition, Genesis,
     };
     use reth_chainspec::{Chain, ChainSpecBuilder, EthereumHardfork};
 
