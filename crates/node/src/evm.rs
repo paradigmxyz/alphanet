@@ -74,7 +74,6 @@ impl AlphaNetEvmConfig {
             eip3074::boxed_instructions(instructions_context.clone());
 
         for b in boxed_instruction_with_op_code {
-            // revm::Boxed
             handler.instruction_table.insert_boxed(b.opcode, b.boxed_instruction);
         }
 

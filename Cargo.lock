@@ -2467,7 +2467,7 @@ dependencies = [
 [[package]]
 name = "eip3074-instructions"
 version = "0.1.0"
-source = "git+https://github.com/emostov/eip3074-instructions.git?rev=0f8c5f3#0f8c5f30bf1626153e4994d1b38d62dfa17a1acc"
+source = "git+https://github.com/emostov/eip3074-instructions.git?branch=bump-revm#bb8035a7dfdf2891f279e185d039eea6212cd5f9"
 dependencies = [
  "revm",
 ]

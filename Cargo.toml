@@ -71,7 +71,7 @@ reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "539b4e4
 clap = "4"
 eyre = "0.6.12"
 tracing = "0.1.0"
-eip3074-instructions = { git = "https://github.com/emostov/eip3074-instructions.git", rev = "0f8c5f3" }
+eip3074-instructions = { git = "https://github.com/emostov/eip3074-instructions.git", branch = "bump-revm" }
 
 # misc-testing
 rstest = "0.18.2"
