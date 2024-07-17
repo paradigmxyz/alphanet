@@ -1,5 +1,5 @@
 use crate::wallet::Wallet;
-use alloy_network::EthereumSigner;
+use alloy_network::EthereumWallet;
 
 /// Helper struct to customize the chain spec during e2e tests
 pub(crate) struct TestSuite {
@@ -20,7 +20,7 @@ impl TestSuite {
         Self { wallet }
     }
 
-    pub(crate) fn signer(&self) -> EthereumSigner {
+    pub(crate) fn signer(&self) -> EthereumWallet {
         self.wallet.clone().into()
     }
 }

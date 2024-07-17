@@ -15,6 +15,7 @@ workspace = true
 alphanet-node.workspace = true
 tracing.workspace = true
 reth.workspace = true
+reth-cli-util.workspace = true
 reth-node-optimism.workspace = true
 clap = { workspace = true, features = ["derive"] }
 
