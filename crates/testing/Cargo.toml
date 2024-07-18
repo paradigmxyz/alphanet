@@ -14,10 +14,12 @@ alphanet-node.workspace = true
 
 alloy.workspace = true
 alloy-network.workspace = true
-alloy-signer-wallet = { workspace = true, features = ["mnemonic"] }
+alloy-signer-local = { workspace = true, features = ["mnemonic"] }
 
-reth.workspace = true
-reth-node-core.workspace = true
+reth = { workspace = true }
+reth-chainspec.workspace = true
+reth-node-core = { workspace = true }
+reth-node-builder = { workspace = true, features = ["test-utils"] }
 reth-primitives.workspace = true
 reth-tracing.workspace = true
 

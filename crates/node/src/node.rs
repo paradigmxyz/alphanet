@@ -11,7 +11,10 @@ use reth::builder::{
 use reth_node_api::FullNodeTypes;
 use reth_node_optimism::{
     args::RollupArgs,
-    node::{OptimismNetworkBuilder, OptimismPayloadBuilder, OptimismPoolBuilder},
+    node::{
+        OptimismAddOns, OptimismConsensusBuilder, OptimismNetworkBuilder, OptimismPayloadBuilder,
+        OptimismPoolBuilder,
+    },
     OpExecutorProvider, OptimismEngineTypes,
 };
 
@@ -37,6 +40,7 @@ impl AlphaNetNode {
         OptimismPayloadBuilder<AlphaNetEvmConfig>,
         OptimismNetworkBuilder,
         AlphaNetExecutorBuilder,
+        OptimismConsensusBuilder,
     >
     where
         Node: FullNodeTypes<Engine = OptimismEngineTypes>,
@@ -51,6 +55,7 @@ impl AlphaNetNode {
             ))
             .network(OptimismNetworkBuilder { disable_txpool_gossip })
             .executor(AlphaNetExecutorBuilder::default())
+            .consensus(OptimismConsensusBuilder::default())
     }
 }
 
@@ -70,11 +75,14 @@ where
         OptimismPayloadBuilder<AlphaNetEvmConfig>,
         OptimismNetworkBuilder,
         AlphaNetExecutorBuilder,
+        OptimismConsensusBuilder,
     >;
 
-    fn components_builder(self) -> Self::ComponentsBuilder {
+    type AddOns = OptimismAddOns;
+
+    fn components_builder(&self) -> Self::ComponentsBuilder {
         let Self { args } = self;
-        Self::components(args)
+        Self::components(args.clone())
     }
 }
 

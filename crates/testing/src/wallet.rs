@@ -1,6 +1,6 @@
 use alloy::signers::Signer;
-use alloy_network::EthereumSigner;
-use alloy_signer_wallet::{coins_bip39::English, LocalWallet, MnemonicBuilder};
+use alloy_network::EthereumWallet;
+use alloy_signer_local::{coins_bip39::English, MnemonicBuilder, PrivateKeySigner};
 use reth_primitives::{B256, U256};
 
 /// Mnemonic used to derive the test accounts
@@ -9,7 +9,7 @@ const TEST_MNEMONIC: &str = "test test test test test test test test test test t
 /// One of the accounts of the genesis allocations.
 #[derive(Clone)]
 pub(crate) struct Wallet {
-    inner: LocalWallet,
+    inner: PrivateKeySigner,
 }
 
 impl Default for Wallet {
@@ -40,7 +40,7 @@ impl Wallet {
         (signature.v().y_parity_byte() + 27, signature.r(), signature.s())
     }
 }
-impl From<Wallet> for EthereumSigner {
+impl From<Wallet> for EthereumWallet {
     fn from(val: Wallet) -> Self {
         val.inner.clone().into()
     }

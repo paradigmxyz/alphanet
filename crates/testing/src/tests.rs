@@ -5,15 +5,14 @@ use alloy::{
     sol,
     sol_types::SolValue,
 };
-use alloy_network::EthereumSigner;
+use alloy_network::EthereumWallet;
 use alphanet_node::node::AlphaNetNode;
 use once_cell::sync::Lazy;
-use reth::{
-    builder::{NodeBuilder, NodeHandle},
-    tasks::TaskManager,
-};
+use reth::{builder::NodeHandle, tasks::TaskManager};
+use reth_chainspec::DEV;
+use reth_node_builder::NodeBuilder;
 use reth_node_core::{args::RpcServerArgs, node_config::NodeConfig};
-use reth_primitives::{keccak256, Address, Bytes, DEV, U256};
+use reth_primitives::{keccak256, Address, Bytes, U256};
 use url::Url;
 
 sol!(
@@ -63,7 +62,7 @@ async fn test_eip3074_integration() {
     let deployer = test_suite.signer();
     let provider = ProviderBuilder::new()
         .with_recommended_fillers()
-        .signer(deployer)
+        .wallet(deployer)
         .on_http(Url::parse(&rpc_url).unwrap());
     let base_fee = provider.get_gas_price().await.unwrap();
 
@@ -86,7 +85,7 @@ async fn test_eip3074_integration() {
 
     // signer account.
     let signer_wallet = Wallet::random();
-    let signer_account: EthereumSigner = signer_wallet.clone().into();
+    let signer_account: EthereumWallet = signer_wallet.clone().into();
     let signer_address = signer_account.default_signer().address();
     let signer_balance = provider.get_balance(signer_address).await.unwrap();
     assert_eq!(signer_balance, U256::ZERO);
@@ -151,7 +150,7 @@ async fn test_eip3074_send_eth() {
     let deployer = test_suite.signer();
     let provider = ProviderBuilder::new()
         .with_recommended_fillers()
-        .signer(deployer)
+        .wallet(deployer)
         .on_http(Url::parse(&rpc_url).unwrap());
     let base_fee = provider.get_gas_price().await.unwrap();
 
@@ -164,7 +163,7 @@ async fn test_eip3074_send_eth() {
 
     // signer account.
     let signer_wallet = Wallet::new(1);
-    let signer_account: EthereumSigner = signer_wallet.clone().into();
+    let signer_account: EthereumWallet = signer_wallet.clone().into();
     let signer_address = signer_account.default_signer().address();
     let start_signer_balance = provider.get_balance(signer_address).await.unwrap();
     assert!(start_signer_balance.ne(&U256::ZERO));
@@ -174,7 +173,7 @@ async fn test_eip3074_send_eth() {
 
     // receiver account
     let receiver_wallet = Wallet::random();
-    let receiver_account: EthereumSigner = receiver_wallet.clone().into();
+    let receiver_account: EthereumWallet = receiver_wallet.clone().into();
     let receiver_address = receiver_account.default_signer().address();
     let receiver_balance = provider.get_balance(receiver_address).await.unwrap();
     assert_eq!(receiver_balance, U256::ZERO);
@@ -230,7 +229,7 @@ async fn test_bls12_381_g1_add() {
     let deployer = test_suite.signer();
     let provider = ProviderBuilder::new()
         .with_recommended_fillers()
-        .signer(deployer)
+        .wallet(deployer)
         .on_http(Url::parse(&rpc_url).unwrap());
     let base_fee = provider.get_gas_price().await.unwrap();
 

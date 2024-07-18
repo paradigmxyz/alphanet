@@ -11,13 +11,14 @@
 //! ```
 //! use alphanet_precompile::secp256r1;
 //! use reth::{
-//!     primitives::{ChainSpec, TransactionSigned, U256},
+//!     primitives::{TransactionSigned, U256},
 //!     revm::{
 //!         precompile::{PrecompileSpecId, Precompiles},
-//!         primitives::{Address, Bytes, CfgEnvWithHandlerCfg, TxEnv},
-//!         Database, Evm, EvmBuilder,
+//!         primitives::{Address, Bytes, CfgEnvWithHandlerCfg, Env, TxEnv},
+//!         ContextPrecompiles, Database, Evm, EvmBuilder,
 //!     },
 //! };
+//! use reth_chainspec::ChainSpec;
 //! use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
 //! use std::sync::Arc;
 //!
@@ -34,14 +35,11 @@
 //!             .append_handler_register(|handler| {
 //!                 let spec_id = handler.cfg.spec_id;
 //!                 handler.pre_execution.load_precompiles = Arc::new(move || {
-//!                     let mut precompiles =
-//!                         Precompiles::new(PrecompileSpecId::from_spec_id(spec_id)).clone();
-//!                     for precompile_with_address in secp256r1::precompiles() {
-//!                         precompiles
-//!                             .inner
-//!                             .insert(precompile_with_address.0, precompile_with_address.1);
-//!                     }
-//!                     precompiles.into()
+//!                     let mut loaded_precompiles: ContextPrecompiles<DB> =
+//!                         ContextPrecompiles::new(PrecompileSpecId::from_spec_id(spec_id));
+//!                     loaded_precompiles.extend(secp256r1::precompiles());
+//!
+//!                     loaded_precompiles
 //!                 });
 //!             })
 //!             .build()
@@ -49,15 +47,24 @@
 //! }
 //!
 //! impl ConfigureEvmEnv for AlphaNetEvmConfig {
-//!     fn fill_tx_env(tx_env: &mut TxEnv, transaction: &TransactionSigned, sender: Address) {
+//!     fn fill_tx_env(
+//!         &self,
+//!         tx_env: &mut TxEnv,
+//!         transaction: &TransactionSigned,
+//!         sender: Address,
+//!     ) {
 //!         todo!()
 //!     }
 //!     fn fill_cfg_env(
+//!         &self,
 //!         _: &mut CfgEnvWithHandlerCfg,
 //!         _: &ChainSpec,
 //!         _: &reth::primitives::Header,
 //!         _: U256,
 //!     ) {
+//!         todo!()
+//!     }
+//!     fn fill_tx_env_system_contract_call(&self, _: &mut Env, _: Address, _: Address, _: Bytes) {
 //!         todo!()
 //!     }
 //! }
@@ -66,7 +73,9 @@ use crate::addresses::P256VERIFY_ADDRESS;
 use p256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
 use reth::revm::{
     precompile::{u64_to_address, Precompile, PrecompileWithAddress},
-    primitives::{Bytes, PrecompileError, PrecompileResult, B256},
+    primitives::{
+        Bytes, PrecompileError, PrecompileErrors, PrecompileOutput, PrecompileResult, B256,
+    },
 };
 
 /// Base gas fee for secp256r1 p256verify operation.
@@ -93,10 +102,11 @@ pub const P256VERIFY: PrecompileWithAddress =
 /// |          32         | 32  | 32  |     32       |      32      |
 fn p256_verify(input: &Bytes, gas_limit: u64) -> PrecompileResult {
     if P256VERIFY_BASE > gas_limit {
-        return Err(PrecompileError::OutOfGas);
+        return Err(PrecompileErrors::Error(PrecompileError::OutOfGas));
     }
     let result = verify_impl(input).is_some();
-    Ok((P256VERIFY_BASE, B256::with_last_byte(result as u8).into()))
+    let out = PrecompileOutput::new(P256VERIFY_BASE, B256::with_last_byte(result as u8).into());
+    Ok(out)
 }
 
 /// Returns `Some(())` if the signature included in the input byte slice is
@@ -149,10 +159,10 @@ mod test {
     fn test_sig_verify(#[case] input: &str, #[case] expect_success: bool) {
         let input = Bytes::from_hex(input).unwrap();
         let target_gas = 3_500u64;
-        let (gas_used, res) = p256_verify(&input, target_gas).unwrap();
+        let PrecompileOutput { gas_used, bytes } = p256_verify(&input, target_gas).unwrap();
         assert_eq!(gas_used, 3_450u64);
         let expected_result = B256::with_last_byte(expect_success as u8);
-        assert_eq!(res, expected_result.to_vec());
+        assert_eq!(bytes, expected_result.to_vec());
     }
 
     #[rstest]
@@ -162,7 +172,7 @@ mod test {
         let result = p256_verify(&input, target_gas);
 
         assert!(result.is_err());
-        assert_eq!(result.err(), Some(PrecompileError::OutOfGas));
+        assert_eq!(result.err(), Some(PrecompileErrors::Error(PrecompileError::OutOfGas)));
     }
 
     #[rstest]

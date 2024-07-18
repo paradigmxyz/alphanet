@@ -11,22 +11,18 @@
 //! precompiles defined by [`alphanet_precompile`].
 
 use alphanet_precompile::{bls12_381, secp256r1};
-use eip3074_instructions::{
-    context::InstructionsContext, instructions as eip3074, BoxedInstructionWithOpCode,
-};
+use eip3074_instructions::{context::InstructionsContext, instructions as eip3074};
 use reth::{
     primitives::{
         revm_primitives::{CfgEnvWithHandlerCfg, TxEnv},
-        Address, ChainSpec, Header, TransactionSigned, U256,
+        Address, Bytes, Header, TransactionSigned, U256,
     },
     revm::{
-        handler::register::EvmHandler,
-        inspector_handle_register,
-        interpreter::{opcode::InstructionTables, Host},
-        precompile::{PrecompileSpecId, PrecompileWithAddress, Precompiles},
-        Database, Evm, EvmBuilder, GetInspector,
+        handler::register::EvmHandler, inspector_handle_register, precompile::PrecompileSpecId,
+        primitives::Env, ContextPrecompiles, Database, Evm, EvmBuilder, GetInspector,
     },
 };
+use reth_chainspec::ChainSpec;
 use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
 use reth_node_optimism::OptimismEvmConfig;
 use std::sync::Arc;
@@ -35,32 +31,6 @@ use std::sync::Arc;
 #[derive(Debug, Clone, Copy, Default)]
 #[non_exhaustive]
 pub struct AlphaNetEvmConfig;
-
-/// Inserts the given precompiles with address in the context precompiles.
-fn insert_precompiles<I>(precompiles: &mut Precompiles, precompiles_with_address: I)
-where
-    I: Iterator<Item = PrecompileWithAddress>,
-{
-    for precompile_with_address in precompiles_with_address {
-        precompiles.inner.insert(precompile_with_address.0, precompile_with_address.1);
-    }
-}
-
-/// Inserts the given boxed instructions with opcodes in the instructions table.
-fn insert_boxed_instructions<'a, I, H>(
-    table: &mut InstructionTables<'a, H>,
-    boxed_instructions_with_opcodes: I,
-) where
-    I: Iterator<Item = BoxedInstructionWithOpCode<'a, H>>,
-    H: Host + 'a,
-{
-    for boxed_instruction_with_opcode in boxed_instructions_with_opcodes {
-        table.insert_boxed(
-            boxed_instruction_with_opcode.opcode,
-            boxed_instruction_with_opcode.boxed_instruction,
-        );
-    }
-}
 
 impl AlphaNetEvmConfig {
     /// Sets the precompiles to the EVM handler
@@ -78,11 +48,13 @@ impl AlphaNetEvmConfig {
 
         // install the precompiles
         handler.pre_execution.load_precompiles = Arc::new(move || {
-            let mut precompiles = Precompiles::new(PrecompileSpecId::from_spec_id(spec_id)).clone();
-            insert_precompiles(&mut precompiles, secp256r1::precompiles());
-            insert_precompiles(&mut precompiles, bls12_381::precompiles());
+            let mut loaded_precompiles: ContextPrecompiles<DB> =
+                ContextPrecompiles::new(PrecompileSpecId::from_spec_id(spec_id));
 
-            precompiles.into()
+            loaded_precompiles.extend(secp256r1::precompiles());
+            loaded_precompiles.extend(bls12_381::precompiles());
+
+            loaded_precompiles
         });
     }
 
@@ -98,10 +70,12 @@ impl AlphaNetEvmConfig {
     ) where
         DB: Database,
     {
-        insert_boxed_instructions(
-            &mut handler.instruction_table,
-            eip3074::boxed_instructions(instructions_context.clone()),
-        );
+        let boxed_instruction_with_op_code =
+            eip3074::boxed_instructions(instructions_context.clone());
+
+        for b in boxed_instruction_with_op_code {
+            handler.instruction_table.insert_boxed(b.opcode, b.boxed_instruction);
+        }
 
         instructions_context.clear();
     }
@@ -162,17 +136,28 @@ impl ConfigureEvm for AlphaNetEvmConfig {
 }
 
 impl ConfigureEvmEnv for AlphaNetEvmConfig {
-    fn fill_tx_env(tx_env: &mut TxEnv, transaction: &TransactionSigned, sender: Address) {
-        OptimismEvmConfig::fill_tx_env(tx_env, transaction, sender)
+    fn fill_tx_env(&self, tx_env: &mut TxEnv, transaction: &TransactionSigned, sender: Address) {
+        OptimismEvmConfig::default().fill_tx_env(tx_env, transaction, sender)
     }
 
     fn fill_cfg_env(
+        &self,
         cfg_env: &mut CfgEnvWithHandlerCfg,
         chain_spec: &ChainSpec,
         header: &Header,
         total_difficulty: U256,
     ) {
-        OptimismEvmConfig::fill_cfg_env(cfg_env, chain_spec, header, total_difficulty);
+        OptimismEvmConfig::default().fill_cfg_env(cfg_env, chain_spec, header, total_difficulty);
+    }
+
+    fn fill_tx_env_system_contract_call(
+        &self,
+        env: &mut Env,
+        caller: Address,
+        contract: Address,
+        data: Bytes,
+    ) {
+        OptimismEvmConfig::default().fill_tx_env_system_contract_call(env, caller, contract, data)
     }
 }
 
@@ -181,8 +166,9 @@ mod tests {
     use super::*;
     use reth::primitives::{
         revm_primitives::{BlockEnv, CfgEnv, SpecId},
-        Chain, ChainSpecBuilder, ForkCondition, Genesis, Hardfork,
+        ForkCondition, Genesis,
     };
+    use reth_chainspec::{Chain, ChainSpecBuilder, EthereumHardfork};
 
     #[test]
     fn test_fill_cfg_and_block_env() {
@@ -192,11 +178,11 @@ mod tests {
         let chain_spec = ChainSpecBuilder::default()
             .chain(Chain::optimism_mainnet())
             .genesis(Genesis::default())
-            .with_fork(Hardfork::Frontier, ForkCondition::Block(0))
+            .with_fork(EthereumHardfork::Frontier, ForkCondition::Block(0))
             .build();
         let total_difficulty = U256::ZERO;
 
-        AlphaNetEvmConfig::fill_cfg_and_block_env(
+        AlphaNetEvmConfig::default().fill_cfg_and_block_env(
             &mut cfg_env,
             &mut block_env,
             &chain_spec,

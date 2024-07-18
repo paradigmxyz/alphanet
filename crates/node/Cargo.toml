@@ -14,6 +14,7 @@ alphanet-precompile.workspace = true
 reth.workspace = true
 reth-node-api.workspace = true
 reth-node-optimism.workspace = true
+reth-chainspec.workspace = true
 
 eip3074-instructions.workspace = true
 
