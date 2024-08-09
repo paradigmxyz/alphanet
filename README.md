@@ -13,9 +13,11 @@ AlphaNet is __not__ a fork of reth.
 AlphaNet implements traits provided by the [reth node builder API](https://paradigmxyz.github.io/reth/docs/reth_node_builder/index.html), allowing implementation of precompiles and instructions of experimental EIPs without forking the node.
 
 Specifically, AlphaNet currently implements the following EIPs:
- - [EIP-3074](https://eips.ethereum.org/EIPS/eip-3074): `AUTH` and `AUTHCALL` instructions.
+ - [EIP-7702](https://eips.ethereum.org/EIPS/eip-7702): Set EOA account code.
  - [EIP-7212](https://eips.ethereum.org/EIPS/eip-7212): Precompile for secp256r1 curve support.
  - [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537): Precompiles for BLS12-381 curve operations.
+
+AlphaNet also implements the EIPs for EOF, or [The EVM Object Format](https://evmobjectformat.org/).
 
 ### Why AlphaNet?
 
@@ -42,7 +44,7 @@ alphanet node --chain etc/alphanet-genesis.json --dev --http --http.api all
 
 This will start the node with a development configuration, and expose the HTTP API on `http://localhost:8545`.
 
-To use 3074-enabled foundry, use [eip-3074-foundry](https://github.com/clabby/eip-3074-foundry) and follow installation instructions.
+To use EOF-enabled foundry, use [forge-eof](https://github.com/paradigmxyz/forge-eof) and follow installation instructions.
 
 ### Running AlphaNet
 
@@ -90,22 +92,6 @@ op-node \
 ### Security
 
 See [SECURITY.md](SECURITY.md).
-
-### Note on EIP-3074 integration tests
-
-If you are modifying the EIP-3074 solidity smart contracts used in the
-`alphanet-testing` crate you should regenerate the built artifacts with:
-```bash
-$ make build-eip3074-bytecode
-```
-This command uses the docker image from the [foundry-alphanet] repo which contains
-patched versions of solc and forge compatible with the instructions introduced
-by EIP-3074.
-
-The changes in the artifacts should be committed to this repo, this way we don't
-have to rely on docker being available to generate the artifacts and run the
-tests. There's a CI step that will check if the committed artifacts match the
-smart contracts source code.
 
 #### License
 
