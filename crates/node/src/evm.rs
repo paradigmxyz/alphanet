@@ -84,7 +84,7 @@ impl AlphaNetEvmConfig {
 impl ConfigureEvm for AlphaNetEvmConfig {
     type DefaultExternalContext<'a> = ();
 
-    fn evm<'a, DB: Database + 'a>(&self, db: DB) -> Evm<'a, Self::DefaultExternalContext<'a>, DB> {
+    fn evm<DB: Database>(&self, db: DB) -> Evm<'_, Self::DefaultExternalContext<'_>, DB> {
         let instructions_context = InstructionsContext::default();
         EvmBuilder::default()
             .with_db(db)
@@ -106,9 +106,9 @@ impl ConfigureEvm for AlphaNetEvmConfig {
             .build()
     }
 
-    fn evm_with_inspector<'a, DB, I>(&self, db: DB, inspector: I) -> Evm<'a, I, DB>
+    fn evm_with_inspector<DB, I>(&self, db: DB, inspector: I) -> Evm<'_, I, DB>
     where
-        DB: Database + 'a,
+        DB: Database,
         I: GetInspector<DB>,
     {
         let instructions_context = InstructionsContext::default();
@@ -133,6 +133,8 @@ impl ConfigureEvm for AlphaNetEvmConfig {
             .append_handler_register(inspector_handle_register)
             .build()
     }
+
+    fn default_external_context<'a>(&self) -> Self::DefaultExternalContext<'a> {}
 }
 
 impl ConfigureEvmEnv for AlphaNetEvmConfig {
