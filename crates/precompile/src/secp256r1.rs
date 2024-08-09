@@ -29,7 +29,7 @@
 //! impl ConfigureEvm for AlphaNetEvmConfig {
 //!     type DefaultExternalContext<'a> = ();
 //!
-//!     fn evm<'a, DB: Database + 'a>(&self, db: DB) -> Evm<'a, (), DB> {
+//!     fn evm<DB: Database>(&self, db: DB) -> Evm<'_, (), DB> {
 //!         EvmBuilder::default()
 //!             .with_db(db)
 //!             .append_handler_register(|handler| {
@@ -44,6 +44,8 @@
 //!             })
 //!             .build()
 //!     }
+//!
+//!     fn default_external_context<'a>(&self) -> Self::DefaultExternalContext<'a> {}
 //! }
 //!
 //! impl ConfigureEvmEnv for AlphaNetEvmConfig {
