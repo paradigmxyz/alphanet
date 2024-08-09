@@ -45,7 +45,7 @@ impl AlphaNetNode {
     where
         Node: FullNodeTypes<Engine = OptimismEngineTypes>,
     {
-        let RollupArgs { disable_txpool_gossip, compute_pending_block, .. } = args;
+        let RollupArgs { disable_txpool_gossip, compute_pending_block, discovery_v4, .. } = args;
         ComponentsBuilder::default()
             .node_types::<Node>()
             .pool(OptimismPoolBuilder::default())
@@ -53,7 +53,10 @@ impl AlphaNetNode {
                 compute_pending_block,
                 AlphaNetEvmConfig::default(),
             ))
-            .network(OptimismNetworkBuilder { disable_txpool_gossip })
+            .network(OptimismNetworkBuilder {
+                disable_txpool_gossip,
+                disable_discovery_v4: !discovery_v4,
+            })
             .executor(AlphaNetExecutorBuilder::default())
             .consensus(OptimismConsensusBuilder::default())
     }
