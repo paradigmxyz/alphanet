@@ -751,7 +751,6 @@ name = "alphanet-node"
 version = "0.0.0"
 dependencies = [
  "alphanet-precompile",
- "eip3074-instructions",
  "eyre",
  "reth",
  "reth-chainspec",
@@ -2484,14 +2483,6 @@ dependencies = [
  "sha2 0.10.8",
  "subtle",
  "zeroize",
-]
-
-[[package]]
-name = "eip3074-instructions"
-version = "0.1.0"
-source = "git+https://github.com/paradigmxyz/eip3074-instructions.git#5629b523b9022408b1d7a623849026704050dae8"
-dependencies = [
- "revm",
 ]
 
 [[package]]

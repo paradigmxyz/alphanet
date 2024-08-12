@@ -1,7 +1,5 @@
-use alloy::signers::Signer;
 use alloy_network::EthereumWallet;
 use alloy_signer_local::{coins_bip39::English, MnemonicBuilder, PrivateKeySigner};
-use reth_primitives::{B256, U256};
 
 /// Mnemonic used to derive the test accounts
 const TEST_MNEMONIC: &str = "test test test test test test test test test test test junk";
@@ -28,16 +26,6 @@ impl Wallet {
             .build()
             .unwrap();
         Self { inner }
-    }
-
-    pub(crate) fn random() -> Self {
-        let inner = MnemonicBuilder::<English>::default().build_random().unwrap();
-        Self { inner }
-    }
-
-    pub(crate) async fn sign_hash(&self, message: B256) -> (u8, U256, U256) {
-        let signature = self.inner.sign_hash(&message).await.unwrap();
-        (signature.v().y_parity_byte() + 27, signature.r(), signature.s())
     }
 }
 impl From<Wallet> for EthereumWallet {
