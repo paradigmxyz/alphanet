@@ -11,7 +11,6 @@
 //! precompiles defined by [`alphanet_precompile`].
 
 use alphanet_precompile::{bls12_381, secp256r1};
-use eip3074_instructions::{context::InstructionsContext, instructions as eip3074};
 use reth::{
     primitives::{
         revm_primitives::{CfgEnvWithHandlerCfg, TxEnv},
@@ -57,52 +56,17 @@ impl AlphaNetEvmConfig {
             loaded_precompiles
         });
     }
-
-    /// Appends custom instructions to the EVM handler
-    ///
-    /// This will be invoked when the EVM is created via [ConfigureEvm::evm] or
-    /// [ConfigureEvm::evm_with_inspector]
-    ///
-    /// This will use the default mainnet instructions and append additional instructions.
-    fn append_custom_instructions<EXT, DB>(
-        handler: &mut EvmHandler<'_, EXT, DB>,
-        instructions_context: InstructionsContext,
-    ) where
-        DB: Database,
-    {
-        let boxed_instruction_with_op_code =
-            eip3074::boxed_instructions(instructions_context.clone());
-
-        for b in boxed_instruction_with_op_code {
-            handler.instruction_table.insert_boxed(b.opcode, b.boxed_instruction);
-        }
-
-        instructions_context.clear();
-    }
 }
 
 impl ConfigureEvm for AlphaNetEvmConfig {
     type DefaultExternalContext<'a> = ();
 
     fn evm<DB: Database>(&self, db: DB) -> Evm<'_, Self::DefaultExternalContext<'_>, DB> {
-        let instructions_context = InstructionsContext::default();
         EvmBuilder::default()
             .with_db(db)
             .optimism()
             // add additional precompiles
             .append_handler_register(Self::set_precompiles)
-            // add custom instructions
-            .append_handler_register_box(Box::new(move |h| {
-                Self::append_custom_instructions(h, instructions_context.clone());
-                let post_execution_context = instructions_context.clone();
-                #[allow(clippy::arc_with_non_send_sync)]
-                {
-                    h.post_execution.end = Arc::new(move |_, outcome: _| {
-                        post_execution_context.clear();
-                        outcome
-                    });
-                }
-            }))
             .build()
     }
 
@@ -111,25 +75,12 @@ impl ConfigureEvm for AlphaNetEvmConfig {
         DB: Database,
         I: GetInspector<DB>,
     {
-        let instructions_context = InstructionsContext::default();
         EvmBuilder::default()
             .with_db(db)
             .with_external_context(inspector)
             .optimism()
             // add additional precompiles
             .append_handler_register(Self::set_precompiles)
-            // add custom instructions
-            .append_handler_register_box(Box::new(move |h| {
-                Self::append_custom_instructions(h, instructions_context.clone());
-                let post_execution_context = instructions_context.clone();
-                #[allow(clippy::arc_with_non_send_sync)]
-                {
-                    h.post_execution.end = Arc::new(move |_, outcome: _| {
-                        post_execution_context.clear();
-                        outcome
-                    });
-                }
-            }))
             .append_handler_register(inspector_handle_register)
             .build()
     }
