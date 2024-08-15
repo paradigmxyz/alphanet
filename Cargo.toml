@@ -41,7 +41,7 @@ all = "warn"
 strip = "debuginfo"
 lto = "thin"
 panic = "unwind"
-codegen-units = 1
+codegen-units = 16
 incremental = false
 
 # Use the `--profile profiling` flag to show symbols in release mode.
