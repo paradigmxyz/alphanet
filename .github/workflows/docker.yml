@@ -1,21 +1,18 @@
 # Publishes the Docker image.
 
 name: docker
-
 on:
   workflow_dispatch: {}
   push:
     tags:
       - v*
-
 env:
   REPO_NAME: ${{ github.repository_owner }}/alphanet
   IMAGE_NAME: ${{ github.repository_owner }}/alphanet
   CARGO_TERM_COLOR: always
   DOCKER_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/alphanet
   DOCKER_USERNAME: ${{ github.actor }}
-  PROFILE: profiling 
-
+  PROFILE: profiling
 jobs:
   build:
     name: build and push

@@ -44,6 +44,13 @@ panic = "unwind"
 codegen-units = 1
 incremental = false
 
+# Use the `--profile profiling` flag to show symbols in release mode.
+# e.g. `cargo build --profile profiling`
+[profile.profiling]
+inherits = "release"
+debug = 2
+strip = false
+
 [workspace.dependencies]
 # alphanet
 alphanet-node = { path = "crates/node" }
