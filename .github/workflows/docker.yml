@@ -33,7 +33,7 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username ${DOCKER_USERNAME} --password-stdin
       - name: Set up Docker builder
         run: |
-          docker run --privileged --rm tonistiigi/binfmt --install arm64,amd64
+          docker run --privileged --rm tonistiigi/binfmt --install amd64
           docker buildx create --use --name cross-builder
       - name: Build and push image, tag as "latest"
         if: ${{ contains(github.event.ref, '-alpha') }}

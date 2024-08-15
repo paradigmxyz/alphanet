@@ -137,12 +137,12 @@ define docker_build_push
 	mkdir -p $(BIN_DIR)/amd64
 	cp $(BUILD_PATH)/x86_64-unknown-linux-gnu/$(PROFILE)/alphanet $(BIN_DIR)/amd64/alphanet
 
-	$(MAKE) build-aarch64-unknown-linux-gnu
-	mkdir -p $(BIN_DIR)/arm64
-	cp $(BUILD_PATH)/aarch64-unknown-linux-gnu/$(PROFILE)/alphanet $(BIN_DIR)/arm64/alphanet
+	# $(MAKE) build-aarch64-unknown-linux-gnu
+	# mkdir -p $(BIN_DIR)/arm64
+	# cp $(BUILD_PATH)/aarch64-unknown-linux-gnu/$(PROFILE)/alphanet $(BIN_DIR)/arm64/alphanet
 
 	docker buildx build --file ./Dockerfile.cross . \
-		--platform linux/amd64,linux/arm64 \
+		--platform linux/amd64 \
 		--tag $(DOCKER_IMAGE_NAME):$(1) \
 		--tag $(DOCKER_IMAGE_NAME):$(2) \
 		--provenance=false \
