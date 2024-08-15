@@ -38,11 +38,12 @@ missing_docs = "warn"
 all = "warn"
 
 [profile.release]
-strip = "debuginfo"
+opt-level = 3
 lto = "thin"
+debug = "line-tables-only"
+strip = true
 panic = "unwind"
 codegen-units = 16
-incremental = false
 
 # Use the `--profile profiling` flag to show symbols in release mode.
 # e.g. `cargo build --profile profiling`
