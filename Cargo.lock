@@ -6278,7 +6278,7 @@ dependencies = [
  "reth-revm",
  "reth-rpc-types",
  "reth-rpc-types-compat",
- "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
+ "revm-primitives",
  "serde",
  "serde_json",
  "tokio",
@@ -6365,7 +6365,7 @@ dependencies = [
  "reth-primitives",
  "reth-rpc-types",
  "reth-rpc-types-compat",
- "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
+ "revm-primitives",
  "serde",
  "sha2 0.10.8",
 ]
@@ -6434,7 +6434,7 @@ dependencies = [
  "reth-prune-types",
  "reth-storage-errors",
  "revm",
- "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
+ "revm-primitives",
 ]
 
 [[package]]
@@ -6452,7 +6452,7 @@ dependencies = [
  "reth-primitives",
  "reth-prune-types",
  "reth-revm",
- "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
+ "revm-primitives",
 ]
 
 [[package]]
@@ -6470,7 +6470,7 @@ dependencies = [
  "reth-prune-types",
  "reth-revm",
  "revm",
- "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
+ "revm-primitives",
  "thiserror",
  "tracing",
 ]
@@ -6488,7 +6488,7 @@ dependencies = [
  "reth-consensus",
  "reth-prune-types",
  "reth-storage-errors",
- "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
+ "revm-primitives",
 ]
 
 [[package]]
@@ -7198,7 +7198,7 @@ dependencies = [
  "reth-primitives-traits",
  "reth-static-file-types",
  "reth-trie-common",
- "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
+ "revm-primitives",
  "secp256k1",
  "serde",
  "tempfile",
@@ -7225,7 +7225,7 @@ dependencies = [
  "proptest",
  "proptest-arbitrary-interop",
  "reth-codecs",
- "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
+ "revm-primitives",
  "roaring",
  "serde",
 ]
@@ -7367,7 +7367,7 @@ dependencies = [
  "reth-trie",
  "revm",
  "revm-inspectors",
- "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
+ "revm-primitives",
  "secp256k1",
  "serde",
  "serde_json",
@@ -7480,7 +7480,7 @@ dependencies = [
  "reth-transaction-pool",
  "revm",
  "revm-inspectors",
- "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
+ "revm-primitives",
  "tokio",
  "tracing",
 ]
@@ -7514,7 +7514,7 @@ dependencies = [
  "reth-trie",
  "revm",
  "revm-inspectors",
- "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
+ "revm-primitives",
  "schnellru",
  "serde",
  "thiserror",
@@ -7828,7 +7828,7 @@ dependencies = [
  "nybbles",
  "reth-codecs",
  "reth-primitives-traits",
- "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
+ "revm-primitives",
  "serde",
 ]
 
@@ -7917,7 +7917,7 @@ name = "revm-interpreter"
 version = "9.0.0"
 source = "git+https://github.com/bluealloy/revm?branch=alexey/7702-printlns#cd2020a1dde5d43c4be5576c98d6f615a626b78f"
 dependencies = [
- "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=alexey/7702-printlns)",
+ "revm-primitives",
  "serde",
 ]
 
@@ -7933,7 +7933,7 @@ dependencies = [
  "k256",
  "once_cell",
  "p256",
- "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=alexey/7702-printlns)",
+ "revm-primitives",
  "ripemd",
  "secp256k1",
  "sha2 0.10.8",
@@ -7944,27 +7944,6 @@ dependencies = [
 name = "revm-primitives"
 version = "8.0.0"
 source = "git+https://github.com/bluealloy/revm?branch=alexey/7702-printlns#cd2020a1dde5d43c4be5576c98d6f615a626b78f"
-dependencies = [
- "alloy-eips",
- "alloy-primitives",
- "auto_impl",
- "bitflags 2.6.0",
- "bitvec",
- "c-kzg",
- "cfg-if",
- "derive_more",
- "dyn-clone",
- "enumn",
- "hashbrown 0.14.5",
- "hex",
- "once_cell",
- "serde",
-]
-
-[[package]]
-name = "revm-primitives"
-version = "8.0.0"
-source = "git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702#caadc71fd28929cd751cc997b4b454d8813c434b"
 dependencies = [
  "alloy-eips",
  "alloy-primitives",
