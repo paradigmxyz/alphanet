@@ -118,5 +118,5 @@ alloy-transport = { git = "https://github.com/alloy-rs/alloy", rev = "fd159f6" }
 alloy-transport-http = { git = "https://github.com/alloy-rs/alloy", rev = "fd159f6" }
 alloy-transport-ipc = { git = "https://github.com/alloy-rs/alloy", rev = "fd159f6" }
 alloy-transport-ws = { git = "https://github.com/alloy-rs/alloy", rev = "fd159f6" }
-revm = { git = "https://github.com/bluealloy/revm", branch = "rakita/latest_eip7702" }
+revm = { git = "https://github.com/bluealloy/revm", branch = "alexey/7702-printlns" }
 revm-primitives = { git = "https://github.com/bluealloy/revm", branch = "rakita/latest_eip7702" }

@@ -3906,7 +3906,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -6278,7 +6278,7 @@ dependencies = [
  "reth-revm",
  "reth-rpc-types",
  "reth-rpc-types-compat",
- "revm-primitives",
+ "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
  "serde",
  "serde_json",
  "tokio",
@@ -6365,7 +6365,7 @@ dependencies = [
  "reth-primitives",
  "reth-rpc-types",
  "reth-rpc-types-compat",
- "revm-primitives",
+ "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
  "serde",
  "sha2 0.10.8",
 ]
@@ -6434,7 +6434,7 @@ dependencies = [
  "reth-prune-types",
  "reth-storage-errors",
  "revm",
- "revm-primitives",
+ "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
 ]
 
 [[package]]
@@ -6452,7 +6452,7 @@ dependencies = [
  "reth-primitives",
  "reth-prune-types",
  "reth-revm",
- "revm-primitives",
+ "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
 ]
 
 [[package]]
@@ -6470,7 +6470,7 @@ dependencies = [
  "reth-prune-types",
  "reth-revm",
  "revm",
- "revm-primitives",
+ "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
  "thiserror",
  "tracing",
 ]
@@ -6488,7 +6488,7 @@ dependencies = [
  "reth-consensus",
  "reth-prune-types",
  "reth-storage-errors",
- "revm-primitives",
+ "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
 ]
 
 [[package]]
@@ -7198,7 +7198,7 @@ dependencies = [
  "reth-primitives-traits",
  "reth-static-file-types",
  "reth-trie-common",
- "revm-primitives",
+ "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
  "secp256k1",
  "serde",
  "tempfile",
@@ -7225,7 +7225,7 @@ dependencies = [
  "proptest",
  "proptest-arbitrary-interop",
  "reth-codecs",
- "revm-primitives",
+ "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
  "roaring",
  "serde",
 ]
@@ -7367,7 +7367,7 @@ dependencies = [
  "reth-trie",
  "revm",
  "revm-inspectors",
- "revm-primitives",
+ "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
  "secp256k1",
  "serde",
  "serde_json",
@@ -7480,7 +7480,7 @@ dependencies = [
  "reth-transaction-pool",
  "revm",
  "revm-inspectors",
- "revm-primitives",
+ "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
  "tokio",
  "tracing",
 ]
@@ -7514,7 +7514,7 @@ dependencies = [
  "reth-trie",
  "revm",
  "revm-inspectors",
- "revm-primitives",
+ "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
  "schnellru",
  "serde",
  "thiserror",
@@ -7828,7 +7828,7 @@ dependencies = [
  "nybbles",
  "reth-codecs",
  "reth-primitives-traits",
- "revm-primitives",
+ "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702)",
  "serde",
 ]
 
@@ -7883,7 +7883,7 @@ dependencies = [
 [[package]]
 name = "revm"
 version = "13.0.0"
-source = "git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702#16c3933662eda5147a192f2fd9d4699253d43e70"
+source = "git+https://github.com/bluealloy/revm?branch=alexey/7702-printlns#cd2020a1dde5d43c4be5576c98d6f615a626b78f"
 dependencies = [
  "auto_impl",
  "cfg-if",
@@ -7915,16 +7915,16 @@ dependencies = [
 [[package]]
 name = "revm-interpreter"
 version = "9.0.0"
-source = "git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702#16c3933662eda5147a192f2fd9d4699253d43e70"
+source = "git+https://github.com/bluealloy/revm?branch=alexey/7702-printlns#cd2020a1dde5d43c4be5576c98d6f615a626b78f"
 dependencies = [
- "revm-primitives",
+ "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=alexey/7702-printlns)",
  "serde",
 ]
 
 [[package]]
 name = "revm-precompile"
 version = "10.0.0"
-source = "git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702#16c3933662eda5147a192f2fd9d4699253d43e70"
+source = "git+https://github.com/bluealloy/revm?branch=alexey/7702-printlns#cd2020a1dde5d43c4be5576c98d6f615a626b78f"
 dependencies = [
  "aurora-engine-modexp",
  "blst",
@@ -7933,7 +7933,7 @@ dependencies = [
  "k256",
  "once_cell",
  "p256",
- "revm-primitives",
+ "revm-primitives 8.0.0 (git+https://github.com/bluealloy/revm?branch=alexey/7702-printlns)",
  "ripemd",
  "secp256k1",
  "sha2 0.10.8",
@@ -7943,7 +7943,28 @@ dependencies = [
 [[package]]
 name = "revm-primitives"
 version = "8.0.0"
-source = "git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702#16c3933662eda5147a192f2fd9d4699253d43e70"
+source = "git+https://github.com/bluealloy/revm?branch=alexey/7702-printlns#cd2020a1dde5d43c4be5576c98d6f615a626b78f"
+dependencies = [
+ "alloy-eips",
+ "alloy-primitives",
+ "auto_impl",
+ "bitflags 2.6.0",
+ "bitvec",
+ "c-kzg",
+ "cfg-if",
+ "derive_more",
+ "dyn-clone",
+ "enumn",
+ "hashbrown 0.14.5",
+ "hex",
+ "once_cell",
+ "serde",
+]
+
+[[package]]
+name = "revm-primitives"
+version = "8.0.0"
+source = "git+https://github.com/bluealloy/revm?branch=rakita/latest_eip7702#caadc71fd28929cd751cc997b4b454d8813c434b"
 dependencies = [
  "alloy-eips",
  "alloy-primitives",
@@ -9858,7 +9879,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
