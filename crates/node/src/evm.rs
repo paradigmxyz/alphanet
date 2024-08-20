@@ -17,8 +17,11 @@ use reth::{
         Address, Bytes, Header, TransactionSigned, U256,
     },
     revm::{
-        handler::register::EvmHandler, inspector_handle_register, precompile::PrecompileSpecId,
-        primitives::Env, ContextPrecompiles, Database, Evm, EvmBuilder, GetInspector,
+        handler::register::EvmHandler,
+        inspector_handle_register,
+        precompile::PrecompileSpecId,
+        primitives::{Env, SpecId},
+        ContextPrecompiles, Database, Evm, EvmBuilder, GetInspector,
     },
 };
 use reth_chainspec::ChainSpec;
@@ -101,6 +104,12 @@ impl ConfigureEvmEnv for AlphaNetEvmConfig {
         total_difficulty: U256,
     ) {
         OptimismEvmConfig::default().fill_cfg_env(cfg_env, chain_spec, header, total_difficulty);
+
+        // TODO(onbjerg): Remove this once Prague and PragueEOF are merged into one.
+        // Map Prague to PragueEOF to enable EOF support on Alphanet.
+        if cfg_env.handler_cfg.spec_id == SpecId::PRAGUE {
+            cfg_env.handler_cfg.spec_id = SpecId::PRAGUE_EOF;
+        }
     }
 
     fn fill_tx_env_system_contract_call(
