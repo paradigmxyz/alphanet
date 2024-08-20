@@ -10,7 +10,7 @@
 //! This currently configures the instructions defined in [EIP3074-instructions](https://github.com/paradigmxyz/eip3074-instructions), and the
 //! precompiles defined by [`alphanet_precompile`].
 
-use alphanet_precompile::{bls12_381, secp256r1};
+use alphanet_precompile::secp256r1;
 use reth::{
     primitives::{
         revm_primitives::{CfgEnvWithHandlerCfg, TxEnv},
@@ -51,7 +51,6 @@ impl AlphaNetEvmConfig {
                 ContextPrecompiles::new(PrecompileSpecId::from_spec_id(spec_id));
 
             loaded_precompiles.extend(secp256r1::precompiles());
-            loaded_precompiles.extend(bls12_381::precompiles());
 
             loaded_precompiles
         });
