@@ -14,19 +14,19 @@ use alphanet_precompile::secp256r1;
 use reth::{
     primitives::{
         revm_primitives::{CfgEnvWithHandlerCfg, TxEnv},
-        Address, Bytes, Header, TransactionSigned, U256,
+        transaction::FillTxEnv,
+        Address, Bytes, Header, TransactionSigned, TxKind, U256,
     },
     revm::{
         handler::register::EvmHandler,
         inspector_handle_register,
         precompile::PrecompileSpecId,
-        primitives::{Env, SpecId},
+        primitives::{AnalysisKind, Env, OptimismFields},
         ContextPrecompiles, Database, Evm, EvmBuilder, GetInspector,
     },
 };
-use reth_chainspec::ChainSpec;
+use reth_chainspec::{ChainSpec, EthereumHardfork, Head, OptimismHardfork};
 use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
-use reth_node_optimism::OptimismEvmConfig;
 use std::sync::Arc;
 
 /// Custom EVM configuration
@@ -60,6 +60,82 @@ impl AlphaNetEvmConfig {
     }
 }
 
+impl ConfigureEvmEnv for AlphaNetEvmConfig {
+    fn fill_tx_env(&self, tx_env: &mut TxEnv, transaction: &TransactionSigned, sender: Address) {
+        transaction.fill_tx_env(tx_env, sender);
+    }
+
+    fn fill_tx_env_system_contract_call(
+        &self,
+        env: &mut Env,
+        caller: Address,
+        contract: Address,
+        data: Bytes,
+    ) {
+        env.tx = TxEnv {
+            caller,
+            transact_to: TxKind::Call(contract),
+            // Explicitly set nonce to None so revm does not do any nonce checks
+            nonce: None,
+            gas_limit: 30_000_000,
+            value: U256::ZERO,
+            data,
+            // Setting the gas price to zero enforces that no value is transferred as part of the
+            // call, and that the call will not count against the block's gas limit
+            gas_price: U256::ZERO,
+            // The chain ID check is not relevant here and is disabled if set to None
+            chain_id: None,
+            // Setting the gas priority fee to None ensures the effective gas price is derived from
+            // the `gas_price` field, which we need to be zero
+            gas_priority_fee: None,
+            access_list: Vec::new(),
+            // blob fields can be None for this tx
+            blob_hashes: Vec::new(),
+            max_fee_per_blob_gas: None,
+            authorization_list: None,
+            optimism: OptimismFields {
+                source_hash: None,
+                mint: None,
+                is_system_transaction: Some(false),
+                // The L1 fee is not charged for the EIP-4788 transaction, submit zero bytes for the
+                // enveloped tx size.
+                enveloped_tx: Some(Bytes::default()),
+            },
+        };
+
+        // ensure the block gas limit is >= the tx
+        env.block.gas_limit = U256::from(env.tx.gas_limit);
+
+        // disable the base fee check for this call by setting the base fee to zero
+        env.block.basefee = U256::ZERO;
+    }
+
+    fn fill_cfg_env(
+        &self,
+        cfg_env: &mut CfgEnvWithHandlerCfg,
+        chain_spec: &ChainSpec,
+        header: &Header,
+        total_difficulty: U256,
+    ) {
+        let spec_id = revm_spec(
+            chain_spec,
+            &Head {
+                number: header.number,
+                timestamp: header.timestamp,
+                difficulty: header.difficulty,
+                total_difficulty,
+                hash: Default::default(),
+            },
+        );
+
+        cfg_env.chain_id = chain_spec.chain().id();
+        cfg_env.perf_analyse_created_bytecodes = AnalysisKind::Analyse;
+
+        cfg_env.handler_cfg.spec_id = spec_id;
+        cfg_env.handler_cfg.is_optimism = chain_spec.is_optimism();
+    }
+}
+
 impl ConfigureEvm for AlphaNetEvmConfig {
     type DefaultExternalContext<'a> = ();
 
@@ -90,35 +166,53 @@ impl ConfigureEvm for AlphaNetEvmConfig {
     fn default_external_context<'a>(&self) -> Self::DefaultExternalContext<'a> {}
 }
 
-impl ConfigureEvmEnv for AlphaNetEvmConfig {
-    fn fill_tx_env(&self, tx_env: &mut TxEnv, transaction: &TransactionSigned, sender: Address) {
-        OptimismEvmConfig::default().fill_tx_env(tx_env, transaction, sender)
-    }
-
-    fn fill_cfg_env(
-        &self,
-        cfg_env: &mut CfgEnvWithHandlerCfg,
-        chain_spec: &ChainSpec,
-        header: &Header,
-        total_difficulty: U256,
-    ) {
-        OptimismEvmConfig::default().fill_cfg_env(cfg_env, chain_spec, header, total_difficulty);
-
-        // TODO(onbjerg): Remove this once Prague and PragueEOF are merged into one.
-        // Map Prague to PragueEOF to enable EOF support on Alphanet.
-        if cfg_env.handler_cfg.spec_id == SpecId::PRAGUE {
-            cfg_env.handler_cfg.spec_id = SpecId::PRAGUE_EOF;
-        }
-    }
-
-    fn fill_tx_env_system_contract_call(
-        &self,
-        env: &mut Env,
-        caller: Address,
-        contract: Address,
-        data: Bytes,
-    ) {
-        OptimismEvmConfig::default().fill_tx_env_system_contract_call(env, caller, contract, data)
+/// Determine the revm spec ID from the current block and reth chainspec.
+fn revm_spec(chain_spec: &ChainSpec, block: &Head) -> reth::revm::primitives::SpecId {
+    if chain_spec.fork(EthereumHardfork::Prague).active_at_head(block) {
+        reth::revm::primitives::PRAGUE_EOF
+    } else if chain_spec.fork(OptimismHardfork::Granite).active_at_head(block) {
+        reth::revm::primitives::GRANITE
+    } else if chain_spec.fork(OptimismHardfork::Fjord).active_at_head(block) {
+        reth::revm::primitives::FJORD
+    } else if chain_spec.fork(OptimismHardfork::Ecotone).active_at_head(block) {
+        reth::revm::primitives::ECOTONE
+    } else if chain_spec.fork(OptimismHardfork::Canyon).active_at_head(block) {
+        reth::revm::primitives::CANYON
+    } else if chain_spec.fork(OptimismHardfork::Regolith).active_at_head(block) {
+        reth::revm::primitives::REGOLITH
+    } else if chain_spec.fork(OptimismHardfork::Bedrock).active_at_head(block) {
+        reth::revm::primitives::BEDROCK
+    } else if chain_spec.fork(EthereumHardfork::Prague).active_at_head(block) {
+        reth::revm::primitives::PRAGUE
+    } else if chain_spec.fork(EthereumHardfork::Cancun).active_at_head(block) {
+        reth::revm::primitives::CANCUN
+    } else if chain_spec.fork(EthereumHardfork::Shanghai).active_at_head(block) {
+        reth::revm::primitives::SHANGHAI
+    } else if chain_spec.fork(EthereumHardfork::Paris).active_at_head(block) {
+        reth::revm::primitives::MERGE
+    } else if chain_spec.fork(EthereumHardfork::London).active_at_head(block) {
+        reth::revm::primitives::LONDON
+    } else if chain_spec.fork(EthereumHardfork::Berlin).active_at_head(block) {
+        reth::revm::primitives::BERLIN
+    } else if chain_spec.fork(EthereumHardfork::Istanbul).active_at_head(block) {
+        reth::revm::primitives::ISTANBUL
+    } else if chain_spec.fork(EthereumHardfork::Petersburg).active_at_head(block) {
+        reth::revm::primitives::PETERSBURG
+    } else if chain_spec.fork(EthereumHardfork::Byzantium).active_at_head(block) {
+        reth::revm::primitives::BYZANTIUM
+    } else if chain_spec.fork(EthereumHardfork::SpuriousDragon).active_at_head(block) {
+        reth::revm::primitives::SPURIOUS_DRAGON
+    } else if chain_spec.fork(EthereumHardfork::Tangerine).active_at_head(block) {
+        reth::revm::primitives::TANGERINE
+    } else if chain_spec.fork(EthereumHardfork::Homestead).active_at_head(block) {
+        reth::revm::primitives::HOMESTEAD
+    } else if chain_spec.fork(EthereumHardfork::Frontier).active_at_head(block) {
+        reth::revm::primitives::FRONTIER
+    } else {
+        panic!(
+            "invalid hardfork chainspec: expected at least one hardfork, got {:?}",
+            chain_spec.hardforks
+        )
     }
 }
 
