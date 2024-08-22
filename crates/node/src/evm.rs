@@ -60,6 +60,38 @@ impl AlphaNetEvmConfig {
     }
 }
 
+impl ConfigureEvmEnv for AlphaNetEvmConfig {
+    fn fill_tx_env(&self, tx_env: &mut TxEnv, transaction: &TransactionSigned, sender: Address) {
+        OptimismEvmConfig::default().fill_tx_env(tx_env, transaction, sender)
+    }
+
+    fn fill_tx_env_system_contract_call(
+        &self,
+        env: &mut Env,
+        caller: Address,
+        contract: Address,
+        data: Bytes,
+    ) {
+        OptimismEvmConfig::default().fill_tx_env_system_contract_call(env, caller, contract, data)
+    }
+
+    fn fill_cfg_env(
+        &self,
+        cfg_env: &mut CfgEnvWithHandlerCfg,
+        chain_spec: &ChainSpec,
+        header: &Header,
+        total_difficulty: U256,
+    ) {
+        OptimismEvmConfig::default().fill_cfg_env(cfg_env, chain_spec, header, total_difficulty);
+
+        // TODO(onbjerg): Remove this once Prague and PragueEOF are merged into one.
+        // Map Prague to PragueEOF to enable EOF support on Alphanet.
+        if cfg_env.handler_cfg.spec_id == SpecId::PRAGUE {
+            cfg_env.handler_cfg.spec_id = SpecId::PRAGUE_EOF;
+        }
+    }
+}
+
 impl ConfigureEvm for AlphaNetEvmConfig {
     type DefaultExternalContext<'a> = ();
 
@@ -88,38 +120,6 @@ impl ConfigureEvm for AlphaNetEvmConfig {
     }
 
     fn default_external_context<'a>(&self) -> Self::DefaultExternalContext<'a> {}
-}
-
-impl ConfigureEvmEnv for AlphaNetEvmConfig {
-    fn fill_tx_env(&self, tx_env: &mut TxEnv, transaction: &TransactionSigned, sender: Address) {
-        OptimismEvmConfig::default().fill_tx_env(tx_env, transaction, sender)
-    }
-
-    fn fill_cfg_env(
-        &self,
-        cfg_env: &mut CfgEnvWithHandlerCfg,
-        chain_spec: &ChainSpec,
-        header: &Header,
-        total_difficulty: U256,
-    ) {
-        OptimismEvmConfig::default().fill_cfg_env(cfg_env, chain_spec, header, total_difficulty);
-
-        // TODO(onbjerg): Remove this once Prague and PragueEOF are merged into one.
-        // Map Prague to PragueEOF to enable EOF support on Alphanet.
-        if cfg_env.handler_cfg.spec_id == SpecId::PRAGUE {
-            cfg_env.handler_cfg.spec_id = SpecId::PRAGUE_EOF;
-        }
-    }
-
-    fn fill_tx_env_system_contract_call(
-        &self,
-        env: &mut Env,
-        caller: Address,
-        contract: Address,
-        data: Bytes,
-    ) {
-        OptimismEvmConfig::default().fill_tx_env_system_contract_call(env, caller, contract, data)
-    }
 }
 
 #[cfg(test)]
