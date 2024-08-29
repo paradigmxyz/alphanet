@@ -17,17 +17,14 @@ tracing.workspace = true
 reth.workspace = true
 reth-cli-util.workspace = true
 reth-node-optimism.workspace = true
+reth-optimism-rpc.workspace = true
 clap = { workspace = true, features = ["derive"] }
 
 [target.'cfg(not(windows))'.dependencies]
 tikv-jemallocator = { version = "0.5", optional = true }
 
 [features]
-default = [
-  "jemalloc",
-  "reth/optimism",
-  "reth-node-optimism/optimism",
-]
+default = ["jemalloc", "reth/optimism", "reth-node-optimism/optimism"]
 
 asm-keccak = ["reth/asm-keccak"]
 

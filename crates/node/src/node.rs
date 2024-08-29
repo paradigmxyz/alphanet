@@ -8,6 +8,7 @@ use reth::builder::{
     components::{ComponentsBuilder, ExecutorBuilder},
     BuilderContext, Node, NodeTypes,
 };
+use reth_chainspec::ChainSpec;
 use reth_node_api::FullNodeTypes;
 use reth_node_optimism::{
     args::RollupArgs,
@@ -66,6 +67,7 @@ impl AlphaNetNode {
 impl NodeTypes for AlphaNetNode {
     type Primitives = ();
     type Engine = OptimismEngineTypes;
+    type ChainSpec = ChainSpec;
 }
 
 impl<N> Node<N> for AlphaNetNode

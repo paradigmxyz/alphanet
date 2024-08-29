@@ -57,30 +57,31 @@ strip = false
 alphanet-node = { path = "crates/node" }
 alphanet-precompile = { path = "crates/precompile" }
 
-alloy = { version = "0.2", features = [
+alloy = { version = "0.3", features = [
     "contract",
     "providers",
     "provider-http",
     "signers",
 ] }
-alloy-network = { version = "0.2" }
-alloy-signer-local = { version = "0.2", features = ["mnemonic"] }
+alloy-network = { version = "0.3" }
+alloy-signer-local = { version = "0.3", features = ["mnemonic"] }
 
 # tokio
 tokio = { version = "1.21", default-features = false }
 
 # reth
-reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.5", features = [
+reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6", features = [
     "optimism",
 ] }
-reth-chainspec = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.5" }
-reth-cli-util = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.5" }
-reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.5" }
-reth-node-builder = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.5" }
-reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.5" }
-reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.5" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.5" }
-reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.5" }
+reth-chainspec = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
+reth-cli-util = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
+reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
+reth-node-builder = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
+reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
+reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
+reth-optimism-rpc = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
+reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
 
 # misc
 clap = "4"
