@@ -100,8 +100,9 @@ To get started, follow [these instructions](https://docs.kurtosis.com/install/) 
 Next, clone and build the modified `optimism-contract-deployer` image:
 
 ```bash
-git clone git@github.com:rkrasiuk/optimism-package.git
+git clone git@github.com:paradigmxyz/optimism-package.git
 cd optimism-package
+git switch alphanet
 docker build . -t ethpandaops/optimism-contract-deployer:latest --progress plain
 ```
 
@@ -112,7 +113,7 @@ docker build . -t ethpandaops/optimism-contract-deployer:latest --progress plain
 Finally, run start a Kurtosis enclave (ensure you are still in `optimism-package`):
 
 ```bash
-kurtosis run --enclave op-devnet . \
+kurtosis run --enclave op-devnet github.com/paradigmxyz/optimism-package@alphanet \
   --args-file https://raw.githubusercontent.com/paradigmxyz/alphanet/main/etc/kurtosis.yaml
 ```
 
@@ -120,7 +121,7 @@ This will start an enclave named `op-devnet`. You can tear down the enclave with
 
 > [!NOTE]
 >
-> If you want to use a custom build of AlphaNet, simply build an AlphaNet image with `docker build -t ghcr.io/paradigmxyz/alphanet:latest .`.
+> If you want to use a custom build of AlphaNet, simply build an AlphaNet image with `docker build . -t ghcr.io/paradigmxyz/alphanet:latest`.
 
 Consult the [Kurtosis OP package](https://github.com/ethpandaops/optimism-package) repository for instructions on how to adjust the args file to spin up additional services, like a block exporer.
 

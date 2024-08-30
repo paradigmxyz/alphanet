@@ -1,0 +1,8 @@
+ethereum_package:
+  participants:
+    - el_type: reth
+      cl_type: lighthouse
+optimism_package:
+  participants:
+    - el_type: op-reth
+      el_image: ghcr.io/paradigmxyz/alphanet:latest
