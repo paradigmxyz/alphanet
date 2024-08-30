@@ -48,7 +48,9 @@ To use EOF-enabled foundry, use [forge-eof](https://github.com/paradigmxyz/forge
 
 ### Running AlphaNet
 
-⚠️ AlphaNet does not yet have a running testnet, please use the local development instructions above! ⚠️
+> [!WARNING]
+>
+> AlphaNet does not yet have a running testnet, please use the local development instructions above!
 
 Running AlphaNet will require running additional infrastructure for the archival L1 node. These instructions are a guide for
 running the AlphaNet OP-stack node only.
@@ -88,6 +90,39 @@ op-node \
     --rpc.port=7000 \
     --l1.trustrpc
 ```
+
+### Running AlphaNet with Kurtosis
+
+Running a local network with a full AlphaNet OP stack with Kurtosis requires some extra setup, since AlphaNet uses a forked version of `op-node`.
+
+To get started, follow [these instructions](https://docs.kurtosis.com/install/) to install Kurtosis.
+
+Next, clone and build the modified `optimism-contract-deployer` image:
+
+```bash
+git clone git@github.com:rkrasiuk/optimism-package.git
+cd optimism-package
+docker build . -t ethpandaops/optimism-contract-deployer:latest --progress plain
+```
+
+> [!NOTE]
+>
+> The image may fail to build if you have not allocated enough memory for Docker.
+
+Finally, run start a Kurtosis enclave (ensure you are still in `optimism-package`):
+
+```bash
+kurtosis run --enclave op-devnet . \
+  --args-file https://raw.githubusercontent.com/paradigmxyz/alphanet/main/etc/kurtosis.yaml
+```
+
+This will start an enclave named `op-devnet`. You can tear down the enclave with `kurtosis enclave rm --force op-devnet`, or tear down all enclaves using `kurtosis clean -a`.
+
+> [!NOTE]
+>
+> If you want to use a custom build of AlphaNet, simply build an AlphaNet image with `docker build -t ghcr.io/paradigmxyz/alphanet:latest .`.
+
+Consult the [Kurtosis OP package](https://github.com/ethpandaops/optimism-package) repository for instructions on how to adjust the args file to spin up additional services, like a block exporer.
 
 ### Security
 
