@@ -20,8 +20,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-      - run:
-          cargo clippy --bin alphanet --workspace --features "asm-keccak jemalloc jemalloc-prof min-error-logs min-warn-logs min-info-logs min-debug-logs min-trace-logs"
+      - run: cargo clippy --bin alphanet --workspace --features "asm-keccak jemalloc jemalloc-prof min-error-logs min-warn-logs min-info-logs min-debug-logs min-trace-logs"
         env:
           RUSTFLAGS: -D warnings
 
@@ -59,7 +58,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.80" # MSRV
+          toolchain: "1.81" # MSRV
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
