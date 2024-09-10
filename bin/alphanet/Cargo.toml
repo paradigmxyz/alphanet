@@ -14,9 +14,9 @@ workspace = true
 [dependencies]
 alphanet-node.workspace = true
 tracing.workspace = true
-reth.workspace = true
 reth-cli-util.workspace = true
 reth-node-optimism.workspace = true
+reth-optimism-cli.workspace = true
 reth-optimism-rpc.workspace = true
 clap = { workspace = true, features = ["derive"] }
 
@@ -24,9 +24,9 @@ clap = { workspace = true, features = ["derive"] }
 tikv-jemallocator = { version = "0.5", optional = true }
 
 [features]
-default = ["jemalloc", "reth/optimism", "reth-node-optimism/optimism"]
+default = ["jemalloc"]
 
-asm-keccak = ["reth/asm-keccak"]
+asm-keccak = ["reth-optimism-cli/asm-keccak"]
 
 jemalloc = ["dep:tikv-jemallocator"]
 jemalloc-prof = ["jemalloc", "tikv-jemallocator?/profiling"]

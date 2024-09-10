@@ -11,30 +11,34 @@
 //! precompiles defined by [`alphanet_precompile`].
 
 use alphanet_precompile::secp256r1;
-use reth::{
-    primitives::{
-        revm_primitives::{CfgEnvWithHandlerCfg, TxEnv},
-        transaction::FillTxEnv,
-        Address, Bytes, Header, TransactionSigned, TxKind, U256,
-    },
-    revm::{
-        handler::register::EvmHandler,
-        inspector_handle_register,
-        precompile::PrecompileSpecId,
-        primitives::{AnalysisKind, Env, OptimismFields},
-        ContextPrecompiles, Database, Evm, EvmBuilder, GetInspector,
-    },
-};
 use reth_chainspec::{ChainSpec, EthereumHardfork, Head, OptimismHardfork};
 use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
+use reth_primitives::{
+    revm_primitives::{CfgEnvWithHandlerCfg, TxEnv},
+    transaction::FillTxEnv,
+    Address, Bytes, Header, TransactionSigned, TxKind, U256,
+};
+use reth_revm::{
+    handler::register::EvmHandler,
+    inspector_handle_register,
+    precompile::PrecompileSpecId,
+    primitives::{AnalysisKind, Env, OptimismFields},
+    ContextPrecompiles, Database, Evm, EvmBuilder, GetInspector,
+};
 use std::sync::Arc;
 
 /// Custom EVM configuration
-#[derive(Debug, Clone, Copy, Default)]
-#[non_exhaustive]
-pub struct AlphaNetEvmConfig;
+#[derive(Debug, Clone, Default)]
+pub struct AlphaNetEvmConfig {
+    chain_spec: Arc<ChainSpec>,
+}
 
 impl AlphaNetEvmConfig {
+    /// Creates a new AlphaNet EVM configuration with the given chain spec.
+    pub const fn new(chain_spec: Arc<ChainSpec>) -> Self {
+        Self { chain_spec }
+    }
+
     /// Sets the precompiles to the EVM handler
     ///
     /// This will be invoked when the EVM is created via [ConfigureEvm::evm] or
@@ -113,12 +117,11 @@ impl ConfigureEvmEnv for AlphaNetEvmConfig {
     fn fill_cfg_env(
         &self,
         cfg_env: &mut CfgEnvWithHandlerCfg,
-        chain_spec: &ChainSpec,
         header: &Header,
         total_difficulty: U256,
     ) {
         let spec_id = revm_spec(
-            chain_spec,
+            &self.chain_spec,
             &Head {
                 number: header.number,
                 timestamp: header.timestamp,
@@ -128,11 +131,11 @@ impl ConfigureEvmEnv for AlphaNetEvmConfig {
             },
         );
 
-        cfg_env.chain_id = chain_spec.chain().id();
+        cfg_env.chain_id = self.chain_spec.chain().id();
         cfg_env.perf_analyse_created_bytecodes = AnalysisKind::Analyse;
 
         cfg_env.handler_cfg.spec_id = spec_id;
-        cfg_env.handler_cfg.is_optimism = chain_spec.is_optimism();
+        cfg_env.handler_cfg.is_optimism = self.chain_spec.is_optimism();
     }
 }
 
@@ -167,47 +170,47 @@ impl ConfigureEvm for AlphaNetEvmConfig {
 }
 
 /// Determine the revm spec ID from the current block and reth chainspec.
-fn revm_spec(chain_spec: &ChainSpec, block: &Head) -> reth::revm::primitives::SpecId {
+fn revm_spec(chain_spec: &ChainSpec, block: &Head) -> reth_revm::primitives::SpecId {
     if chain_spec.fork(EthereumHardfork::Prague).active_at_head(block) {
-        reth::revm::primitives::PRAGUE_EOF
+        reth_revm::primitives::PRAGUE_EOF
     } else if chain_spec.fork(OptimismHardfork::Granite).active_at_head(block) {
-        reth::revm::primitives::GRANITE
+        reth_revm::primitives::GRANITE
     } else if chain_spec.fork(OptimismHardfork::Fjord).active_at_head(block) {
-        reth::revm::primitives::FJORD
+        reth_revm::primitives::FJORD
     } else if chain_spec.fork(OptimismHardfork::Ecotone).active_at_head(block) {
-        reth::revm::primitives::ECOTONE
+        reth_revm::primitives::ECOTONE
     } else if chain_spec.fork(OptimismHardfork::Canyon).active_at_head(block) {
-        reth::revm::primitives::CANYON
+        reth_revm::primitives::CANYON
     } else if chain_spec.fork(OptimismHardfork::Regolith).active_at_head(block) {
-        reth::revm::primitives::REGOLITH
+        reth_revm::primitives::REGOLITH
     } else if chain_spec.fork(OptimismHardfork::Bedrock).active_at_head(block) {
-        reth::revm::primitives::BEDROCK
+        reth_revm::primitives::BEDROCK
     } else if chain_spec.fork(EthereumHardfork::Prague).active_at_head(block) {
-        reth::revm::primitives::PRAGUE
+        reth_revm::primitives::PRAGUE
     } else if chain_spec.fork(EthereumHardfork::Cancun).active_at_head(block) {
-        reth::revm::primitives::CANCUN
+        reth_revm::primitives::CANCUN
     } else if chain_spec.fork(EthereumHardfork::Shanghai).active_at_head(block) {
-        reth::revm::primitives::SHANGHAI
+        reth_revm::primitives::SHANGHAI
     } else if chain_spec.fork(EthereumHardfork::Paris).active_at_head(block) {
-        reth::revm::primitives::MERGE
+        reth_revm::primitives::MERGE
     } else if chain_spec.fork(EthereumHardfork::London).active_at_head(block) {
-        reth::revm::primitives::LONDON
+        reth_revm::primitives::LONDON
     } else if chain_spec.fork(EthereumHardfork::Berlin).active_at_head(block) {
-        reth::revm::primitives::BERLIN
+        reth_revm::primitives::BERLIN
     } else if chain_spec.fork(EthereumHardfork::Istanbul).active_at_head(block) {
-        reth::revm::primitives::ISTANBUL
+        reth_revm::primitives::ISTANBUL
     } else if chain_spec.fork(EthereumHardfork::Petersburg).active_at_head(block) {
-        reth::revm::primitives::PETERSBURG
+        reth_revm::primitives::PETERSBURG
     } else if chain_spec.fork(EthereumHardfork::Byzantium).active_at_head(block) {
-        reth::revm::primitives::BYZANTIUM
+        reth_revm::primitives::BYZANTIUM
     } else if chain_spec.fork(EthereumHardfork::SpuriousDragon).active_at_head(block) {
-        reth::revm::primitives::SPURIOUS_DRAGON
+        reth_revm::primitives::SPURIOUS_DRAGON
     } else if chain_spec.fork(EthereumHardfork::Tangerine).active_at_head(block) {
-        reth::revm::primitives::TANGERINE
+        reth_revm::primitives::TANGERINE
     } else if chain_spec.fork(EthereumHardfork::Homestead).active_at_head(block) {
-        reth::revm::primitives::HOMESTEAD
+        reth_revm::primitives::HOMESTEAD
     } else if chain_spec.fork(EthereumHardfork::Frontier).active_at_head(block) {
-        reth::revm::primitives::FRONTIER
+        reth_revm::primitives::FRONTIER
     } else {
         panic!(
             "invalid hardfork chainspec: expected at least one hardfork, got {:?}",
@@ -219,28 +222,29 @@ fn revm_spec(chain_spec: &ChainSpec, block: &Head) -> reth::revm::primitives::Sp
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reth::primitives::{
+    use reth_chainspec::{Chain, ChainSpecBuilder, EthereumHardfork};
+    use reth_primitives::{
         revm_primitives::{BlockEnv, CfgEnv, SpecId},
         ForkCondition, Genesis,
     };
-    use reth_chainspec::{Chain, ChainSpecBuilder, EthereumHardfork};
 
     #[test]
     fn test_fill_cfg_and_block_env() {
         let mut cfg_env = CfgEnvWithHandlerCfg::new_with_spec_id(CfgEnv::default(), SpecId::LATEST);
         let mut block_env = BlockEnv::default();
         let header = Header::default();
-        let chain_spec = ChainSpecBuilder::default()
-            .chain(Chain::optimism_mainnet())
-            .genesis(Genesis::default())
-            .with_fork(EthereumHardfork::Frontier, ForkCondition::Block(0))
-            .build();
+        let chain_spec = Arc::new(
+            ChainSpecBuilder::default()
+                .chain(Chain::optimism_mainnet())
+                .genesis(Genesis::default())
+                .with_fork(EthereumHardfork::Frontier, ForkCondition::Block(0))
+                .build(),
+        );
         let total_difficulty = U256::ZERO;
 
-        AlphaNetEvmConfig::default().fill_cfg_and_block_env(
+        AlphaNetEvmConfig::new(chain_spec.clone()).fill_cfg_and_block_env(
             &mut cfg_env,
             &mut block_env,
-            &chain_spec,
             &header,
             total_difficulty,
         );

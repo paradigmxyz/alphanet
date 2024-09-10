@@ -4,12 +4,12 @@
 //! required for the optimism engine API.
 
 use crate::evm::AlphaNetEvmConfig;
-use reth::builder::{
+use reth_chainspec::ChainSpec;
+use reth_node_api::{FullNodeTypes, NodeTypesWithEngine};
+use reth_node_builder::{
     components::{ComponentsBuilder, ExecutorBuilder},
     BuilderContext, Node, NodeTypes,
 };
-use reth_chainspec::ChainSpec;
-use reth_node_api::FullNodeTypes;
 use reth_node_optimism::{
     args::RollupArgs,
     node::{
@@ -38,22 +38,21 @@ impl AlphaNetNode {
     ) -> ComponentsBuilder<
         Node,
         OptimismPoolBuilder,
-        OptimismPayloadBuilder<AlphaNetEvmConfig>,
+        OptimismPayloadBuilder,
         OptimismNetworkBuilder,
         AlphaNetExecutorBuilder,
         OptimismConsensusBuilder,
     >
     where
-        Node: FullNodeTypes<Engine = OptimismEngineTypes>,
+        Node: FullNodeTypes<
+            Types: NodeTypesWithEngine<Engine = OptimismEngineTypes, ChainSpec = ChainSpec>,
+        >,
     {
         let RollupArgs { disable_txpool_gossip, compute_pending_block, discovery_v4, .. } = args;
         ComponentsBuilder::default()
             .node_types::<Node>()
             .pool(OptimismPoolBuilder::default())
-            .payload(OptimismPayloadBuilder::new(
-                compute_pending_block,
-                AlphaNetEvmConfig::default(),
-            ))
+            .payload(OptimismPayloadBuilder::new(compute_pending_block))
             .network(OptimismNetworkBuilder {
                 disable_txpool_gossip,
                 disable_discovery_v4: !discovery_v4,
@@ -66,18 +65,23 @@ impl AlphaNetNode {
 /// Configure the node types
 impl NodeTypes for AlphaNetNode {
     type Primitives = ();
-    type Engine = OptimismEngineTypes;
     type ChainSpec = ChainSpec;
+}
+
+impl NodeTypesWithEngine for AlphaNetNode {
+    type Engine = OptimismEngineTypes;
 }
 
 impl<N> Node<N> for AlphaNetNode
 where
-    N: FullNodeTypes<Engine = OptimismEngineTypes>,
+    N: FullNodeTypes<
+        Types: NodeTypesWithEngine<Engine = OptimismEngineTypes, ChainSpec = ChainSpec>,
+    >,
 {
     type ComponentsBuilder = ComponentsBuilder<
         N,
         OptimismPoolBuilder,
-        OptimismPayloadBuilder<AlphaNetEvmConfig>,
+        OptimismPayloadBuilder,
         OptimismNetworkBuilder,
         AlphaNetExecutorBuilder,
         OptimismConsensusBuilder,
@@ -98,7 +102,7 @@ pub struct AlphaNetExecutorBuilder;
 
 impl<Node> ExecutorBuilder<Node> for AlphaNetExecutorBuilder
 where
-    Node: FullNodeTypes,
+    Node: FullNodeTypes<Types: NodeTypes<ChainSpec = ChainSpec>>,
 {
     type EVM = AlphaNetEvmConfig;
     type Executor = OpExecutorProvider<Self::EVM>;
@@ -109,7 +113,7 @@ where
     ) -> eyre::Result<(Self::EVM, Self::Executor)> {
         let chain_spec = ctx.chain_spec();
         let evm_config = AlphaNetEvmConfig::default();
-        let executor = OpExecutorProvider::new(chain_spec, evm_config);
+        let executor = OpExecutorProvider::new(chain_spec, evm_config.clone());
 
         Ok((evm_config, executor))
     }

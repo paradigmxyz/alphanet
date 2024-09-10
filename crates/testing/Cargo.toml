@@ -27,12 +27,5 @@ once_cell = "1.19.0"
 tokio.workspace = true
 url = "2.5.0"
 
-[features]
-default = [
-  "reth/optimism",
-  "reth-node-core/optimism",
-  "reth-primitives/optimism",
-]
-
 [lints]
 workspace = true

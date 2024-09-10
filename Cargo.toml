@@ -70,18 +70,32 @@ alloy-signer-local = { version = "0.3", features = ["mnemonic"] }
 tokio = { version = "1.21", default-features = false }
 
 # reth
-reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6", features = [
+reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "c1b5fbb" }
+reth-chainspec = { git = "https://github.com/paradigmxyz/reth.git", rev = "c1b5fbb", features = [
     "optimism",
 ] }
-reth-chainspec = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
-reth-cli-util = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
-reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
-reth-node-builder = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
-reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
-reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
-reth-optimism-rpc = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
-reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "v1.0.6" }
+reth-cli-util = { git = "https://github.com/paradigmxyz/reth.git", rev = "c1b5fbb" }
+reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "c1b5fbb" }
+reth-node-builder = { git = "https://github.com/paradigmxyz/reth.git", rev = "c1b5fbb" }
+reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "c1b5fbb", features = [
+    "optimism",
+] }
+reth-node-optimism = { git = "https://github.com/paradigmxyz/reth.git", rev = "c1b5fbb", features = [
+    "optimism",
+] }
+reth-optimism-cli = { git = "https://github.com/paradigmxyz/reth.git", rev = "c1b5fbb", features = [
+    "optimism",
+] }
+reth-optimism-rpc = { git = "https://github.com/paradigmxyz/reth.git", rev = "c1b5fbb", features = [
+    "optimism",
+] }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "c1b5fbb", features = [
+    "optimism",
+] }
+reth-revm = { git = "https://github.com/paradigmxyz/reth.git", rev = "c1b5fbb", features = [
+    "optimism",
+] }
+reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "c1b5fbb" }
 
 # misc
 clap = "4"
