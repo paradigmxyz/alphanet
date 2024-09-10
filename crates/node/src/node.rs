@@ -112,7 +112,7 @@ where
         ctx: &BuilderContext<Node>,
     ) -> eyre::Result<(Self::EVM, Self::Executor)> {
         let chain_spec = ctx.chain_spec();
-        let evm_config = AlphaNetEvmConfig::default();
+        let evm_config = AlphaNetEvmConfig::new(chain_spec.clone());
         let executor = OpExecutorProvider::new(chain_spec, evm_config.clone());
 
         Ok((evm_config, executor))

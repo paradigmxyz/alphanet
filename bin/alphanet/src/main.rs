@@ -23,10 +23,10 @@
 //! - `min-debug-logs`: Disables all logs below `debug` level.
 //! - `min-trace-logs`: Disables all logs below `trace` level.
 
-use alphanet_node::node::AlphaNetNode;
+use alphanet_node::{chainspec::AlphanetChainSpecParser, node::AlphaNetNode};
 use clap::Parser;
 use reth_node_optimism::args::RollupArgs;
-use reth_optimism_cli::{chainspec::OpChainSpecParser, Cli};
+use reth_optimism_cli::Cli;
 use reth_optimism_rpc::eth::rpc::SequencerClient;
 
 // We use jemalloc for performance reasons.
@@ -45,7 +45,7 @@ fn main() {
     }
 
     if let Err(err) =
-        Cli::<OpChainSpecParser, RollupArgs>::parse().run(|builder, rollup_args| async move {
+        Cli::<AlphanetChainSpecParser, RollupArgs>::parse().run(|builder, rollup_args| async move {
             let node = builder
                 .node(AlphaNetNode::new(rollup_args.clone()))
                 .extend_rpc_modules(move |ctx| {
