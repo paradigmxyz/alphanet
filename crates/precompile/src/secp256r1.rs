@@ -10,16 +10,14 @@
 //! The precompile can be inserted in a custom EVM like this:
 //! ```
 //! use alphanet_precompile::secp256r1;
-//! use reth::{
-//!     primitives::{TransactionSigned, U256},
-//!     revm::{
-//!         precompile::{PrecompileSpecId, Precompiles},
-//!         primitives::{Address, Bytes, CfgEnvWithHandlerCfg, Env, TxEnv},
-//!         ContextPrecompiles, Database, Evm, EvmBuilder,
-//!     },
-//! };
 //! use reth_chainspec::ChainSpec;
 //! use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
+//! use reth_primitives::{TransactionSigned, U256};
+//! use reth_revm::{
+//!     precompile::{PrecompileSpecId, Precompiles},
+//!     primitives::{Address, Bytes, CfgEnvWithHandlerCfg, Env, TxEnv},
+//!     ContextPrecompiles, Database, Evm, EvmBuilder,
+//! };
 //! use std::sync::Arc;
 //!
 //! #[derive(Debug, Clone, Copy, Default)]
@@ -57,15 +55,10 @@
 //!     ) {
 //!         todo!()
 //!     }
-//!     fn fill_cfg_env(
-//!         &self,
-//!         _: &mut CfgEnvWithHandlerCfg,
-//!         _: &ChainSpec,
-//!         _: &reth::primitives::Header,
-//!         _: U256,
-//!     ) {
+//!     fn fill_cfg_env(&self, _: &mut CfgEnvWithHandlerCfg, _: &reth_primitives::Header, _: U256) {
 //!         todo!()
 //!     }
+//!
 //!     fn fill_tx_env_system_contract_call(&self, _: &mut Env, _: Address, _: Address, _: Bytes) {
 //!         todo!()
 //!     }
@@ -73,7 +66,7 @@
 //! ```
 use crate::addresses::P256VERIFY_ADDRESS;
 use p256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
-use reth::revm::{
+use reth_revm::{
     precompile::{u64_to_address, Precompile, PrecompileWithAddress},
     primitives::{
         Bytes, PrecompileError, PrecompileErrors, PrecompileOutput, PrecompileResult, B256,
@@ -141,7 +134,7 @@ fn verify_impl(input: &[u8]) -> Option<()> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use reth::revm::primitives::hex::FromHex;
+    use reth_revm::primitives::hex::FromHex;
     use rstest::rstest;
 
     #[rstest]

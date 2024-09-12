@@ -4,8 +4,8 @@
 //! [AlphaNetEvmConfig](evm::AlphaNetEvmConfig).
 //!
 //! The [AlphaNetNode](node::AlphaNetNode) type implements the
-//! [NodeTypes](reth::builder::NodeTypes) trait, and configures the engine types required for the
-//! optimism engine API.
+//! [NodeTypes](reth_node_builder::NodeTypes) trait, and configures the engine types required for
+//! the optimism engine API.
 //!
 //! The [AlphaNetEvmConfig](evm::AlphaNetEvmConfig) type implements the
 //! [ConfigureEvm](reth_node_api::ConfigureEvm) and

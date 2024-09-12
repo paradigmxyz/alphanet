@@ -25,8 +25,8 @@
 
 use alphanet_node::node::AlphaNetNode;
 use clap::Parser;
-use reth::cli::Cli;
 use reth_node_optimism::args::RollupArgs;
+use reth_optimism_cli::{chainspec::OpChainSpecParser, Cli};
 use reth_optimism_rpc::eth::rpc::SequencerClient;
 
 // We use jemalloc for performance reasons.
@@ -44,24 +44,26 @@ fn main() {
         std::env::set_var("RUST_BACKTRACE", "1");
     }
 
-    if let Err(err) = Cli::<RollupArgs>::parse().run(|builder, rollup_args| async move {
-        let node = builder
-            .node(AlphaNetNode::new(rollup_args.clone()))
-            .extend_rpc_modules(move |ctx| {
-                // register sequencer tx forwarder
-                if let Some(sequencer_http) = rollup_args.sequencer_http.clone() {
-                    ctx.registry
-                        .eth_api()
-                        .set_sequencer_client(SequencerClient::new(sequencer_http));
-                }
+    if let Err(err) =
+        Cli::<OpChainSpecParser, RollupArgs>::parse().run(|builder, rollup_args| async move {
+            let node = builder
+                .node(AlphaNetNode::new(rollup_args.clone()))
+                .extend_rpc_modules(move |ctx| {
+                    // register sequencer tx forwarder
+                    if let Some(sequencer_http) = rollup_args.sequencer_http.clone() {
+                        ctx.registry
+                            .eth_api()
+                            .set_sequencer_client(SequencerClient::new(sequencer_http));
+                    }
 
-                Ok(())
-            })
-            .launch()
-            .await?;
+                    Ok(())
+                })
+                .launch()
+                .await?;
 
-        node.wait_for_node_exit().await
-    }) {
+            node.wait_for_node_exit().await
+        })
+    {
         eprintln!("Error: {err:?}");
         std::process::exit(1);
     }

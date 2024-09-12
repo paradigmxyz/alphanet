@@ -11,19 +11,14 @@ categories.workspace = true
 
 [dependencies]
 alphanet-precompile.workspace = true
-reth.workspace = true
 reth-node-api.workspace = true
+reth-node-builder.workspace = true
 reth-node-optimism.workspace = true
 reth-chainspec.workspace = true
+reth-primitives.workspace = true
+reth-revm.workspace = true
 
 eyre.workspace = true
-
-[features]
-default = [
-  "alphanet-precompile/optimism",
-  "reth/optimism",
-  "reth-node-optimism/optimism",
-]
 
 [lints]
 workspace = true
