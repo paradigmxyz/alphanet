@@ -28,7 +28,7 @@ use reth_revm::{
 use std::sync::Arc;
 
 /// Custom EVM configuration
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct AlphaNetEvmConfig {
     chain_spec: Arc<ChainSpec>,
 }

@@ -10,7 +10,6 @@
 //! The precompile can be inserted in a custom EVM like this:
 //! ```
 //! use alphanet_precompile::secp256r1;
-//! use reth_chainspec::ChainSpec;
 //! use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
 //! use reth_primitives::{TransactionSigned, U256};
 //! use reth_revm::{
