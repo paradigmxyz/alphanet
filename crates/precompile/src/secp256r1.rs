@@ -10,11 +10,11 @@
 //! The precompile can be inserted in a custom EVM like this:
 //! ```
 //! use alphanet_precompile::secp256r1;
-//! use reth_node_api::{ConfigureEvm, ConfigureEvmEnv};
-//! use reth_primitives::{TransactionSigned, U256};
+//! use reth_node_api::{ConfigureEvm, ConfigureEvmEnv, NextBlockEnvAttributes};
+//! use reth_primitives::{Header, TransactionSigned, U256};
 //! use reth_revm::{
 //!     precompile::{PrecompileSpecId, Precompiles},
-//!     primitives::{Address, Bytes, CfgEnvWithHandlerCfg, Env, TxEnv},
+//!     primitives::{Address, BlockEnv, Bytes, CfgEnvWithHandlerCfg, Env, TxEnv},
 //!     ContextPrecompiles, Database, Evm, EvmBuilder,
 //! };
 //! use std::sync::Arc;
@@ -46,6 +46,8 @@
 //! }
 //!
 //! impl ConfigureEvmEnv for AlphaNetEvmConfig {
+//!     type Header = Header;
+//!
 //!     fn fill_tx_env(
 //!         &self,
 //!         tx_env: &mut TxEnv,
@@ -54,7 +56,18 @@
 //!     ) {
 //!         todo!()
 //!     }
+//!
 //!     fn fill_cfg_env(&self, _: &mut CfgEnvWithHandlerCfg, _: &reth_primitives::Header, _: U256) {
+//!         todo!()
+//!     }
+//!
+//!     fn fill_block_env(&self, _: &mut BlockEnv, _: &Self::Header, _: bool) {}
+//!
+//!     fn next_cfg_and_block_env(
+//!         &self,
+//!         _: &Self::Header,
+//!         _: NextBlockEnvAttributes,
+//!     ) -> (CfgEnvWithHandlerCfg, BlockEnv) {
 //!         todo!()
 //!     }
 //!

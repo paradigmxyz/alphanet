@@ -7,7 +7,7 @@ use crate::evm::AlphaNetEvmConfig;
 use reth_chainspec::ChainSpec;
 use reth_node_api::{FullNodeTypes, NodeTypesWithEngine};
 use reth_node_builder::{
-    components::{ComponentsBuilder, ExecutorBuilder},
+    components::{ComponentsBuilder, ExecutorBuilder, PayloadServiceBuilder},
     BuilderContext, Node, NodeTypes,
 };
 use reth_node_optimism::{
@@ -18,6 +18,8 @@ use reth_node_optimism::{
     },
     OpExecutorProvider, OptimismEngineTypes,
 };
+use reth_payload_builder::PayloadBuilderHandle;
+use reth_transaction_pool::TransactionPool;
 
 /// Type configuration for a regular AlphaNet node.
 #[derive(Debug, Clone, Default)]
@@ -38,7 +40,7 @@ impl AlphaNetNode {
     ) -> ComponentsBuilder<
         Node,
         OptimismPoolBuilder,
-        OptimismPayloadBuilder,
+        AlphaNetPayloadBuilder,
         OptimismNetworkBuilder,
         AlphaNetExecutorBuilder,
         OptimismConsensusBuilder,
@@ -52,7 +54,7 @@ impl AlphaNetNode {
         ComponentsBuilder::default()
             .node_types::<Node>()
             .pool(OptimismPoolBuilder::default())
-            .payload(OptimismPayloadBuilder::new(compute_pending_block))
+            .payload(AlphaNetPayloadBuilder::new(compute_pending_block))
             .network(OptimismNetworkBuilder {
                 disable_txpool_gossip,
                 disable_discovery_v4: !discovery_v4,
@@ -81,7 +83,7 @@ where
     type ComponentsBuilder = ComponentsBuilder<
         N,
         OptimismPoolBuilder,
-        OptimismPayloadBuilder,
+        AlphaNetPayloadBuilder,
         OptimismNetworkBuilder,
         AlphaNetExecutorBuilder,
         OptimismConsensusBuilder,
@@ -116,5 +118,38 @@ where
         let executor = OpExecutorProvider::new(chain_spec, evm_config.clone());
 
         Ok((evm_config, executor))
+    }
+}
+
+/// The AlphaNet payload service builder.
+///
+/// This service wraps the default Optimism payload builder, but replaces the default evm config
+/// with AlphaNet's own.
+#[derive(Debug, Default, Clone)]
+pub struct AlphaNetPayloadBuilder {
+    /// Inner Optimism payload builder service.
+    inner: OptimismPayloadBuilder,
+}
+
+impl AlphaNetPayloadBuilder {
+    /// Create a new instance with the given `compute_pending_block` flag.
+    pub const fn new(compute_pending_block: bool) -> Self {
+        Self { inner: OptimismPayloadBuilder::new(compute_pending_block) }
+    }
+}
+
+impl<Node, Pool> PayloadServiceBuilder<Node, Pool> for AlphaNetPayloadBuilder
+where
+    Node: FullNodeTypes<
+        Types: NodeTypesWithEngine<Engine = OptimismEngineTypes, ChainSpec = ChainSpec>,
+    >,
+    Pool: TransactionPool + Unpin + 'static,
+{
+    async fn spawn_payload_service(
+        self,
+        ctx: &BuilderContext<Node>,
+        pool: Pool,
+    ) -> eyre::Result<PayloadBuilderHandle<OptimismEngineTypes>> {
+        self.inner.spawn(AlphaNetEvmConfig::new(ctx.chain_spec().clone()), ctx, pool)
     }
 }
