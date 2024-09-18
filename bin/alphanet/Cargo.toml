@@ -15,9 +15,11 @@ workspace = true
 alphanet-node.workspace = true
 tracing.workspace = true
 reth-cli-util.workspace = true
+reth-node-builder.workspace = true
 reth-node-optimism.workspace = true
 reth-optimism-cli.workspace = true
 reth-optimism-rpc.workspace = true
+reth-provider.workspace = true
 clap = { workspace = true, features = ["derive"] }
 
 [target.'cfg(not(windows))'.dependencies]
