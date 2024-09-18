@@ -27,7 +27,7 @@ use alphanet_node::{chainspec::AlphanetChainSpecParser, node::AlphaNetNode};
 use clap::Parser;
 use reth_node_optimism::args::RollupArgs;
 use reth_optimism_cli::Cli;
-use reth_optimism_rpc::eth::rpc::SequencerClient;
+use reth_optimism_rpc::sequencer::SequencerClient;
 
 // We use jemalloc for performance reasons.
 #[cfg(all(feature = "jemalloc", unix))]
@@ -53,7 +53,7 @@ fn main() {
                     if let Some(sequencer_http) = rollup_args.sequencer_http.clone() {
                         ctx.registry
                             .eth_api()
-                            .set_sequencer_client(SequencerClient::new(sequencer_http));
+                            .set_sequencer_client(SequencerClient::new(sequencer_http))?;
                     }
 
                     Ok(())
