@@ -3,7 +3,7 @@
 use once_cell::sync::Lazy;
 use reth_chainspec::{
     once_cell_set, BaseFeeParams, BaseFeeParamsKind, Chain, ChainHardforks, ChainSpec,
-    EthereumHardfork, ForkCondition, OptimismHardfork,
+    EthereumHardfork, ForkCondition, NamedChain, OptimismHardfork,
 };
 use reth_cli::chainspec::ChainSpecParser;
 use reth_node_core::args::utils::parse_custom_chain_spec;
@@ -59,7 +59,7 @@ pub static ALPHANET_DEV: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
 /// Alphanet main chain specification.
 pub static ALPHANET_MAINNET: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
     ChainSpec {
-        chain: Chain::optimism_mainnet(),
+        chain: Chain::from_named(NamedChain::Alphanet),
         // genesis contains empty alloc field because state at first bedrock block is imported
         // manually from trusted source
         genesis: serde_json::from_str(include_str!("../../../etc/alphanet-genesis.json"))
