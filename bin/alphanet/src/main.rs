@@ -25,7 +25,7 @@
 
 use alphanet_node::{chainspec::AlphanetChainSpecParser, node::AlphaNetNode};
 use clap::Parser;
-use reth_node_builder::EngineNodeLauncher;
+use reth_node_builder::{engine_tree_config::TreeConfig, EngineNodeLauncher};
 use reth_node_optimism::{args::RollupArgs, node::OptimismAddOns};
 use reth_optimism_cli::Cli;
 use reth_optimism_rpc::sequencer::SequencerClient;
@@ -63,9 +63,13 @@ fn main() {
                     Ok(())
                 })
                 .launch_with_fn(|builder| {
+                    let engine_tree_config = TreeConfig::default()
+                        .with_persistence_threshold(rollup_args.persistence_threshold)
+                        .with_memory_block_buffer_target(rollup_args.memory_block_buffer_target);
                     let launcher = EngineNodeLauncher::new(
                         builder.task_executor().clone(),
                         builder.config().datadir(),
+                        engine_tree_config,
                     );
                     builder.launch_with(launcher)
                 })
