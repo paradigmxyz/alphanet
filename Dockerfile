@@ -44,7 +44,8 @@ COPY --from=builder /app/alphanet /usr/local/bin
 # Copy licenses
 COPY LICENSE-* ./
 
-# Copy the genesis file
+# Copy the genesis files
+ADD etc/dev-genesis.json ./etc/dev-genesis.json
 ADD etc/alphanet-genesis.json ./etc/alphanet-genesis.json
 
 EXPOSE 30303 30303/udp 9001 8545 9000 8546
