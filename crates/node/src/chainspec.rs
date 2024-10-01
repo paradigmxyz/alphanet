@@ -1,13 +1,16 @@
 //! Alphanet chainspec parsing logic.
 
+use alloy_primitives::{b256, U256};
 use once_cell::sync::Lazy;
 use reth_chainspec::{
     once_cell_set, BaseFeeParams, BaseFeeParamsKind, Chain, ChainHardforks, ChainSpec,
-    EthereumHardfork, ForkCondition, NamedChain, OptimismHardfork,
+    EthereumHardfork, ForkCondition, NamedChain,
 };
 use reth_cli::chainspec::ChainSpecParser;
 use reth_node_core::args::utils::parse_custom_chain_spec;
-use reth_primitives::{b256, constants::ETHEREUM_BLOCK_GAS_LIMIT, U256};
+use reth_optimism_chainspec::OpChainSpec;
+use reth_optimism_forks::OptimismHardfork;
+use reth_primitives::constants::ETHEREUM_BLOCK_GAS_LIMIT;
 use std::sync::Arc;
 
 /// Alphanet forks.
@@ -39,8 +42,8 @@ pub static ALPHANET_FORKS: Lazy<ChainHardforks> = Lazy::new(|| {
 });
 
 /// Alphanet dev testnet specification.
-pub static ALPHANET_DEV: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
-    ChainSpec {
+pub static ALPHANET_DEV: Lazy<Arc<OpChainSpec>> = Lazy::new(|| {
+    OpChainSpec::new(ChainSpec {
         chain: Chain::from_named(NamedChain::Alphanet),
         genesis: serde_json::from_str(include_str!("../../../etc/dev-genesis.json"))
             .expect("Can't deserialize alphanet genesis json"),
@@ -49,13 +52,13 @@ pub static ALPHANET_DEV: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
         base_fee_params: BaseFeeParamsKind::Constant(BaseFeeParams::ethereum()),
         deposit_contract: None,
         ..Default::default()
-    }
+    })
     .into()
 });
 
 /// Alphanet main chain specification.
-pub static ALPHANET_MAINNET: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
-    ChainSpec {
+pub static ALPHANET_MAINNET: Lazy<Arc<OpChainSpec>> = Lazy::new(|| {
+    OpChainSpec::new(ChainSpec {
         chain: Chain::from_named(NamedChain::Alphanet),
         // genesis contains empty alloc field because state at first bedrock block is imported
         // manually from trusted source
@@ -76,7 +79,7 @@ pub static ALPHANET_MAINNET: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
         max_gas_limit: ETHEREUM_BLOCK_GAS_LIMIT,
         prune_delete_limit: 10000,
         ..Default::default()
-    }
+    })
     .into()
 });
 
@@ -85,7 +88,7 @@ pub static ALPHANET_MAINNET: Lazy<Arc<ChainSpec>> = Lazy::new(|| {
 pub struct AlphanetChainSpecParser;
 
 impl ChainSpecParser for AlphanetChainSpecParser {
-    type ChainSpec = ChainSpec;
+    type ChainSpec = OpChainSpec;
 
     const SUPPORTED_CHAINS: &'static [&'static str] = &["alphanet", "dev"];
 
@@ -110,7 +113,7 @@ impl ChainSpecParser for AlphanetChainSpecParser {
                 header.requests_root = None;
                 chainspec.genesis_header = once_cell_set(header);
 
-                Arc::new(chainspec)
+                Arc::new(OpChainSpec::new(chainspec))
             }
         })
     }

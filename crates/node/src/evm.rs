@@ -10,13 +10,16 @@
 //! This currently configures the instructions defined in [EIP3074-instructions](https://github.com/paradigmxyz/eip3074-instructions), and the
 //! precompiles defined by [`alphanet_precompile`].
 
+use alloy_primitives::{Address, Bytes, TxKind, U256};
 use alphanet_precompile::secp256r1;
-use reth_chainspec::{ChainSpec, EthereumHardfork, Head, OptimismHardfork};
+use reth_chainspec::{ChainSpec, EthereumHardfork, Head};
 use reth_node_api::{ConfigureEvm, ConfigureEvmEnv, NextBlockEnvAttributes};
+use reth_optimism_chainspec::OpChainSpec;
+use reth_optimism_forks::OptimismHardfork;
 use reth_primitives::{
     revm_primitives::{CfgEnvWithHandlerCfg, TxEnv},
     transaction::FillTxEnv,
-    Address, Bytes, Header, TransactionSigned, TxKind, U256,
+    Header, TransactionSigned,
 };
 use reth_revm::{
     handler::register::EvmHandler,
@@ -33,12 +36,12 @@ use std::sync::Arc;
 /// Custom EVM configuration
 #[derive(Debug, Clone)]
 pub struct AlphaNetEvmConfig {
-    chain_spec: Arc<ChainSpec>,
+    chain_spec: Arc<OpChainSpec>,
 }
 
 impl AlphaNetEvmConfig {
     /// Creates a new AlphaNet EVM configuration with the given chain spec.
-    pub const fn new(chain_spec: Arc<ChainSpec>) -> Self {
+    pub const fn new(chain_spec: Arc<OpChainSpec>) -> Self {
         Self { chain_spec }
     }
 
@@ -312,7 +315,7 @@ mod tests {
     use reth_chainspec::{Chain, ChainSpecBuilder, EthereumHardfork};
     use reth_primitives::{
         revm_primitives::{BlockEnv, CfgEnv, SpecId},
-        ForkCondition, Genesis,
+        ForkCondition,
     };
 
     #[test]
@@ -320,13 +323,13 @@ mod tests {
         let mut cfg_env = CfgEnvWithHandlerCfg::new_with_spec_id(CfgEnv::default(), SpecId::LATEST);
         let mut block_env = BlockEnv::default();
         let header = Header::default();
-        let chain_spec = Arc::new(
+        let chain_spec = Arc::new(OpChainSpec::new(
             ChainSpecBuilder::default()
                 .chain(Chain::optimism_mainnet())
-                .genesis(Genesis::default())
+                .genesis(Default::default())
                 .with_fork(EthereumHardfork::Frontier, ForkCondition::Block(0))
                 .build(),
-        );
+        ));
         let total_difficulty = U256::ZERO;
 
         AlphaNetEvmConfig::new(chain_spec.clone()).fill_cfg_and_block_env(
