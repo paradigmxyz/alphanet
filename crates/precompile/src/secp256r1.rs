@@ -89,7 +89,6 @@ use reth_revm::{
 const P256VERIFY_BASE: u64 = 3_450;
 
 /// Returns the secp256r1 precompile with its address.
-
 pub fn precompiles() -> impl Iterator<Item = PrecompileWithAddress> {
     [P256VERIFY].into_iter()
 }
