@@ -26,8 +26,8 @@
 use alphanet_node::{chainspec::AlphanetChainSpecParser, node::AlphaNetNode};
 use clap::Parser;
 use reth_node_builder::{engine_tree_config::TreeConfig, EngineNodeLauncher};
-use reth_node_optimism::{args::RollupArgs, node::OptimismAddOns};
 use reth_optimism_cli::Cli;
+use reth_optimism_node::{args::RollupArgs, node::OptimismAddOns};
 use reth_optimism_rpc::sequencer::SequencerClient;
 use reth_provider::providers::BlockchainProvider2;
 

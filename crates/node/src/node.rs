@@ -4,17 +4,17 @@
 //! required for the optimism engine API.
 
 use crate::evm::AlphaNetEvmConfig;
-use reth_chainspec::ChainSpec;
 use reth_node_api::{FullNodeTypes, NodeTypesWithEngine};
 use reth_node_builder::{
     components::{ComponentsBuilder, ExecutorBuilder, PayloadServiceBuilder},
     BuilderContext, Node, NodeTypes,
 };
-use reth_node_optimism::{
+use reth_optimism_chainspec::OpChainSpec;
+use reth_optimism_node::{
     args::RollupArgs,
     node::{
-        OptimismAddOns, OptimismConsensusBuilder, OptimismNetworkBuilder, OptimismPayloadBuilder,
-        OptimismPoolBuilder,
+        OptimismAddOns, OptimismConsensusBuilder, OptimismEngineValidatorBuilder,
+        OptimismNetworkBuilder, OptimismPayloadBuilder, OptimismPoolBuilder,
     },
     OpExecutorProvider, OptimismEngineTypes,
 };
@@ -44,10 +44,11 @@ impl AlphaNetNode {
         OptimismNetworkBuilder,
         AlphaNetExecutorBuilder,
         OptimismConsensusBuilder,
+        OptimismEngineValidatorBuilder,
     >
     where
         Node: FullNodeTypes<
-            Types: NodeTypesWithEngine<Engine = OptimismEngineTypes, ChainSpec = ChainSpec>,
+            Types: NodeTypesWithEngine<Engine = OptimismEngineTypes, ChainSpec = OpChainSpec>,
         >,
     {
         let RollupArgs { disable_txpool_gossip, compute_pending_block, discovery_v4, .. } = args;
@@ -61,13 +62,14 @@ impl AlphaNetNode {
             })
             .executor(AlphaNetExecutorBuilder::default())
             .consensus(OptimismConsensusBuilder::default())
+            .engine_validator(OptimismEngineValidatorBuilder::default())
     }
 }
 
 /// Configure the node types
 impl NodeTypes for AlphaNetNode {
     type Primitives = ();
-    type ChainSpec = ChainSpec;
+    type ChainSpec = OpChainSpec;
 }
 
 impl NodeTypesWithEngine for AlphaNetNode {
@@ -77,7 +79,7 @@ impl NodeTypesWithEngine for AlphaNetNode {
 impl<N> Node<N> for AlphaNetNode
 where
     N: FullNodeTypes<
-        Types: NodeTypesWithEngine<Engine = OptimismEngineTypes, ChainSpec = ChainSpec>,
+        Types: NodeTypesWithEngine<Engine = OptimismEngineTypes, ChainSpec = OpChainSpec>,
     >,
 {
     type ComponentsBuilder = ComponentsBuilder<
@@ -87,6 +89,7 @@ where
         OptimismNetworkBuilder,
         AlphaNetExecutorBuilder,
         OptimismConsensusBuilder,
+        OptimismEngineValidatorBuilder,
     >;
 
     type AddOns = OptimismAddOns;
@@ -104,7 +107,7 @@ pub struct AlphaNetExecutorBuilder;
 
 impl<Node> ExecutorBuilder<Node> for AlphaNetExecutorBuilder
 where
-    Node: FullNodeTypes<Types: NodeTypes<ChainSpec = ChainSpec>>,
+    Node: FullNodeTypes<Types: NodeTypes<ChainSpec = OpChainSpec>>,
 {
     type EVM = AlphaNetEvmConfig;
     type Executor = OpExecutorProvider<Self::EVM>;
@@ -141,7 +144,7 @@ impl AlphaNetPayloadBuilder {
 impl<Node, Pool> PayloadServiceBuilder<Node, Pool> for AlphaNetPayloadBuilder
 where
     Node: FullNodeTypes<
-        Types: NodeTypesWithEngine<Engine = OptimismEngineTypes, ChainSpec = ChainSpec>,
+        Types: NodeTypesWithEngine<Engine = OptimismEngineTypes, ChainSpec = OpChainSpec>,
     >,
     Pool: TransactionPool + Unpin + 'static,
 {

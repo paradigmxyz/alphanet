@@ -16,12 +16,17 @@ reth-cli.workspace = true
 reth-node-api.workspace = true
 reth-node-builder.workspace = true
 reth-node-core.workspace = true
-reth-node-optimism.workspace = true
+reth-optimism-node.workspace = true
+reth-optimism-forks.workspace = true
+reth-optimism-chainspec.workspace = true
 reth-chainspec.workspace = true
 reth-payload-builder.workspace = true
 reth-primitives.workspace = true
 reth-revm.workspace = true
 reth-transaction-pool.workspace = true
+
+alloy-primitives.workspace = true
+
 serde_json.workspace = true
 
 eyre.workspace = true

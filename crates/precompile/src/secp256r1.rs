@@ -9,9 +9,10 @@
 //!
 //! The precompile can be inserted in a custom EVM like this:
 //! ```
+//! use alloy_primitives::U256;
 //! use alphanet_precompile::secp256r1;
 //! use reth_node_api::{ConfigureEvm, ConfigureEvmEnv, NextBlockEnvAttributes};
-//! use reth_primitives::{Header, TransactionSigned, U256};
+//! use reth_primitives::{Header, TransactionSigned};
 //! use reth_revm::{
 //!     precompile::{PrecompileSpecId, Precompiles},
 //!     primitives::{Address, BlockEnv, Bytes, CfgEnvWithHandlerCfg, Env, TxEnv},
@@ -77,19 +78,17 @@
 //! }
 //! ```
 use crate::addresses::P256VERIFY_ADDRESS;
+use alloy_primitives::{Bytes, B256};
 use p256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
 use reth_revm::{
     precompile::{u64_to_address, Precompile, PrecompileWithAddress},
-    primitives::{
-        Bytes, PrecompileError, PrecompileErrors, PrecompileOutput, PrecompileResult, B256,
-    },
+    primitives::{PrecompileError, PrecompileErrors, PrecompileOutput, PrecompileResult},
 };
 
 /// Base gas fee for secp256r1 p256verify operation.
 const P256VERIFY_BASE: u64 = 3_450;
 
 /// Returns the secp256r1 precompile with its address.
-
 pub fn precompiles() -> impl Iterator<Item = PrecompileWithAddress> {
     [P256VERIFY].into_iter()
 }
