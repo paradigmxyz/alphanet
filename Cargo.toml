@@ -4,6 +4,7 @@ members = [
     "crates/node",
     "crates/precompile",
     "crates/testing",
+    "crates/wallet",
 ]
 default-members = ["bin/alphanet/"]
 resolver = "2"
@@ -56,6 +57,7 @@ strip = false
 # alphanet
 alphanet-node = { path = "crates/node" }
 alphanet-precompile = { path = "crates/precompile" }
+alphanet-wallet = { path = "crates/wallet" }
 
 alloy = { version = "0.4", features = [
     "contract",
@@ -65,6 +67,7 @@ alloy = { version = "0.4", features = [
 ] }
 alloy-network = { version = "0.4" }
 alloy-primitives = { version = "0.8.5" }
+alloy-rpc-types = { version = "0.4" }
 alloy-signer-local = { version = "0.4", features = ["mnemonic"] }
 
 # tokio
@@ -106,10 +109,14 @@ reth-revm = { git = "https://github.com/paradigmxyz/reth.git", rev = "a8a380f", 
 reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "a8a380f" }
 reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth.git", rev = "a8a380f" }
 
+# rpc
+jsonrpsee = "0.24"
+
 # misc
 clap = "4"
 eyre = "0.6.12"
 tracing = "0.1.0"
+serde = "1"
 serde_json = "1"
 once_cell = "1.19"
 

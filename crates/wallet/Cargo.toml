@@ -1,0 +1,19 @@
+[package]
+name = "alphanet-wallet"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+alloy-primitives.workspace = true
+alloy-rpc-types.workspace = true
+jsonrpsee = { workspace = true, features = ["server", "macros"] }
+serde = { workspace = true, features = ["derive"] }
+
+[lints]
+workspace = true
