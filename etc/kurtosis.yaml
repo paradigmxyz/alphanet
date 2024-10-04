@@ -6,6 +6,7 @@ optimism_package:
   participants:
     - el_type: op-reth
       el_image: ghcr.io/paradigmxyz/alphanet:latest
+      count: 2
   network_params:
     network_id: "41144114"
     seconds_per_slot: 1
