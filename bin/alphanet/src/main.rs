@@ -23,13 +23,19 @@
 //! - `min-debug-logs`: Disables all logs below `debug` level.
 //! - `min-trace-logs`: Disables all logs below `trace` level.
 
+use alloy_network::EthereumWallet;
+use alloy_primitives::Address;
+use alloy_signer_local::PrivateKeySigner;
 use alphanet_node::{chainspec::AlphanetChainSpecParser, node::AlphaNetNode};
+use alphanet_wallet::{AlphaNetWallet, AlphaNetWalletApiServer};
 use clap::Parser;
+use eyre::Context;
 use reth_node_builder::{engine_tree_config::TreeConfig, EngineNodeLauncher};
 use reth_optimism_cli::Cli;
 use reth_optimism_node::{args::RollupArgs, node::OptimismAddOns};
 use reth_optimism_rpc::sequencer::SequencerClient;
 use reth_provider::providers::BlockchainProvider2;
+use tracing::{info, warn};
 
 // We use jemalloc for performance reasons.
 #[cfg(all(feature = "jemalloc", unix))]
@@ -58,6 +64,36 @@ fn main() {
                         ctx.registry
                             .eth_api()
                             .set_sequencer_client(SequencerClient::new(sequencer_http))?;
+                    }
+
+                    // register alphanet wallet namespace
+                    if let Ok(sk) = std::env::var("EXP1_SK") {
+                        let signer: PrivateKeySigner =
+                            sk.parse().wrap_err("Invalid EXP0001 secret key.")?;
+                        let wallet = EthereumWallet::from(signer);
+
+                        let raw_delegations = std::env::var("EXP1_WHITELIST")
+                            .wrap_err("No EXP0001 delegations specified")?;
+                        let valid_delegations: Vec<Address> = raw_delegations
+                            .split(',')
+                            .map(|addr| Address::parse_checksummed(addr, None))
+                            .collect::<Result<_, _>>()
+                            .wrap_err("No valid EXP0001 delegations specified")?;
+
+                        ctx.modules.merge_configured(
+                            AlphaNetWallet::new(
+                                ctx.provider().clone(),
+                                wallet,
+                                ctx.registry.eth_api().clone(),
+                                ctx.config().chain.chain().id(),
+                                valid_delegations,
+                            )
+                            .into_rpc(),
+                        )?;
+
+                        info!(target: "reth::cli", "EXP0001 wallet configured");
+                    } else {
+                        warn!(target: "reth::cli", "EXP0001 wallet not configured");
                     }
 
                     Ok(())

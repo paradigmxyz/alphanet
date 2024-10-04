@@ -12,7 +12,12 @@ default-run = "alphanet"
 workspace = true
 
 [dependencies]
+alloy-signer-local.workspace = true
+alloy-network.workspace = true
+alloy-primitives.workspace = true
 alphanet-node.workspace = true
+alphanet-wallet.workspace = true
+eyre.workspace = true
 tracing.workspace = true
 reth-cli-util.workspace = true
 reth-node-builder.workspace = true
