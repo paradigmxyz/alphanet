@@ -838,6 +838,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "alphanet-wallet"
+version = "0.0.0"
+dependencies = [
+ "alloy-primitives",
+ "alloy-rpc-types",
+ "jsonrpsee",
+ "serde",
+]
+
+[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
