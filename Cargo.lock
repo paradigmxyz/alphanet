@@ -773,6 +773,7 @@ name = "alphanet"
 version = "0.0.0"
 dependencies = [
  "alphanet-node",
+ "alphanet-wallet",
  "clap",
  "reth-cli-util",
  "reth-node-builder",
@@ -844,7 +845,13 @@ dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",
  "jsonrpsee",
+ "reth-optimism-rpc",
+ "reth-primitives",
+ "reth-storage-api",
+ "reth-transaction-pool",
  "serde",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]

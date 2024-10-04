@@ -13,7 +13,13 @@ categories.workspace = true
 alloy-primitives.workspace = true
 alloy-rpc-types.workspace = true
 jsonrpsee = { workspace = true, features = ["server", "macros"] }
+reth-optimism-rpc.workspace = true
+reth-primitives.workspace = true
+reth-storage-api.workspace = true
+reth-transaction-pool.workspace = true
 serde = { workspace = true, features = ["derive"] }
+thiserror.workspace = true
+tracing.workspace = true
 
 [lints]
 workspace = true

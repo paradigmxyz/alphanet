@@ -13,6 +13,7 @@ workspace = true
 
 [dependencies]
 alphanet-node.workspace = true
+alphanet-wallet.workspace = true
 tracing.workspace = true
 reth-cli-util.workspace = true
 reth-node-builder.workspace = true

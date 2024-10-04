@@ -24,6 +24,7 @@
 //! - `min-trace-logs`: Disables all logs below `trace` level.
 
 use alphanet_node::{chainspec::AlphanetChainSpecParser, node::AlphaNetNode};
+use alphanet_wallet::{AlphaNetWallet, AlphaNetWalletApiServer};
 use clap::Parser;
 use reth_node_builder::{engine_tree_config::TreeConfig, EngineNodeLauncher};
 use reth_optimism_cli::Cli;
@@ -53,12 +54,23 @@ fn main() {
                 .with_components(AlphaNetNode::components(rollup_args.clone()))
                 .with_add_ons(OptimismAddOns::new(rollup_args.sequencer_http.clone()))
                 .extend_rpc_modules(move |ctx| {
+                    let sequencer_client = rollup_args.sequencer_http.map(SequencerClient::new);
+
                     // register sequencer tx forwarder
-                    if let Some(sequencer_http) = rollup_args.sequencer_http.clone() {
-                        ctx.registry
-                            .eth_api()
-                            .set_sequencer_client(SequencerClient::new(sequencer_http))?;
+                    if let Some(sequencer_client) = sequencer_client.clone() {
+                        ctx.registry.eth_api().set_sequencer_client(sequencer_client)?;
                     }
+                    // register alphanet wallet namespace
+                    ctx.modules.merge_configured(
+                        AlphaNetWallet::new(
+                            ctx.provider().clone(),
+                            ctx.pool().clone(),
+                            sequencer_client.clone(),
+                            ctx.config().chain.chain().id(),
+                            Vec::new(),
+                        )
+                        .into_rpc(),
+                    )?;
 
                     Ok(())
                 })
