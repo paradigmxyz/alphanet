@@ -125,10 +125,10 @@ impl ChainSpecParser for AlphanetChainSpecParser {
 mod tests {
     use std::path::PathBuf;
 
+    use super::AlphanetChainSpecParser;
     use reth_chainspec::EthereumHardforks;
     use reth_cli::chainspec::ChainSpecParser;
-
-    use super::AlphanetChainSpecParser;
+    use reth_optimism_forks::OptimismHardforks;
 
     #[test]
     fn chainspec_parser_adds_prague() {
@@ -138,6 +138,7 @@ mod tests {
         let chain_spec = AlphanetChainSpecParser::parse(&chainspec_path.to_string_lossy())
             .expect("could not parse chainspec");
 
+        assert!(chain_spec.is_bedrock_active_at_block(0));
         assert!(
             chain_spec.is_prague_active_at_timestamp(0),
             "prague should be active at timestamp 0"
