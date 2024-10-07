@@ -6,8 +6,7 @@ use reth_chainspec::{
     once_cell_set, BaseFeeParams, BaseFeeParamsKind, Chain, ChainHardforks, ChainSpec,
     EthereumHardfork, ForkCondition, NamedChain,
 };
-use reth_cli::chainspec::ChainSpecParser;
-use reth_node_core::args::utils::parse_custom_chain_spec;
+use reth_cli::chainspec::{parse_genesis, ChainSpecParser};
 use reth_optimism_chainspec::OpChainSpec;
 use reth_optimism_forks::OptimismHardfork;
 use reth_primitives::constants::ETHEREUM_BLOCK_GAS_LIMIT;
@@ -97,12 +96,15 @@ impl ChainSpecParser for AlphanetChainSpecParser {
             "alphanet" => ALPHANET_MAINNET.clone(),
             "dev" => ALPHANET_DEV.clone(),
             s => {
-                let mut chainspec = parse_custom_chain_spec(s)?;
+                let mut chainspec = OpChainSpec::from(parse_genesis(s)?);
 
                 // NOTE(onbjerg): This is a temporary workaround until we figure out a better way to
                 // activate Prague based on a custom fork name. Currently there does not seem to be
                 // a good way to do it.
-                chainspec.hardforks.insert(EthereumHardfork::Prague, ForkCondition::Timestamp(0));
+                chainspec
+                    .inner
+                    .hardforks
+                    .insert(EthereumHardfork::Prague, ForkCondition::Timestamp(0));
 
                 // NOTE(onbjerg): op-node will fetch the genesis block and check that the hash
                 // matches whatever is in the L2 rollup config, which it will not when we activate
@@ -111,9 +113,9 @@ impl ChainSpecParser for AlphanetChainSpecParser {
                 // generator, we simply remove the requests root manually here.
                 let mut header = chainspec.genesis_header().clone();
                 header.requests_root = None;
-                chainspec.genesis_header = once_cell_set(header);
+                chainspec.inner.genesis_header = once_cell_set(header);
 
-                Arc::new(OpChainSpec::new(chainspec))
+                Arc::new(chainspec)
             }
         })
     }
@@ -123,10 +125,10 @@ impl ChainSpecParser for AlphanetChainSpecParser {
 mod tests {
     use std::path::PathBuf;
 
+    use super::AlphanetChainSpecParser;
     use reth_chainspec::EthereumHardforks;
     use reth_cli::chainspec::ChainSpecParser;
-
-    use super::AlphanetChainSpecParser;
+    use reth_optimism_forks::OptimismHardforks;
 
     #[test]
     fn chainspec_parser_adds_prague() {
@@ -136,6 +138,7 @@ mod tests {
         let chain_spec = AlphanetChainSpecParser::parse(&chainspec_path.to_string_lossy())
             .expect("could not parse chainspec");
 
+        assert!(chain_spec.is_bedrock_active_at_block(0));
         assert!(
             chain_spec.is_prague_active_at_timestamp(0),
             "prague should be active at timestamp 0"
