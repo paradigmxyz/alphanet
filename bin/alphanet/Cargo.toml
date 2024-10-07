@@ -30,7 +30,7 @@ default = ["jemalloc"]
 
 asm-keccak = ["reth-optimism-cli/asm-keccak"]
 
-jemalloc = ["dep:tikv-jemallocator"]
+jemalloc = ["dep:tikv-jemallocator", "reth-cli-util/jemalloc"]
 jemalloc-prof = ["jemalloc", "tikv-jemallocator?/profiling"]
 
 min-error-logs = ["tracing/release_max_level_error"]

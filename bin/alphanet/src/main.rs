@@ -31,11 +31,8 @@ use reth_optimism_node::{args::RollupArgs, node::OptimismAddOns};
 use reth_optimism_rpc::sequencer::SequencerClient;
 use reth_provider::providers::BlockchainProvider2;
 
-// We use jemalloc for performance reasons.
-#[cfg(all(feature = "jemalloc", unix))]
-#[doc(hidden)]
 #[global_allocator]
-static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+static ALLOC: reth_cli_util::allocator::Allocator = reth_cli_util::allocator::new_allocator();
 
 #[doc(hidden)]
 fn main() {
