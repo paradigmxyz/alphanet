@@ -80,6 +80,7 @@ reth-chainspec = { git = "https://github.com/paradigmxyz/reth.git", rev = "78426
 ] }
 reth-cli = { git = "https://github.com/paradigmxyz/reth.git", rev = "7842673" }
 reth-cli-util = { git = "https://github.com/paradigmxyz/reth.git", rev = "7842673" }
+reth-rpc-eth-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "7842673" }
 reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "7842673" }
 reth-node-builder = { git = "https://github.com/paradigmxyz/reth.git", rev = "7842673" }
 reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "7842673", features = [

@@ -19,10 +19,17 @@
 
 use alloy_primitives::{map::HashMap, Address, ChainId, TxHash, TxKind, U256};
 use alloy_rpc_types::TransactionRequest;
-use jsonrpsee::{core::RpcResult, proc_macros::rpc};
+use jsonrpsee::{
+    core::{async_trait, RpcResult},
+    proc_macros::rpc,
+};
 use reth_optimism_rpc::SequencerClient;
-use reth_primitives::revm_primitives::Bytecode;
-use reth_storage_api::StateProvider;
+use reth_primitives::{revm_primitives::Bytecode, BlockId};
+use reth_rpc_eth_api::{
+    helpers::{EthCall, EthState, FullEthApi},
+    EthApiTypes,
+};
+use reth_storage_api::{StateProvider, StateProviderFactory};
 use reth_transaction_pool::TransactionPool;
 use serde::{Deserialize, Serialize};
 use tracing::trace;
@@ -86,7 +93,7 @@ pub trait AlphaNetWalletApi {
     /// [eip-7702]: https://eips.ethereum.org/EIPS/eip-7702
     /// [eip-1559]: https://eips.ethereum.org/EIPS/eip-1559
     #[method(name = "sendTransaction")]
-    fn send_transaction(&self, request: TransactionRequest) -> RpcResult<TxHash>;
+    async fn send_transaction(&self, request: TransactionRequest) -> RpcResult<TxHash>;
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -115,18 +122,20 @@ impl From<AlphaNetWalletError> for jsonrpsee::types::error::ErrorObject<'static>
     }
 }
 
-pub struct AlphaNetWallet<Provider, Pool> {
+pub struct AlphaNetWallet<Provider, Pool, Eth> {
     provider: Provider,
     pool: Pool,
     sequencer_client: Option<SequencerClient>,
     chain_id: ChainId,
     capabilities: WalletCapabilities,
+    eth_api: Eth,
 }
 
-impl<Provider, Pool> AlphaNetWallet<Provider, Pool> {
+impl<Provider, Pool, Eth> AlphaNetWallet<Provider, Pool, Eth> {
     pub fn new(
         provider: Provider,
         pool: Pool,
+        eth_api: Eth,
         sequencer_client: Option<SequencerClient>,
         chain_id: ChainId,
         valid_designations: Vec<Address>,
@@ -137,21 +146,30 @@ impl<Provider, Pool> AlphaNetWallet<Provider, Pool> {
             Capabilities { delegation: DelegationCapability { addresses: valid_designations } },
         );
 
-        Self { provider, pool, sequencer_client, chain_id, capabilities: WalletCapabilities(caps) }
+        Self {
+            provider,
+            pool,
+            eth_api,
+            sequencer_client,
+            chain_id,
+            capabilities: WalletCapabilities(caps),
+        }
     }
 }
 
-impl<Provider, Pool> AlphaNetWalletApiServer for AlphaNetWallet<Provider, Pool>
+#[async_trait]
+impl<Provider, Pool, Eth> AlphaNetWalletApiServer for AlphaNetWallet<Provider, Pool, Eth>
 where
     Pool: TransactionPool + Clone + 'static,
-    Provider: StateProvider + Send + Sync + 'static,
+    Provider: StateProviderFactory + Send + Sync + 'static,
+    Eth: FullEthApi + Send + Sync + 'static,
 {
     fn get_capabilities(&self) -> RpcResult<WalletCapabilities> {
         trace!(target: "rpc::wallet", "Serving wallet_getCapabilities");
         Ok(self.capabilities.clone())
     }
 
-    fn send_transaction(&self, mut request: TransactionRequest) -> RpcResult<TxHash> {
+    async fn send_transaction(&self, mut request: TransactionRequest) -> RpcResult<TxHash> {
         trace!(target: "rpc::wallet", ?request, "Serving wallet_sendTransaction");
 
         // reject transactions that have a non-zero value to prevent draining the sequencer.
@@ -177,7 +195,7 @@ where
             .get(self.chain_id)
             .map(|caps| caps.delegation.addresses.as_ref())
             .unwrap_or_default();
-        if let Some(authorizations) = request.authorization_list {
+        if let Some(authorizations) = &request.authorization_list {
             // check that all auth items delegate to a valid address
             if authorizations.iter().any(|auth| !valid_delegations.contains(&auth.address)) {
                 return Err(AlphaNetWalletError::InvalidAuthorization.into());
@@ -187,7 +205,8 @@ where
             // if this is not a 7702 tx
             match request.to {
                 Some(TxKind::Call(addr)) => {
-                    if let Ok(Some(code)) = self.provider.account_code(addr) {
+                    let state = self.provider.latest().unwrap();
+                    if let Ok(Some(code)) = state.account_code(addr) {
                         match code.0 {
                             Bytecode::Eip7702(code) => {
                                 // not a whitelisted address
@@ -208,6 +227,14 @@ where
             }
         }
 
+        let tx_count =
+            EthState::transaction_count(&self.eth_api, Address::ZERO, Some(BlockId::pending()))
+                .await
+                .map_err(Into::into)?;
+
+        let estimate = EthCall::estimate_gas_at(&self.eth_api, request, BlockId::latest(), None)
+            .await
+            .map_err(Into::into)?;
         // build and sign
         // add to pool, or send to sequencer
         todo!()

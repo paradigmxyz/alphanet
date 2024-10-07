@@ -847,6 +847,7 @@ dependencies = [
  "jsonrpsee",
  "reth-optimism-rpc",
  "reth-primitives",
+ "reth-rpc-eth-api",
  "reth-storage-api",
  "reth-transaction-pool",
  "serde",

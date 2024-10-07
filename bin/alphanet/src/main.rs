@@ -65,6 +65,7 @@ fn main() {
                         AlphaNetWallet::new(
                             ctx.provider().clone(),
                             ctx.pool().clone(),
+                            ctx.registry.eth_api().clone(),
                             sequencer_client.clone(),
                             ctx.config().chain.chain().id(),
                             Vec::new(),
