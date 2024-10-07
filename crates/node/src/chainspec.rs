@@ -6,8 +6,7 @@ use reth_chainspec::{
     once_cell_set, BaseFeeParams, BaseFeeParamsKind, Chain, ChainHardforks, ChainSpec,
     EthereumHardfork, ForkCondition, NamedChain,
 };
-use reth_cli::chainspec::ChainSpecParser;
-use reth_node_core::args::utils::parse_custom_chain_spec;
+use reth_cli::chainspec::{parse_genesis, ChainSpecParser};
 use reth_optimism_chainspec::OpChainSpec;
 use reth_optimism_forks::OptimismHardfork;
 use reth_primitives::constants::ETHEREUM_BLOCK_GAS_LIMIT;
@@ -97,7 +96,7 @@ impl ChainSpecParser for AlphanetChainSpecParser {
             "alphanet" => ALPHANET_MAINNET.clone(),
             "dev" => ALPHANET_DEV.clone(),
             s => {
-                let mut chainspec = parse_custom_chain_spec(s)?;
+                let mut chainspec = ChainSpec::from(parse_genesis(s)?);
 
                 // NOTE(onbjerg): This is a temporary workaround until we figure out a better way to
                 // activate Prague based on a custom fork name. Currently there does not seem to be

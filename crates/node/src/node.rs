@@ -98,6 +98,10 @@ where
         let Self { args } = self;
         Self::components(args.clone())
     }
+
+    fn add_ons(&self) -> Self::AddOns {
+        OptimismAddOns::new(self.args.sequencer_http.clone())
+    }
 }
 
 /// The AlphaNet evm and executor builder.

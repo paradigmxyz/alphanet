@@ -51,7 +51,7 @@ fn main() {
             let node = builder
                 .with_types_and_provider::<AlphaNetNode, BlockchainProvider2<_>>()
                 .with_components(AlphaNetNode::components(rollup_args.clone()))
-                .with_add_ons::<OptimismAddOns>()
+                .with_add_ons(OptimismAddOns::new(rollup_args.sequencer_http.clone()))
                 .extend_rpc_modules(move |ctx| {
                     // register sequencer tx forwarder
                     if let Some(sequencer_http) = rollup_args.sequencer_http.clone() {
