@@ -177,7 +177,8 @@ impl<Node: FullNodeComponents + Unpin> Future for WallTimeExEx<Node> {
         let this = self.get_mut();
 
         loop {
-            if let Poll::Ready(Some(notification)) = this.ctx.notifications.poll_recv(cx) {
+            if let Poll::Ready(Some(notification)) = this.ctx.notifications.poll_next_unpin(cx) {
+                let notification = notification?;
                 match &notification {
                     ExExNotification::ChainCommitted { new } => {
                         info!(committed_chain = ?new.range(), "Received commit");
