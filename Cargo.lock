@@ -780,7 +780,6 @@ dependencies = [
  "reth-optimism-node",
  "reth-optimism-rpc",
  "reth-provider",
- "tikv-jemallocator",
  "tracing",
 ]
 
