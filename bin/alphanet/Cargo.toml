@@ -22,16 +22,13 @@ reth-optimism-rpc.workspace = true
 reth-provider.workspace = true
 clap = { workspace = true, features = ["derive"] }
 
-[target.'cfg(not(windows))'.dependencies]
-tikv-jemallocator = { version = "0.6", optional = true }
-
 [features]
 default = ["jemalloc"]
 
 asm-keccak = ["reth-optimism-cli/asm-keccak"]
 
-jemalloc = ["dep:tikv-jemallocator", "reth-cli-util/jemalloc"]
-jemalloc-prof = ["jemalloc", "tikv-jemallocator?/profiling"]
+jemalloc = ["reth-cli-util/jemalloc"]
+jemalloc-prof = ["jemalloc", "reth-cli-util/jemalloc-prof"]
 
 min-error-logs = ["tracing/release_max_level_error"]
 min-warn-logs = ["tracing/release_max_level_warn"]
