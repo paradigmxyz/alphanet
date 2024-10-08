@@ -30,7 +30,6 @@ use alphanet_node::{chainspec::AlphanetChainSpecParser, node::AlphaNetNode};
 use alphanet_wallet::{AlphaNetWallet, AlphaNetWalletApiServer};
 use async_trait::async_trait;
 use clap::Parser;
-use eyre::Context;
 use futures::StreamExt;
 use jsonrpsee::{
     core::RpcResult,
@@ -44,7 +43,13 @@ use reth_optimism_node::{args::RollupArgs, node::OptimismAddOns};
 use reth_optimism_rpc::sequencer::SequencerClient;
 use reth_provider::providers::BlockchainProvider2;
 use serde::{Deserialize, Serialize};
-use std::{future::Future, pin::Pin, sync::mpsc, task::Poll};
+use std::{
+    future::Future,
+    pin::Pin,
+    task::{Poll},
+};
+use std::sync::mpsc;
+use eyre::Context;
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::{info, warn};
@@ -91,8 +96,7 @@ fn main() {
                             .collect::<Result<_, _>>()
                             .wrap_err("No valid EXP0001 delegations specified")?;
 
-                        ctx.modules
-                            .merge_configured(WallTimeRpcExt { to_exex: rpc_tx }.into_rpc())?;
+                        ctx.modules.merge_configured(WallTimeRpcExt { to_exex: rpc_tx }.into_rpc())?;
 
                         ctx.modules.merge_configured(
                             AlphaNetWallet::new(
