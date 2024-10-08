@@ -304,7 +304,7 @@ struct AlphaNetWalletInner<Provider, Eth> {
     wallet: EthereumWallet,
     chain_id: ChainId,
     capabilities: WalletCapabilities,
-    /// Used to guard tx signing 
+    /// Used to guard tx signing
     permit: Mutex<()>,
 }
 
