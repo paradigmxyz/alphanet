@@ -34,6 +34,7 @@ use std::sync::Arc;
 use tracing::{trace, warn};
 
 use reth_revm as _;
+use tokio::sync::Mutex;
 
 /// The capability to perform [EIP-7702][eip-7702] delegations, sponsored by the sequencer.
 ///
@@ -175,6 +176,7 @@ impl<Provider, Eth> AlphaNetWallet<Provider, Eth> {
                 chain_id,
                 Capabilities { delegation: DelegationCapability { addresses: valid_designations } },
             )])),
+            permit: Default::default(),
         };
         Self { inner: Arc::new(inner) }
     }
@@ -244,6 +246,9 @@ where
             _ => return Err(AlphaNetWalletError::IllegalDestination.into()),
         }
 
+        // we acquire the permit here so that all following operations are performed exclusively
+        let _permit = self.inner.permit.lock().await;
+
         // set nonce
         let tx_count = EthState::transaction_count(
             &self.inner.eth_api,
@@ -295,10 +300,12 @@ where
 /// Implementation of the AlphaNet `wallet_` namespace.
 struct AlphaNetWalletInner<Provider, Eth> {
     provider: Provider,
+    eth_api: Eth,
     wallet: EthereumWallet,
     chain_id: ChainId,
     capabilities: WalletCapabilities,
-    eth_api: Eth,
+    /// Used to guard tx signing 
+    permit: Mutex<()>,
 }
 
 fn validate_tx_request(request: &TransactionRequest) -> Result<(), AlphaNetWalletError> {
