@@ -51,6 +51,8 @@ fn main() {
 
     if let Err(err) =
         Cli::<AlphanetChainSpecParser, RollupArgs>::parse().run(|builder, rollup_args| async move {
+            let (rpc_tx, rpc_rx) = mpsc::unbounded_channel(); // For WallTimeExEx
+
             let node = builder
                 .with_types_and_provider::<AlphaNetNode, BlockchainProvider2<_>>()
                 .with_components(AlphaNetNode::components(rollup_args.clone()))
@@ -77,6 +79,8 @@ fn main() {
                             .collect::<Result<_, _>>()
                             .wrap_err("No valid EXP0001 delegations specified")?;
 
+                        ctx.modules.merge_configured(WallTimeRpcExt { to_exex: rpc_tx }.into_rpc())?;
+
                         ctx.modules.merge_configured(
                             AlphaNetWallet::new(
                                 ctx.provider().clone(),
@@ -94,6 +98,9 @@ fn main() {
                     }
 
                     Ok(())
+                })
+                .install_exex("walltime", |ctx| async move {
+                    Ok(WallTimeExEx::new(ctx, UnboundedReceiverStream::from(rpc_rx)))
                 })
                 .launch_with_fn(|builder| {
                     let engine_tree_config = TreeConfig::default()
@@ -114,4 +121,117 @@ fn main() {
         eprintln!("Error: {err:?}");
         std::process::exit(1);
     }
+}
+
+pub fn unix_epoch_ms() -> u64 {
+    use std::time::SystemTime;
+    let now = SystemTime::now();
+    now.duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_else(|err| panic!("Current time {now:?} is invalid: {err:?}"))
+        .as_millis() as u64
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct BlockTimeData {
+    /// Wall time of last block
+    wall_time_ms: u64,
+    /// Timestamp of last block (chain time)
+    block_timestamp: u64,
+}
+
+#[derive(Debug)]
+pub struct WallTimeExEx<Node: FullNodeComponents> {
+    /// The context of the `ExEx`
+    ctx: ExExContext<Node>,
+    /// Incoming RPC requests.
+    rpc_requests_stream: UnboundedReceiverStream<oneshot::Sender<WallTimeData>>,
+    /// Time data of last block
+    last_block_timedata: BlockTimeData,
+}
+
+impl<Node: FullNodeComponents> WallTimeExEx<Node> {
+    fn new(
+        ctx: ExExContext<Node>,
+        rpc_requests_stream: UnboundedReceiverStream<oneshot::Sender<WallTimeData>>,
+    ) -> Self {
+        Self { ctx, rpc_requests_stream, last_block_timedata: BlockTimeData::default() }
+    }
+}
+
+impl<Node: FullNodeComponents + Unpin> Future for WallTimeExEx<Node> {
+    type Output = eyre::Result<()>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.get_mut();
+
+        loop {
+            if let Poll::Ready(Some(notification)) = this.ctx.notifications.poll_recv(cx) {
+                match &notification {
+                    ExExNotification::ChainCommitted { new } => {
+                        info!(committed_chain = ?new.range(), "Received commit");
+                    }
+                    ExExNotification::ChainReorged { old, new } => {
+                        info!(from_chain = ?old.range(), to_chain = ?new.range(), "Received reorg");
+                    }
+                    ExExNotification::ChainReverted { old } => {
+                        info!(reverted_chain = ?old.range(), "Received revert");
+                    }
+                };
+
+                if let Some(committed_chain) = notification.committed_chain() {
+                    this.last_block_timedata.block_timestamp = committed_chain.tip().timestamp;
+                    this.last_block_timedata.wall_time_ms = unix_epoch_ms();
+                }
+                continue;
+            }
+
+            if let Poll::Ready(Some(tx)) = this.rpc_requests_stream.poll_next_unpin(cx) {
+                let _ = tx.send(WallTimeData {
+                    current_wall_time_ms: unix_epoch_ms(),
+                    last_block_wall_time_ms: this.last_block_timedata.wall_time_ms.clone(),
+                    last_block_timestamp: this.last_block_timedata.block_timestamp.clone(),
+                });
+                continue;
+            }
+
+            return Poll::Pending;
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct WallTimeData {
+    /// Wall time right now
+    current_wall_time_ms: u64,
+    /// Wall time of last block
+    last_block_wall_time_ms: u64,
+    /// Timestamp of last block (chain time)
+    last_block_timestamp: u64,
+}
+
+#[cfg_attr(not(test), rpc(server, namespace = "ext"))]
+#[cfg_attr(test, rpc(server, client, namespace = "ext"))]
+trait WallTimeRpcExtApi {
+    /// Return the wall time and block timestamp of the latest block.
+    #[method(name = "getWallTimeData")]
+    async fn get_timedata(&self) -> RpcResult<WallTimeData>;
+}
+
+#[derive(Debug)]
+pub struct WallTimeRpcExt {
+    to_exex: mpsc::UnboundedSender<oneshot::Sender<WallTimeData>>,
+}
+
+#[async_trait]
+impl WallTimeRpcExtApiServer for WallTimeRpcExt {
+    async fn get_timedata(&self) -> RpcResult<WallTimeData> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self.to_exex.send(tx).map_err(|_| rpc_internal_error())?;
+        rx.await.map_err(|_| rpc_internal_error())
+    }
+}
+
+#[inline]
+fn rpc_internal_error() -> ErrorObjectOwned {
+    ErrorObject::owned(INTERNAL_ERROR_CODE, "internal error", Some(""))
 }
