@@ -28,13 +28,30 @@ use alloy_primitives::Address;
 use alloy_signer_local::PrivateKeySigner;
 use alphanet_node::{chainspec::AlphanetChainSpecParser, node::AlphaNetNode};
 use alphanet_wallet::{AlphaNetWallet, AlphaNetWalletApiServer};
+use async_trait::async_trait;
 use clap::Parser;
-use eyre::Context;
-use reth_node_builder::{engine_tree_config::TreeConfig, EngineNodeLauncher};
+use futures::StreamExt;
+use jsonrpsee::{
+    core::RpcResult,
+    proc_macros::rpc,
+    types::{error::INTERNAL_ERROR_CODE, ErrorObject, ErrorObjectOwned},
+};
+use reth_exex::{ExExContext, ExExNotification};
+use reth_node_builder::{engine_tree_config::TreeConfig, EngineNodeLauncher, FullNodeComponents};
 use reth_optimism_cli::Cli;
 use reth_optimism_node::{args::RollupArgs, node::OptimismAddOns};
 use reth_optimism_rpc::sequencer::SequencerClient;
 use reth_provider::providers::BlockchainProvider2;
+use serde::{Deserialize, Serialize};
+use std::{
+    future::Future,
+    pin::Pin,
+    task::{Poll},
+};
+use std::sync::mpsc;
+use eyre::Context;
+use tokio::sync::{mpsc, oneshot};
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::{info, warn};
 
 #[global_allocator]
@@ -161,7 +178,7 @@ impl<Node: FullNodeComponents> WallTimeExEx<Node> {
 impl<Node: FullNodeComponents + Unpin> Future for WallTimeExEx<Node> {
     type Output = eyre::Result<()>;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
         let this = self.get_mut();
 
         loop {
