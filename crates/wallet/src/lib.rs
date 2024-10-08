@@ -30,6 +30,7 @@ use reth_primitives::{revm_primitives::Bytecode, BlockId};
 use reth_rpc_eth_api::helpers::{EthCall, EthState, EthTransactions, FullEthApi, LoadFee};
 use reth_storage_api::{StateProvider, StateProviderFactory};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tracing::{trace, warn};
 
 use reth_revm as _;
@@ -153,11 +154,7 @@ impl From<AlphaNetWalletError> for jsonrpsee::types::error::ErrorObject<'static>
 
 /// Implementation of the AlphaNet `wallet_` namespace.
 pub struct AlphaNetWallet<Provider, Eth> {
-    provider: Provider,
-    wallet: EthereumWallet,
-    chain_id: ChainId,
-    capabilities: WalletCapabilities,
-    eth_api: Eth,
+    inner: Arc<AlphaNetWalletInner<Provider, Eth>>,
 }
 
 impl<Provider, Eth> AlphaNetWallet<Provider, Eth> {
@@ -169,7 +166,7 @@ impl<Provider, Eth> AlphaNetWallet<Provider, Eth> {
         chain_id: ChainId,
         valid_designations: Vec<Address>,
     ) -> Self {
-        Self {
+        let inner = AlphaNetWalletInner {
             provider,
             wallet,
             eth_api,
@@ -178,7 +175,12 @@ impl<Provider, Eth> AlphaNetWallet<Provider, Eth> {
                 chain_id,
                 Capabilities { delegation: DelegationCapability { addresses: valid_designations } },
             )])),
-        }
+        };
+        Self { inner: Arc::new(inner) }
+    }
+
+    fn chain_id(&self) -> ChainId {
+        self.inner.chain_id
     }
 }
 
@@ -190,7 +192,7 @@ where
 {
     fn get_capabilities(&self) -> RpcResult<WalletCapabilities> {
         trace!(target: "rpc::wallet", "Serving wallet_getCapabilities");
-        Ok(self.capabilities.clone())
+        Ok(self.inner.capabilities.clone())
     }
 
     async fn send_transaction(&self, mut request: TransactionRequest) -> RpcResult<TxHash> {
@@ -200,8 +202,9 @@ where
         validate_tx_request(&request)?;
 
         let valid_delegations: &[Address] = self
+            .inner
             .capabilities
-            .get(self.chain_id)
+            .get(self.chain_id())
             .map(|caps| caps.delegation.addresses.as_ref())
             .unwrap_or_default();
         if let Some(authorizations) = &request.authorization_list {
@@ -217,7 +220,7 @@ where
             // whitelisted address
             (false, Some(TxKind::Call(addr))) => {
                 let state =
-                    self.provider.latest().map_err(|_| AlphaNetWalletError::InternalError)?;
+                    self.inner.provider.latest().map_err(|_| AlphaNetWalletError::InternalError)?;
                 let delegated_address = state
                     .account_code(addr)
                     .ok()
@@ -243,8 +246,8 @@ where
 
         // set nonce
         let tx_count = EthState::transaction_count(
-            &self.eth_api,
-            NetworkWallet::<Ethereum>::default_signer_address(&self.wallet),
+            &self.inner.eth_api,
+            NetworkWallet::<Ethereum>::default_signer_address(&self.inner.wallet),
             Some(BlockId::pending()),
         )
         .await
@@ -252,18 +255,18 @@ where
         request.nonce = Some(tx_count.to());
 
         // set chain id
-        request.chain_id = Some(self.chain_id);
+        request.chain_id = Some(self.chain_id());
 
         // set gas limit
         let estimate =
-            EthCall::estimate_gas_at(&self.eth_api, request.clone(), BlockId::latest(), None)
+            EthCall::estimate_gas_at(&self.inner.eth_api, request.clone(), BlockId::latest(), None)
                 .await
                 .map_err(Into::into)?;
         request = request.gas_limit(estimate.to());
 
         // set gas fees
         let (max_fee_per_gas, max_priority_fee_per_gas) =
-            LoadFee::eip1559_fees(&self.eth_api, None, None)
+            LoadFee::eip1559_fees(&self.inner.eth_api, None, None)
                 .await
                 .map_err(|_| AlphaNetWalletError::InvalidTransactionRequest)?;
         request.max_fee_per_gas = Some(max_fee_per_gas.to());
@@ -273,7 +276,7 @@ where
         let envelope =
             <TransactionRequest as TransactionBuilder<Ethereum>>::build::<EthereumWallet>(
                 request,
-                &self.wallet,
+                &self.inner.wallet,
             )
             .await
             .map_err(|_| AlphaNetWalletError::InvalidTransactionRequest)?;
@@ -282,11 +285,20 @@ where
         // the txpool
         //
         // see: https://github.com/paradigmxyz/reth/blob/b67f004fbe8e1b7c05f84f314c4c9f2ed9be1891/crates/optimism/rpc/src/eth/transaction.rs#L35-L57
-        EthTransactions::send_raw_transaction(&self.eth_api, envelope.encoded_2718().into())
+        EthTransactions::send_raw_transaction(&self.inner.eth_api, envelope.encoded_2718().into())
             .await
             .inspect_err(|err| warn!(target: "rpc::wallet", ?err, "Error adding sequencer-sponsored tx to pool"))
             .map_err(Into::into)
     }
+}
+
+/// Implementation of the AlphaNet `wallet_` namespace.
+struct AlphaNetWalletInner<Provider, Eth> {
+    provider: Provider,
+    wallet: EthereumWallet,
+    chain_id: ChainId,
+    capabilities: WalletCapabilities,
+    eth_api: Eth,
 }
 
 fn validate_tx_request(request: &TransactionRequest) -> Result<(), AlphaNetWalletError> {
