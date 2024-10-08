@@ -32,6 +32,8 @@ use reth_storage_api::{StateProvider, StateProviderFactory};
 use serde::{Deserialize, Serialize};
 use tracing::{trace, warn};
 
+use reth_revm as _;
+
 /// The capability to perform [EIP-7702][eip-7702] delegations, sponsored by the sequencer.
 ///
 /// The sequencer will only perform delegations, and act on behalf of delegated accounts, if the
