@@ -44,7 +44,7 @@ use reth_optimism_node::{args::RollupArgs, node::OptimismAddOns};
 use reth_optimism_rpc::sequencer::SequencerClient;
 use reth_provider::providers::BlockchainProvider2;
 use serde::{Deserialize, Serialize};
-use std::{future::Future, pin::Pin, sync::mpsc, task::Poll};
+use std::{future::Future, pin::Pin, task::Poll};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::{info, warn};
@@ -152,7 +152,6 @@ pub struct BlockTimeData {
     block_timestamp: u64,
 }
 
-#[derive(Debug)]
 pub struct WallTimeExEx<Node: FullNodeComponents> {
     /// The context of the `ExEx`
     ctx: ExExContext<Node>,
