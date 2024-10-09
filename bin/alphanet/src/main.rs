@@ -136,6 +136,7 @@ fn main() {
     }
 }
 
+/// Returns the current unix epoch in milliseconds.
 pub fn unix_epoch_ms() -> u64 {
     use std::time::SystemTime;
     let now = SystemTime::now();
@@ -145,6 +146,7 @@ pub fn unix_epoch_ms() -> u64 {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+/// Data about the last block for WallTimeExEx.
 pub struct BlockTimeData {
     /// Wall time of last block
     wall_time_ms: u64,
@@ -152,6 +154,7 @@ pub struct BlockTimeData {
     block_timestamp: u64,
 }
 
+/// The WallTimeExEx struct.
 pub struct WallTimeExEx<Node: FullNodeComponents> {
     /// The context of the `ExEx`
     ctx: ExExContext<Node>,
@@ -201,8 +204,8 @@ impl<Node: FullNodeComponents + Unpin> Future for WallTimeExEx<Node> {
             if let Poll::Ready(Some(tx)) = this.rpc_requests_stream.poll_next_unpin(cx) {
                 let _ = tx.send(WallTimeData {
                     current_wall_time_ms: unix_epoch_ms(),
-                    last_block_wall_time_ms: this.last_block_timedata.wall_time_ms.clone(),
-                    last_block_timestamp: this.last_block_timedata.block_timestamp.clone(),
+                    last_block_wall_time_ms: this.last_block_timedata.wall_time_ms,
+                    last_block_timestamp: this.last_block_timedata.block_timestamp,
                 });
                 continue;
             }
@@ -213,6 +216,7 @@ impl<Node: FullNodeComponents + Unpin> Future for WallTimeExEx<Node> {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+/// Data about the current time and the last block for WallTimeExEx.
 pub struct WallTimeData {
     /// Wall time right now
     current_wall_time_ms: u64,
@@ -231,6 +235,7 @@ trait WallTimeRpcExtApi {
 }
 
 #[derive(Debug)]
+/// The WallTimeRpcExt struct.
 pub struct WallTimeRpcExt {
     to_exex: mpsc::UnboundedSender<oneshot::Sender<WallTimeData>>,
 }
