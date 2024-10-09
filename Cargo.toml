@@ -110,6 +110,7 @@ reth-revm = { git = "https://github.com/paradigmxyz/reth.git", rev = "946f1a4", 
 reth-storage-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "946f1a4" }
 reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "946f1a4" }
 reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth.git", rev = "946f1a4" }
+reth-network = { git = "https://github.com/paradigmxyz/reth.git", rev = "946f1a4" }
 
 # rpc
 jsonrpsee = "0.24"

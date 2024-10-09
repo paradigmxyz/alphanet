@@ -798,6 +798,7 @@ dependencies = [
  "once_cell",
  "reth-chainspec",
  "reth-cli",
+ "reth-network",
  "reth-node-api",
  "reth-node-builder",
  "reth-optimism-chainspec",
