@@ -6,7 +6,9 @@
 use crate::evm::AlphaNetEvmConfig;
 use reth_node_api::{FullNodeTypes, NodeTypesWithEngine};
 use reth_node_builder::{
-    components::{ComponentsBuilder, ExecutorBuilder, PayloadServiceBuilder},
+    components::{
+        ComponentsBuilder, ExecutorBuilder, PayloadServiceBuilder, PoolBuilderConfigOverrides,
+    },
     BuilderContext, Node, NodeTypes,
 };
 use reth_optimism_chainspec::OpChainSpec;
@@ -19,7 +21,7 @@ use reth_optimism_node::{
     OpExecutorProvider, OptimismEngineTypes,
 };
 use reth_payload_builder::PayloadBuilderHandle;
-use reth_transaction_pool::TransactionPool;
+use reth_transaction_pool::{SubPoolLimit, TransactionPool, TXPOOL_MAX_ACCOUNT_SLOTS_PER_SENDER};
 
 /// Type configuration for a regular AlphaNet node.
 #[derive(Debug, Clone, Default)]
@@ -54,7 +56,15 @@ impl AlphaNetNode {
         let RollupArgs { disable_txpool_gossip, compute_pending_block, discovery_v4, .. } = args;
         ComponentsBuilder::default()
             .node_types::<Node>()
-            .pool(OptimismPoolBuilder::default())
+            .pool(OptimismPoolBuilder {
+                pool_config_overrides: PoolBuilderConfigOverrides {
+                    queued_limit: Some(SubPoolLimit::default() * 2),
+                    pending_limit: Some(SubPoolLimit::default() * 2),
+                    basefee_limit: Some(SubPoolLimit::default() * 2),
+                    max_account_slots: Some(TXPOOL_MAX_ACCOUNT_SLOTS_PER_SENDER * 2),
+                    ..Default::default()
+                },
+            })
             .payload(AlphaNetPayloadBuilder::new(compute_pending_block))
             .network(OptimismNetworkBuilder {
                 disable_txpool_gossip,
