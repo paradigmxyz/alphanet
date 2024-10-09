@@ -24,6 +24,7 @@ reth-primitives.workspace = true
 reth-revm.workspace = true
 reth-transaction-pool.workspace = true
 reth-network.workspace = true
+reth-network-types.workspace = true
 
 alloy-primitives.workspace = true
 
