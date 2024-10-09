@@ -23,6 +23,7 @@ reth-payload-builder.workspace = true
 reth-primitives.workspace = true
 reth-revm.workspace = true
 reth-transaction-pool.workspace = true
+reth-network.workspace = true
 
 alloy-primitives.workspace = true
 

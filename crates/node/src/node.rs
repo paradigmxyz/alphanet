@@ -4,10 +4,12 @@
 //! required for the optimism engine API.
 
 use crate::evm::AlphaNetEvmConfig;
+use reth_network::{NetworkHandle, NetworkManager};
 use reth_node_api::{FullNodeTypes, NodeTypesWithEngine};
 use reth_node_builder::{
     components::{
-        ComponentsBuilder, ExecutorBuilder, PayloadServiceBuilder, PoolBuilderConfigOverrides,
+        ComponentsBuilder, ExecutorBuilder, NetworkBuilder, PayloadServiceBuilder,
+        PoolBuilderConfigOverrides,
     },
     BuilderContext, Node, NodeTypes,
 };
@@ -43,7 +45,7 @@ impl AlphaNetNode {
         Node,
         OptimismPoolBuilder,
         AlphaNetPayloadBuilder,
-        OptimismNetworkBuilder,
+        AlphanetNetworkBuilder,
         AlphaNetExecutorBuilder,
         OptimismConsensusBuilder,
         OptimismEngineValidatorBuilder,
@@ -66,10 +68,10 @@ impl AlphaNetNode {
                 },
             })
             .payload(AlphaNetPayloadBuilder::new(compute_pending_block))
-            .network(OptimismNetworkBuilder {
+            .network(AlphanetNetworkBuilder::new(OptimismNetworkBuilder {
                 disable_txpool_gossip,
                 disable_discovery_v4: !discovery_v4,
-            })
+            }))
             .executor(AlphaNetExecutorBuilder::default())
             .consensus(OptimismConsensusBuilder::default())
             .engine_validator(OptimismEngineValidatorBuilder::default())
@@ -96,7 +98,7 @@ where
         N,
         OptimismPoolBuilder,
         AlphaNetPayloadBuilder,
-        OptimismNetworkBuilder,
+        AlphanetNetworkBuilder,
         AlphaNetExecutorBuilder,
         OptimismConsensusBuilder,
         OptimismEngineValidatorBuilder,
@@ -168,5 +170,36 @@ where
         pool: Pool,
     ) -> eyre::Result<PayloadBuilderHandle<OptimismEngineTypes>> {
         self.inner.spawn(AlphaNetEvmConfig::new(ctx.chain_spec().clone()), ctx, pool)
+    }
+}
+
+/// The default alphanet network builder.
+#[derive(Debug, Default, Clone)]
+pub struct AlphanetNetworkBuilder {
+    inner: OptimismNetworkBuilder,
+}
+
+impl AlphanetNetworkBuilder {
+    /// Create a new instance based on the given op builder
+    pub const fn new(network: OptimismNetworkBuilder) -> Self {
+        Self { inner: network }
+    }
+}
+
+impl<Node, Pool> NetworkBuilder<Node, Pool> for AlphanetNetworkBuilder
+where
+    Node: FullNodeTypes<Types: NodeTypes<ChainSpec = OpChainSpec>>,
+    Pool: TransactionPool + Unpin + 'static,
+{
+    async fn build_network(
+        self,
+        ctx: &BuilderContext<Node>,
+        pool: Pool,
+    ) -> eyre::Result<NetworkHandle> {
+        let network_config = self.inner.network_config(ctx)?;
+        let network = NetworkManager::builder(network_config).await?;
+        let handle = ctx.start_network(network, pool);
+
+        Ok(handle)
     }
 }
