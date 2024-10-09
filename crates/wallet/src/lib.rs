@@ -344,7 +344,7 @@ mod tests {
                     },
                 },
             )]));
-            assert_eq!(serde_json::to_string(&caps).unwrap(), "{\"431136\":{\"delegation\":{\"addresses\":[\"0x90F79bf6EB2c4f870365E785982E1f101E93b906\"]}}}");
+            assert_eq!(serde_json::to_string(&caps).unwrap(), "{\"431136\":{\"delegation\":{\"addresses\":[\"0x90f79bf6eb2c4f870365e785982e1f101e93b906\"]}}}");
         }
 
         #[test]
