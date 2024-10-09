@@ -4,7 +4,11 @@
 //! required for the optimism engine API.
 
 use crate::evm::AlphaNetEvmConfig;
-use reth_network::{NetworkHandle, NetworkManager};
+use reth_network::{
+    transactions::{TransactionPropagationMode, TransactionsManagerConfig},
+    NetworkHandle, NetworkManager,
+};
+use reth_network_types::ReputationChangeWeights;
 use reth_node_api::{FullNodeTypes, NodeTypesWithEngine};
 use reth_node_builder::{
     components::{
@@ -196,9 +200,16 @@ where
         ctx: &BuilderContext<Node>,
         pool: Pool,
     ) -> eyre::Result<NetworkHandle> {
-        let network_config = self.inner.network_config(ctx)?;
+        let mut network_config = self.inner.network_config(ctx)?;
+        // this is rolled with limited trusted peers and we want ignore any reputation slashing
+        network_config.peers_config.reputation_weights = ReputationChangeWeights::zero();
+
+        let txconfig = TransactionsManagerConfig {
+            propagation_mode: TransactionPropagationMode::All,
+            ..network_config.transactions_manager_config.clone()
+        };
         let network = NetworkManager::builder(network_config).await?;
-        let handle = ctx.start_network(network, pool);
+        let handle = ctx.start_network_with(network, pool, txconfig);
 
         Ok(handle)
     }
