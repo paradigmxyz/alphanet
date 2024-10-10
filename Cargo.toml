@@ -74,44 +74,44 @@ alloy-signer-local = { version = "0.4", features = ["mnemonic"] }
 tokio = { version = "1.21", default-features = false }
 
 # reth
-reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710" }
-reth-chainspec = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710", features = [
+reth = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b" }
+reth-chainspec = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b", features = [
     "optimism",
 ] }
-reth-cli = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710" }
-reth-cli-util = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710" }
-reth-rpc-eth-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710" }
-reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710" }
-reth-node-builder = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710" }
-reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710", features = [
+reth-cli = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b" }
+reth-cli-util = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b" }
+reth-rpc-eth-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b" }
+reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b" }
+reth-node-builder = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b" }
+reth-node-core = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b", features = [
     "optimism",
 ] }
-reth-optimism-node = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710", features = [
+reth-optimism-node = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b", features = [
     "optimism",
 ] }
-reth-optimism-cli = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710", features = [
+reth-optimism-cli = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b", features = [
     "optimism",
 ] }
-reth-optimism-rpc = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710", features = [
+reth-optimism-rpc = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b", features = [
     "optimism",
 ] }
-reth-optimism-forks = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710" }
-reth-optimism-chainspec = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710" }
-reth-payload-builder = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710", features = [
+reth-optimism-forks = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b" }
+reth-optimism-chainspec = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b" }
+reth-payload-builder = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b", features = [
     "optimism",
 ] }
-reth-provider = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710", features = [
+reth-provider = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b", features = [
     "optimism",
 ] }
-reth-revm = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710", features = [
+reth-revm = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b", features = [
     "optimism",
 ] }
-reth-storage-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710" }
-reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710" }
-reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710" }
-reth-network = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710" }
-reth-network-types = { git = "https://github.com/paradigmxyz/reth.git", rev = "b50e710" }
+reth-storage-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b" }
+reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b" }
+reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b" }
+reth-network = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b" }
+reth-network-types = { git = "https://github.com/paradigmxyz/reth.git", rev = "1ba631b" }
 
 # rpc
 jsonrpsee = "0.24"
