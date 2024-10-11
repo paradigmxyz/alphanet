@@ -28,6 +28,7 @@ use reth_optimism_node::{
 };
 use reth_payload_builder::PayloadBuilderHandle;
 use reth_transaction_pool::{SubPoolLimit, TransactionPool, TXPOOL_MAX_ACCOUNT_SLOTS_PER_SENDER};
+use std::time::Duration;
 
 /// Type configuration for a regular AlphaNet node.
 #[derive(Debug, Clone, Default)]
@@ -203,6 +204,11 @@ where
         let mut network_config = self.inner.network_config(ctx)?;
         // this is rolled with limited trusted peers and we want ignore any reputation slashing
         network_config.peers_config.reputation_weights = ReputationChangeWeights::zero();
+        network_config.peers_config.backoff_durations.low = Duration::from_secs(5);
+        network_config.peers_config.backoff_durations.medium = Duration::from_secs(5);
+        network_config.peers_config.max_backoff_count = u8::MAX;
+        network_config.sessions_config.session_command_buffer = 500;
+        network_config.sessions_config.session_event_buffer = 500;
 
         let txconfig = TransactionsManagerConfig {
             propagation_mode: TransactionPropagationMode::All,
