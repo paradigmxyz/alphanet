@@ -274,7 +274,7 @@ where
             LoadFee::eip1559_fees(&self.inner.eth_api, None, None)
                 .await
                 .map_err(|_| AlphaNetWalletError::InvalidTransactionRequest)?;
-        request.max_fee_per_gas = Some(max_fee_per_gas.to());
+        request.max_fee_per_gas = Some((max_fee_per_gas + max_priority_fee_per_gas).to());
         request.max_priority_fee_per_gas = Some(max_priority_fee_per_gas.to());
         request.gas_price = None;
 
