@@ -6,6 +6,9 @@
 [![Apache-2.0 License][apache-badge]][apache-url]
 [![CI Status][actions-badge]][actions-url]
 
+> [!IMPORTANT]
+> This repo has been moved to [Odyssey](https://github.com/ithacaxyz/odyssey) and is no longer being maintained.
+
 ## What is Reth AlphaNet?
 
 Reth AlphaNet is a testnet OP Stack rollup aimed at enabling experimentation of bleeding edge Ethereum Research.
