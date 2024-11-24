@@ -126,7 +126,7 @@ This will start an enclave named `op-devnet`. You can tear down the enclave with
 >
 > If you want to use a custom build of AlphaNet, simply build an AlphaNet image with `docker build . -t ghcr.io/paradigmxyz/alphanet:latest`.
 
-Consult the [Kurtosis OP package](https://github.com/ethpandaops/optimism-package) repository for instructions on how to adjust the args file to spin up additional services, like a block exporer.
+Consult the [Kurtosis OP package](https://github.com/ethpandaops/optimism-package) repository for instructions on how to adjust the args file to spin up additional services, like a block explorer.
 
 ### Security
 
